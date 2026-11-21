@@ -207,6 +207,7 @@ function Dashboard() {
   if(reason.length<3){setNotice("Andika sababu ya kurejesha bidhaa (angalau herufi 3).");return;}
   if(sale.status!=="completed"||sale.amountPaid<sale.total){setNotice("Kwa sasa marejesho yanaruhusiwa kwa mauzo yaliyolipwa kikamilifu pekee.");return;}
   if(!sale.lines.length){setNotice("Risiti haina bidhaa za kurejesha.");return;}
+  if(supabaseConfigured&&isConnected===false){setNotice("Refund haijafanyika. Unganisha mtandao ili kuthibitisha marejesho na kurejesha stock kwa usalama.");return;}
   if(supabaseConfigured){
    if(sale.lines.some(line=>!line.id)){setNotice("Taarifa za bidhaa za risiti hazijakamilika; haiwezekani kufanya refund salama.");return;}
    if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
