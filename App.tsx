@@ -26,6 +26,7 @@ function Dashboard() {
  const [cart,setCart]=useState<CartLine[]>([]);
  const [notice,setNotice]=useState("DEMO MODE — changes are temporary and reset when the app restarts.");
  const [cloudLoading,setCloudLoading]=useState(false);
+ const [pendingCheckoutKey,setPendingCheckoutKey]=useState<string | null>(null);
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
  const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
  const outstandingDebt=debts.reduce((sum,d)=>sum+d.balance,0);
@@ -50,7 +51,8 @@ function Dashboard() {
   if(!cart.length){setNotice("Add a product before checkout.");return;}
   if (supabaseConfigured) {
    if (!shopId || !supabase) { setNotice("Akaunti haijaunganishwa na duka. Ingia tena au unda duka."); return; }
-   const key=makeIdempotencyKey();
+   const key=pendingCheckoutKey ?? makeIdempotencyKey();
+   if(!pendingCheckoutKey) setPendingCheckoutKey(key);
    setCloudLoading(true);setNotice("Inatuma mauzo salama kwenye database...");
    try {
     const result=await submitCheckout({shopId,idempotencyKey:key,items:cart.map(x=>({product_id:x.productId,quantity:x.quantity})),paymentMethod:"cash"});
