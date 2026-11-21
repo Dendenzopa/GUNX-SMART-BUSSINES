@@ -13,7 +13,8 @@ export interface BusinessReportInput {
   generatedAt?: Date;
 }
 
-const escapeHtml = (value: string) => value.replace(/[&<>"']/g, char => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[char] ?? char));
+const htmlEntities: Record<string,string> = {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","\'":"&#39;"};
+const escapeHtml = (value: string) => value.replace(/[&<>"\']/g, char => htmlEntities[char] ?? char);
 const csvCell = (value: string | number) => {
   let text = String(value);
   if (/^[=+@\-\t\r]/.test(text)) text = "'" + text;
