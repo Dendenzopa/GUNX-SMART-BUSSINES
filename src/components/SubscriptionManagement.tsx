@@ -12,6 +12,7 @@ type Subscription = {
   debtor_limit: number | null;
   expires_at: string | null;
   is_pro_active: boolean;
+  is_platform_owner?: boolean;
 };
 
 const statusText: Record<Subscription["status"], string> = {
@@ -74,14 +75,14 @@ export default function SubscriptionManagement() {
 
   return <View style={s.wrap}>
     <Text style={s.title}>Mipango ya GUNX</Text>
-    <Text style={s.copy}>Chagua mpango unaolingana na ukubwa wa biashara yako. Bei zote ni TZS.</Text>
+    <Text style={s.copy}>{subscription?.is_platform_owner ? "Akaunti ya Platform Owner ina GUNX PRO bila malipo. Huhitaji kuwasilisha malipo." : "Chagua mpango unaolingana na ukubwa wa biashara yako. Bei zote ni TZS."}</Text>
     {loading && <ActivityIndicator color="#43C99A" />}
     {subscription && <>
       <View style={s.current}>
         <Text style={s.eyebrow}>MPANGO WA SASA</Text>
-        <Text style={s.plan}>{subscription.plan_code.toUpperCase()}</Text>
+        <Text style={s.plan}>{subscription.is_platform_owner ? "PLATFORM OWNER" : subscription.plan_code.toUpperCase()}</Text>
         <Text style={s.status}>{statusText[subscription.status]}</Text>
-        {expiry && <Text style={s.copy}>Tarehe ya mwisho ya usajili: {expiry}</Text>}
+        {expiry && !subscription.is_platform_owner && <Text style={s.copy}>Tarehe ya mwisho ya usajili: {expiry}</Text>}
       </View>
       <View style={s.card}>
         <Text style={s.plan}>FREE</Text>
@@ -94,7 +95,7 @@ export default function SubscriptionManagement() {
       <View style={s.cardPro}>
         <Text style={s.eyebrow}>BIASHARA INAYOKUA</Text>
         <Text style={s.plan}>GUNX PRO</Text>
-        <Text style={s.price}>TZS 5,000<Text style={s.per}> / mwezi</Text></Text>
+        <Text style={s.price}>{subscription.is_platform_owner ? "TZS 0" : "TZS 5,000"}{!subscription.is_platform_owner && <Text style={s.per}> / mwezi</Text>}</Text>
         <Text style={s.item}>• Bidhaa na mauzo bila kikomo</Text>
         <Text style={s.item}>• Madeni na historia ya stock bila kikomo</Text>
         <Text style={s.item}>• Ripoti na uchambuzi wa kina</Text>
@@ -102,7 +103,7 @@ export default function SubscriptionManagement() {
         <Text style={s.copy}>Muda wa Pro huisha kiotomatiki; akaunti hurudi Free na data za biashara hazifutwi.</Text>
       </View>
     </>}
-    <View style={s.payment}>
+    {!subscription?.is_platform_owner && <View style={s.payment}>
       <Text style={s.heading}>Jinsi ya kuomba GUNX PRO</Text>
       <Text style={s.item}>HaloPesa: 0621665181</Text>
       <Text style={s.copy}>REORNADA BINARY RHESPICIOUS</Text>
@@ -120,7 +121,7 @@ export default function SubscriptionManagement() {
       <TextInput value={payerPhone} onChangeText={setPayerPhone} keyboardType="phone-pad" placeholder="07XXXXXXXX" placeholderTextColor="#71869A" style={s.field} />
       <Pressable disabled={submitting} onPress={() => void submitPayment()} style={[s.submitButton, submitting && { opacity: 0.6 }]}><Text style={s.refreshText}>{submitting ? "Inatuma ombi..." : "Wasilisha kumbukumbu ya malipo"}</Text></Pressable>
       {!!paymentNotice && <Text style={s.paymentNotice}>{paymentNotice}</Text>}
-    </View>
+    </View>}
     <Pressable onPress={() => void load()} style={s.refresh}><Text style={s.refreshText}>↻ Sasisha hali ya usajili</Text></Pressable>
     <Text style={s.copy}>{notice}</Text>
   </View>;
