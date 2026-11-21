@@ -1,4 +1,4 @@
-name: GUNX Android test APK
+name: GUNX Android standalone APK
 
 on:
   push:
@@ -9,7 +9,7 @@ on:
   workflow_call:
 
 jobs:
-  android-debug-apk:
+  android-standalone-apk:
     runs-on: ubuntu-latest
     timeout-minutes: 35
     steps:
@@ -28,13 +28,18 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: Generate native Android project
         run: CI=1 npx expo prebuild --platform android
-      - name: Build installable debug APK
+      - name: Build standalone release APK with embedded JavaScript bundle
         working-directory: android
-        run: ./gradlew assembleDebug --no-daemon
-      - name: Upload test APK
+        run: ./gradlew assembleRelease --no-daemon
+      - name: Verify APK contains embedded JavaScript bundle
+        run: |
+          APK=android/app/build/outputs/apk/release/app-release.apk
+          test -s "$APK"
+          unzip -l "$APK" | grep -E 'assets/index.android.bundle|assets/index.android.bundle.hbc'
+      - name: Upload standalone APK
         uses: actions/upload-artifact@v4
         with:
-          name: gunx-smart-business-android-debug
-          path: android/app/build/outputs/apk/debug/app-debug.apk
+          name: gunx-smart-business-android-standalone
+          path: android/app/build/outputs/apk/release/app-release.apk
           if-no-files-found: error
           retention-days: 14
