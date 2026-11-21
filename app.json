@@ -6,8 +6,26 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
-    "ios": { "supportsTablet": true, "bundleIdentifier": "com.gunx.smartbusiness" },
-    "android": { "package": "com.gunx.smartbusiness" },
-    "web": { "bundler": "metro" }
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.gunx.smartbusiness"
+    },
+    "android": {
+      "package": "com.gunx.smartbusiness"
+    },
+    "web": {
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-splash-screen",
+        {
+          "image": "./assets/gunx-smart-business-logo.jpg",
+          "imageWidth": 240,
+          "resizeMode": "contain",
+          "backgroundColor": "#081522"
+        }
+      ]
+    ]
   }
 }
