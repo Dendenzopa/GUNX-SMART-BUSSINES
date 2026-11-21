@@ -7,7 +7,7 @@ import type { Product, Sale, Expense, DebtEntry } from "./src/domain/types";
 import AuthGate, { useShopContext } from "./src/components/AuthGate";
 import { supabase, supabaseConfigured } from "./src/lib/supabase";
 import { submitCheckout } from "./src/services/checkout";
-import { readPendingSales, writePendingSales, readCachedProducts, writeCachedProducts, type PendingSale } from "./src/services/offlineSales";
+import { readPendingSales, writePendingSales, readCachedProducts, writeCachedProducts, readCachedBusinessSnapshot, writeCachedBusinessSnapshot, type PendingSale } from "./src/services/offlineSales";
 type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Returns" | "Payments" | "Reports";
 type CartLine = { productId: string; quantity: number };
 function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
@@ -95,6 +95,14 @@ function Dashboard() {
   if (!supabaseConfigured || !supabase || !shopId) return;
   let active = true;
   setCloudLoading(true);
+  Promise.all([readCachedBusinessSnapshot(shopId),readPendingSales(shopId)]).then(([snapshot,pending])=>{
+   if(!active||!snapshot)return;
+   setSales([...pending.map(item=>({...item.sale})),...snapshot.sales.filter(sale=>!pending.some(item=>item.sale.id===sale.id))]);
+   setExpenses(snapshot.expenses);
+   setDebts(snapshot.debts);
+   setRefundTotal(snapshot.refundTotal);
+   setNotice("Data ya mwisho iliyohifadhiwa kwenye simu inaonyeshwa. Inatafuta taarifa mpya mtandaoni.");
+  });
   supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name")
    .then(({data,error}) => {
     if (!active) return;
@@ -107,12 +115,21 @@ function Dashboard() {
    supabase.from("expenses").select("id,description,category,amount,created_at").eq("shop_id",shopId).order("created_at",{ascending:false}),
    supabase.from("debts").select("id,customer_id,description,original_amount,balance,created_at,customers(name)").eq("shop_id",shopId).order("created_at",{ascending:false}),
    supabase.from("sale_refunds").select("refund_total").eq("shop_id",shopId)
-  ]).then(([salesResult,expensesResult,debtsResult,refundsResult]) => {
+  ]).then(async([salesResult,expensesResult,debtsResult,refundsResult]) => {
    if(!active) return;
-   if(!salesResult.error && salesResult.data) setSales(salesResult.data.map((r:any)=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({id:x.id,productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:Number(x.unit_cost_snapshot),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":"completed"})));
-   if(!expensesResult.error && expensesResult.data) setExpenses(expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),createdAt:e.created_at})));
-   if(!debtsResult.error && debtsResult.data) setDebts(debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.[0]?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})));
-   if(!refundsResult.error && refundsResult.data) setRefundTotal(refundsResult.data.reduce((sum:any,row:any)=>sum+Number(row.refund_total),0));
+   const mappedSales=!salesResult.error&&salesResult.data?salesResult.data.map((r:any)=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({id:x.id,productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:Number(x.unit_cost_snapshot),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":"completed"})):null;
+   const mappedExpenses=!expensesResult.error&&expensesResult.data?expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),createdAt:e.created_at})):null;
+   const mappedDebts=!debtsResult.error&&debtsResult.data?debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.[0]?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})):null;
+   const mappedRefunds=!refundsResult.error&&refundsResult.data?refundsResult.data.reduce((sum:number,row:any)=>sum+Number(row.refund_total),0):null;
+   const [pending]=await Promise.all([readPendingSales(shopId)]);
+   if(!active)return;
+   if(mappedSales)setSales([...pending.map(item=>({...item.sale})),...mappedSales.filter(sale=>!pending.some(item=>item.sale.id===sale.id))]);
+   if(mappedExpenses)setExpenses(mappedExpenses);
+   if(mappedDebts)setDebts(mappedDebts);
+   if(mappedRefunds!==null)setRefundTotal(mappedRefunds);
+   if(mappedSales&&mappedExpenses&&mappedDebts&&mappedRefunds!==null){
+    await writeCachedBusinessSnapshot(shopId,{sales:mappedSales,expenses:mappedExpenses,debts:mappedDebts,refundTotal:mappedRefunds,cachedAt:new Date().toISOString()});
+   }
   });
   return () => { active = false; };
  },[shopId]);
