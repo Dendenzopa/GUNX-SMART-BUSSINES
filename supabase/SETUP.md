@@ -5,6 +5,7 @@
    - `supabase/migrations/0001_initial_schema.sql`
    - `supabase/migrations/0002_membership_rls.sql`
    - `supabase/migrations/0003_protect_financial_ledgers.sql`
+   - `supabase/migrations/0004_role_permissions.sql`
 3. Copy `.env.example` to `.env.local` and set the project URL and anon/publishable key.
 4. Install dependencies with `npm install`, then run `npx expo start`.
 
@@ -17,3 +18,4 @@ Security:
 
 Current limitation:
 The app's sales, stock, debt and expense screens still use temporary in-memory demo data. This setup adds the Supabase client and is the foundation for auth wiring; it does not yet make those modules cloud-backed.
+
