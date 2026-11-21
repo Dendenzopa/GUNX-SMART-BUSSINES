@@ -40,11 +40,11 @@ export default function PlatformOwnerDashboard() {
   return <View style={s.wrap}>
     <Text style={s.eyebrow}>GUNX SMART BUSINESS · CONTROL CENTRE</Text>
     <Text style={s.title}>Platform Owner</Text>
-    <Text style={s.copy}>Takwimu za matumizi ya mfumo mzima. Hizi ni installations za kwanza kufungua app, si idadi ya faili za APK zilizopakuliwa WhatsApp.</Text>
+    <Text style={s.copy}>Takwimu za matumizi ya mfumo mzima. Installation huhesabiwa baada ya mtumiaji kuingia na kuthibitishwa na server; kila akaunti huhesabiwa mara moja tu. Hizi si idadi ya APK zilizopakuliwa.</Text>
     {loading && <ActivityIndicator color="#43C99A" />}
     {metrics && <>
       <View style={s.grid}>
-        <Metric label="INSTALLS ZOTE" value={metrics.total_installs} />
+        <Metric label="INSTALLS ZILIZOTHIBITISHWA" value={metrics.total_installs} />
         <Metric label="INSTALLS · SIKU 7" value={metrics.installs_7d} />
         <Metric label="INSTALLS · SIKU 30" value={metrics.installs_30d} />
         <Metric label="AKAUNTI ZILIZOSAJILIWA" value={metrics.registrations} />
@@ -52,7 +52,7 @@ export default function PlatformOwnerDashboard() {
         <Metric label="ACTIVE USERS · SIKU 30" value={metrics.active_30d} />
         <Metric label="BIASHARA ZOTE" value={metrics.total_shops} />
       </View>
-      <Text style={s.copy}>Downloads halisi zitaonekana baada ya APK kuwekwa kwenye link/server yenye kumbukumbu za download. WhatsApp yenyewe haitoi takwimu hizo kwa mmiliki.</Text>
+      <Text style={s.copy}>Ulinzi huu huzuia wageni wasioingia na akaunti moja kuongeza idadi ya installs kwa kutuma IDs nyingi. Hata hivyo, si uthibitisho wa kifaa halisi; kwa uthibitisho wa kifaa na APK rasmi tutahitaji Android Play Integrity na signing key iliyohifadhiwa salama.</Text>
     </>}
     <Pressable onPress={() => void load()} style={s.button}><Text style={s.buttonText}>↻ Sasisha takwimu</Text></Pressable>
     <Text style={s.notice}>{notice}</Text>
