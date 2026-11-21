@@ -1,14 +1,18 @@
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View, Pressable, TextInput } from "react-native";
 import { demoProducts, demoSales, demoExpenses } from "./src/data/demoData";
 import { formatTZS, netProfit, totalSales } from "./src/domain/money";
 import type { Product, Sale, Expense, DebtEntry } from "./src/domain/types";
-import AuthGate from "./src/components/AuthGate";
+import AuthGate, { useShopContext } from "./src/components/AuthGate";
+import { supabase, supabaseConfigured } from "./src/lib/supabase";
+import { submitCheckout } from "./src/services/checkout";
 type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Payments" | "Reports";
 type CartLine = { productId: string; quantity: number };
 function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
 function Metric({label,value}:{label:string;value:string}) { return <View style={s.metric}><Text style={s.label}>{label}</Text><Text style={s.value}>{value}</Text></View>; }
+function makeIdempotencyKey() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => { const r = Math.floor(Math.random()*16); return (ch==="x"?r:(r&3)|8).toString(16); }); }
 function Dashboard() {
+ const { shopId } = useShopContext();
  const [screen,setScreen]=useState<Screen>("Home");
  const [products,setProducts]=useState<Product[]>(demoProducts);
  const [sales,setSales]=useState<Sale[]>(demoSales);
@@ -21,14 +25,44 @@ function Dashboard() {
  const [repaymentAmount,setRepaymentAmount]=useState("");
  const [cart,setCart]=useState<CartLine[]>([]);
  const [notice,setNotice]=useState("DEMO MODE — changes are temporary and reset when the app restarts.");
+ const [cloudLoading,setCloudLoading]=useState(false);
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
  const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
  const outstandingDebt=debts.reduce((sum,d)=>sum+d.balance,0);
+ useEffect(() => {
+  if (!supabaseConfigured || !supabase || !shopId) return;
+  let active = true;
+  setCloudLoading(true);
+  supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name")
+   .then(({data,error}) => {
+    if (!active) return;
+    if (error) setNotice("Imeshindikana kupakia bidhaa: "+error.message);
+    else setProducts((data ?? []).map((p:any) => ({id:p.id,name:p.name,sku:p.sku ?? "",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active})));
+    setCloudLoading(false);
+   });
+  return () => { active = false; };
+ },[shopId]);
  function add(p:Product) { setCart(current=>{const q=(current.find(x=>x.productId===p.id)?.quantity||0)+1;if(q>p.stockQuantity){setNotice("Stock limit reached.");return current;}return current.some(x=>x.productId===p.id)?current.map(x=>x.productId===p.id?{...x,quantity:q}:x):[...current,{productId:p.id,quantity:1}];});setNotice(p.name+" added to cart."); }
  function addExpense() { const amount=Number(expenseAmount); if(!expenseName.trim()||!Number.isFinite(amount)||amount<=0){setNotice("Weka jina la gharama na kiasi sahihi.");return;} setExpenses(v=>[{id:"local-exp-"+Date.now(),description:expenseName.trim(),category:"General",amount,createdAt:new Date().toISOString()},...v]);setExpenseName("");setExpenseAmount("");setNotice("Gharama imeongezwa kwenye demo."); }
  function addDebt() { const amount=Number(debtAmount);if(!debtorName.trim()||!Number.isFinite(amount)||amount<=0){setNotice("Weka jina la mteja na deni sahihi.");return;}setDebts(v=>[{id:"local-debt-"+Date.now(),customerId:"local-customer",customerName:debtorName.trim(),saleId:"manual",originalAmount:amount,amountPaid:0,balance:amount,createdAt:new Date().toISOString()},...v]);setDebtorName("");setDebtAmount("");setNotice("Deni limehifadhiwa kwenye demo."); }
  function repayDebt(id:string) { const amount=Number(repaymentAmount);if(!Number.isFinite(amount)||amount<=0){setNotice("Weka kiasi cha marejesho sahihi.");return;}const debt=debts.find(d=>d.id===id);if(!debt||amount>debt.balance){setNotice("Marejesho hayawezi kuzidi deni lililobaki.");return;}setDebts(v=>v.map(d=>d.id===id?{...d,amountPaid:d.amountPaid+amount,balance:d.balance-amount}:d));setRepaymentAmount("");setNotice("Marejesho yameandikwa kwenye demo."); }
- function checkout() {
+ async function checkout() {
+  if(!cart.length){setNotice("Add a product before checkout.");return;}
+  if (supabaseConfigured) {
+   if (!shopId || !supabase) { setNotice("Akaunti haijaunganishwa na duka. Ingia tena au unda duka."); return; }
+   const key=makeIdempotencyKey();
+   setCloudLoading(true);setNotice("Inatuma mauzo salama kwenye database...");
+   try {
+    const result=await submitCheckout({shopId,idempotencyKey:key,items:cart.map(x=>({product_id:x.productId,quantity:x.quantity})),paymentMethod:"cash"});
+    setCart([]);
+    const {data,error}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
+    if(!error&&data)setProducts(data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active})));
+    setNotice("Mauzo yamehifadhiwa: "+result.receiptNumber+" · "+formatTZS(result.total));
+    setScreen("Home");
+   } catch(e) { setNotice("Mauzo hayajakamilika: "+(e instanceof Error?e.message:"Hitilafu isiyojulikana")+". Hakikisha muamala haujakamilika kabla ya kujaribu tena."); }
+   finally { setCloudLoading(false); }
+   return;
+  }
   if(!cart.length){setNotice("Add a product before checkout.");return;}
   const lines=cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return {productId:p.id,productName:p.name,quantity:x.quantity,unitPrice:p.sellingPrice,unitCost:p.costPrice,lineTotal:p.sellingPrice*x.quantity};});
   const total=lines.reduce((a,x)=>a+x.lineTotal,0);
@@ -40,7 +74,7 @@ function Dashboard() {
   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.navScroll}><View style={s.nav}>{(["Home","POS","Stock","Debts","Expenses","Payments","Reports"] as Screen[]).map(x=><Pressable key={x} onPress={()=>setScreen(x)} style={[s.navItem,screen===x&&s.navOn]}><Text style={[s.navText,screen===x&&s.navTextOn]}>{x}</Text></Pressable>)}</View></ScrollView>
   <ScrollView contentContainerStyle={s.content}>
    {screen==="Home"&&<><View style={s.hero}><Text style={s.eyebrow}>BUSINESS OVERVIEW</Text><Text style={s.heroTitle}>Welcome back</Text><Text style={s.muted}>Your business, all in one place.</Text></View><View style={s.row}><Metric label="TOTAL SALES" value={formatTZS(totalSales(sales))}/><Metric label="EST. NET PROFIT*" value={formatTZS(netProfit(sales,expenses))}/></View><View style={s.row}><Metric label="LOW STOCK" value={lowStock+" items"}/><Metric label="SALES COUNT" value={String(sales.length)}/></View><View style={s.row}><Metric label="MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/><Metric label="GHARAMA" value={formatTZS(expenses.reduce((a,x)=>a+x.amount,0))}/></View><Text style={s.heading}>Quick actions</Text><View style={s.row}><View style={s.flex}><Button label="＋ New sale" onPress={()=>setScreen("POS")}/></View><View style={s.flex}><Button label="View stock" quiet onPress={()=>setScreen("Stock")}/></View></View><Text style={s.notice}>{notice}</Text><Text style={s.foot}>*Demo estimate only. Not connected to a live business database.</Text></>}
-   {screen==="POS"&&<><Text style={s.pageTitle}>Point of Sale</Text><Text style={s.muted}>Tap a product to add it to the cart.</Text>{products.filter(p=>p.active).map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>{formatTZS(p.sellingPrice)} · Stock {p.stockQuantity}</Text></View><Button label="Add" quiet onPress={()=>add(p)}/></View>)}<View style={s.panel}><Text style={s.heading}>Cart ({cart.reduce((a,x)=>a+x.quantity,0)} items)</Text>{cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return <Text key={x.productId} style={s.muted}>{p.name} × {x.quantity} — {formatTZS(p.sellingPrice*x.quantity)}</Text>;})}<Text style={s.total}>Total: {formatTZS(cartTotal)}</Text><Button label="Complete demo cash sale" onPress={checkout}/><Button label="Clear cart" quiet onPress={()=>setCart([])}/></View><Text style={s.notice}>{notice}</Text></>}
+   {screen==="POS"&&<><Text style={s.pageTitle}>Point of Sale</Text><Text style={s.muted}>{supabaseConfigured ? (cloudLoading ? "Inapakia bidhaa..." : "Bidhaa za duka lako kutoka database.") : "Tap a product to add it to the cart."}</Text>{products.filter(p=>p.active).map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>{formatTZS(p.sellingPrice)} · Stock {p.stockQuantity}</Text></View><Button label="Add" quiet onPress={()=>add(p)}/></View>)}<View style={s.panel}><Text style={s.heading}>Cart ({cart.reduce((a,x)=>a+x.quantity,0)} items)</Text>{cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return <Text key={x.productId} style={s.muted}>{p.name} × {x.quantity} — {formatTZS(p.sellingPrice*x.quantity)}</Text>;})}<Text style={s.total}>Total: {formatTZS(cartTotal)}</Text><Button label={supabaseConfigured ? "Complete cash sale" : "Complete demo cash sale"} onPress={checkout}/><Button label="Clear cart" quiet onPress={()=>setCart([])}/></View><Text style={s.notice}>{notice}</Text></>}
    {screen==="Stock"&&<><Text style={s.pageTitle}>Products & Stock</Text><Text style={s.muted}>Sample inventory and reorder levels.</Text>{products.map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>SKU {p.sku} · Cost {formatTZS(p.costPrice)} · Sell {formatTZS(p.sellingPrice)}</Text></View><Text style={s.stock}>{p.stockQuantity} {p.unit}</Text></View>)}<Text style={s.foot}>Low stock means quantity is at or below the reorder level.</Text></>}
    {screen==="Debts"&&<><Text style={s.pageTitle}>Kitabu cha Madeni</Text><Text style={s.muted}>Rekodi madeni ya wateja na malipo wanayorejesha.</Text><View style={s.panel}><Text style={s.heading}>Ongeza deni jipya</Text><TextInput value={debtorName} onChangeText={setDebtorName} placeholder="Jina la mteja" placeholderTextColor="#8194A5" style={s.field}/><TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder="Kiasi cha deni (TZS)" placeholderTextColor="#8194A5" keyboardType="numeric" style={s.field}/><Button label="Hifadhi deni (demo)" onPress={addDebt}/></View><Metric label="JUMLA YA MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/>{debts.map(d=><View key={d.id} style={s.panel}><Text style={s.item}>{d.customerName}</Text><Text style={s.muted}>Deni la awali: {formatTZS(d.originalAmount)} · Amelipa: {formatTZS(d.amountPaid)}</Text><Text style={s.total}>Baki: {formatTZS(d.balance)}</Text>{d.balance>0&&<><TextInput value={repaymentAmount} onChangeText={setRepaymentAmount} placeholder="Kiasi cha kurejesha (TZS)" placeholderTextColor="#8194A5" keyboardType="numeric" style={s.field}/><Button label="Rekodi marejesho" quiet onPress={()=>repayDebt(d.id)}/></>}</View>)}<Text style={s.foot}>Data hii ni ya majaribio kwenye kumbukumbu ya muda ya app; bado haisawazishwi na database.</Text></>}
    {screen==="Expenses"&&<><Text style={s.pageTitle}>Gharama za Biashara</Text><Text style={s.muted}>Andika gharama ili ionekane kwenye makadirio ya faida.</Text><View style={s.panel}><Text style={s.heading}>Ongeza gharama</Text><TextInput value={expenseName} onChangeText={setExpenseName} placeholder="Mfano: Usafiri, kodi, umeme" placeholderTextColor="#8194A5" style={s.field}/><TextInput value={expenseAmount} onChangeText={setExpenseAmount} placeholder="Kiasi (TZS)" placeholderTextColor="#8194A5" keyboardType="numeric" style={s.field}/><Button label="Hifadhi gharama (demo)" onPress={addExpense}/></View><Metric label="JUMLA YA GHARAMA" value={formatTZS(expenses.reduce((a,x)=>a+x.amount,0))}/>{expenses.map(e=><View key={e.id} style={s.list}><View style={s.flex}><Text style={s.item}>{e.description}</Text><Text style={s.muted}>{new Date(e.createdAt).toLocaleDateString("sw-TZ")}</Text></View><Text style={s.stock}>{formatTZS(e.amount)}</Text></View>)}<Text style={s.foot}>Gharama zinawekwa kwenye demo tu; data haitadumu baada ya app kufungwa.</Text></>}
