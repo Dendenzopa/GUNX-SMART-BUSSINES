@@ -21,7 +21,7 @@
    - `supabase/migrations/0015_restrict_direct_ledger_writes.sql`
    - `supabase/migrations/0016_require_audited_opening_stock.sql`
    - `supabase/migrations/0017_product_catalogue_management_only.sql`
-   - `supabase/migrations/0018_platform_owner_analytics.sql`
+   - `supabase/migrations/0018_platform_owner_analytics.sql`\n   - `supabase/migrations/0019_harden_installation_analytics.sql`
 3. Copy `.env.example` to `.env.local` and set the Supabase project URL and anon/publishable key.
 4. Deploy the staff invitation Edge Function: `supabase functions deploy invite-staff` (keep JWT verification enabled).
 5. Deploy the trusted Pro activation Edge Function: `supabase functions deploy activate-pro --no-verify-jwt`. This endpoint uses its own `x-gunx-admin-token` check; generate a long random secret and set it with `supabase secrets set GUNX_PRO_ADMIN_TOKEN=...`.
@@ -43,20 +43,20 @@ on conflict (user_id) do nothing;
 The migration automatically grants the platform owner's own shop a no-cost Pro entitlement, including shops already owned by that account and shops created later. Other shops/customers are not exempt. The app's Platform Owner tab appears only after the signed-in account is recognized by the server-side `is_platform_admin()` check. Never add a client-side admin flag or expose the service-role key.
 
 The Owner dashboard reports:
-- First-open installations, counted once per locally stored installation UUID.
+- Verified installations: only signed-in Supabase accounts can register, and each account contributes at most one counted installation. Old anonymous/unverified installation claims are deleted by migration 0019.
 - New installations in the last 7 and 30 days.
 - Registered Supabase Auth accounts.
 - Registered users active in the last 7 and 30 days (best-effort activity heartbeat).
 - Total shops.
 
-**Important measurement limits:** an installation count is not the same as an APK file download or a unique person/device. Reinstalling or clearing app storage can create another installation ID. WhatsApp does not provide the app owner with reliable download analytics. To count APK download requests, the APK must be hosted behind a controlled download endpoint/website that logs requests; that hosting endpoint is not included in this migration yet. Do not present installation counts as download counts.
+**Anti-fraud limits:** unauthenticated callers cannot register installations. The database ties each row to the authenticated Supabase user and enforces one counted installation per account, even if app storage is cleared and a new local ID is generated. This prevents anonymous ID spam and repeated counting by one account. It does not prove a unique physical device or prevent someone creating many verified accounts. Enable email confirmation and abuse protections in Supabase Auth. These counts are verified-account installations, not APK downloads. WhatsApp does not provide the owner with download analytics; downloads require a controlled hosting endpoint.
 
 
 ## Security
 
 - Apply migrations `0015_restrict_direct_ledger_writes.sql`, `0016_require_audited_opening_stock.sql`, and `0017_product_catalogue_management_only.sql` after `0014`. Authenticated clients can no longer insert sales, sale items, payments, stock movements, debts, debt repayments or refunds directly; use the atomic RPC workflows. Direct stock-quantity edits and non-zero opening stock on direct product inserts are blocked; opening stock must be recorded through `receive_stock`. Product creation/deletion and cost/selling-price edits are restricted to owners/managers; stockkeepers receive stock for existing products through audited workflows.
 
-- Only use the Supabase anon/publishable key in the app.
+- Only use the Supabase anon/publishable key in the app.\n- Treat every value sent by the mobile app as untrusted. Database authorization, tenant isolation, subscription state and financial mutations must remain enforced by RLS and security-definer RPCs; never trust client-side admin/Pro flags.\n- The APK can be decompiled or modified by a determined attacker. Do not put secrets or privileged business rules in the app. A modified client must still be unable to bypass server-side permissions. For stronger proof that a request came from the official Android build/device, integrate Google Play Integrity with a server-side verifier before enabling that enforcement; it requires Play Console/Google Cloud configuration and is not yet deployed.
 - Never embed or commit the Supabase `service_role` key.
 - Configure email confirmation and password reset before production.
 - Apply all RLS and role-aware migrations before entering real business data.
@@ -88,7 +88,7 @@ When Supabase environment variables are configured and a signed-in user has a sh
 
 ## Android test build
 
-A manual GitHub Actions workflow is available at **Actions → GUNX Android test APK → Run workflow**. It generates the Expo Android native project, builds a signed-by-debug-keystore installable debug APK, and uploads it as the artifact `gunx-smart-business-android-debug` for 14 days. This APK is for device testing only, not Google Play release.
+The repository has an Android standalone APK workflow. A build artifact is not proof that an APK is tamper-proof. The production signing key must be held as a protected GitHub Actions secret (never committed to Git), and the app should be distributed from a controlled source. Android signature verification prevents an altered APK from updating an installation signed with the original key, but it does not stop an attacker from repackaging and re-signing a separate copy. Server-side Play Integrity verification is the stronger next step for Android app/device authenticity.
 
 For managed EAS builds, `eas.json` includes:
 - `preview`: internal Android APK distribution.
