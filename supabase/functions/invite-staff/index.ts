@@ -37,6 +37,25 @@ Deno.serve(async (req: Request) => {
   const { data: ownerMembership, error: ownerError } = await admin.from("shop_members").select("role").eq("shop_id", shopId).eq("user_id", authData.user.id).maybeSingle();
   if (ownerError || ownerMembership?.role !== "owner") return new Response(JSON.stringify({ error: "Only the shop owner can invite staff" }), { status: 403, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
+  // Check existing Auth accounts and reject duplicate shop membership before inviting.
+  let matchedUser: { id: string; email?: string } | undefined;
+  for (let page = 1; page <= 20; page += 1) {
+    const { data: usersPage, error: usersError } = await admin.auth.admin.listUsers({ page, perPage: 1000 });
+    if (usersError) return new Response(JSON.stringify({ error: "Could not verify the invitation email" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    matchedUser = usersPage.users.find((user) => user.email?.toLowerCase() === email);
+    if (matchedUser || usersPage.users.length < 1000) break;
+  }
+  if (matchedUser) {
+    const { data: existingMembership, error: membershipLookupError } = await admin
+      .from("shop_members")
+      .select("user_id")
+      .eq("shop_id", shopId)
+      .eq("user_id", matchedUser.id)
+      .maybeSingle();
+    if (membershipLookupError) return new Response(JSON.stringify({ error: "Could not verify existing membership" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    if (existingMembership) return new Response(JSON.stringify({ error: "This user is already a member of the shop" }), { status: 409, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+  }
+
   const { data: inviteData, error: inviteError } = await admin.auth.admin.inviteUserByEmail(email);
   if (inviteError || !inviteData.user) return new Response(JSON.stringify({ error: inviteError?.message ?? "Invitation could not be created" }), { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } });
 
