@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from "react";
+import React, { useEffect, useMemo, useRef, useState } from "react";
 import NetInfo from "@react-native-community/netinfo";
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View, Pressable, TextInput, Image } from "react-native";
 import { demoProducts, demoSales, demoExpenses } from "./src/data/demoData";
@@ -35,7 +35,7 @@ function Dashboard() {
  const [pendingCheckoutKey,setPendingCheckoutKey]=useState<string | null>(null);
  const [isConnected,setIsConnected]=useState<boolean | null>(null);
  const [pendingOutbox,setPendingOutbox]=useState<PendingSale[]>([]);
- const [syncingOutbox,setSyncingOutbox]=useState(false);
+ const syncingOutboxRef=useRef(false);
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
  const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
  const outstandingDebt=debts.reduce((sum,d)=>sum+d.balance,0);
@@ -55,15 +55,13 @@ function Dashboard() {
   return ()=>{active=false;};
  },[shopId]);
  useEffect(() => {
-  if(!supabaseConfigured||!supabase||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutbox)return;
-  let active=true;
+  if(!supabaseConfigured||!supabase||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
+  syncingOutboxRef.current=true;
   const sync=async()=>{
-   setSyncingOutbox(true);
    let remaining=[...pendingOutbox];
    for(const item of pendingOutbox){
     try{
      const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash"});
-     if(!active)return;
      setSales(current=>current.map(sale=>sale.id===item.sale.id?{...sale,id:result.saleId,receiptNumber:result.receiptNumber,status:"completed"}:sale));
      remaining=remaining.filter(entry=>entry.idempotencyKey!==item.idempotencyKey);
      setPendingOutbox([...remaining]);
@@ -74,11 +72,10 @@ function Dashboard() {
      break;
     }
    }
-   if(active)setSyncingOutbox(false);
+   syncingOutboxRef.current=false;
   };
   void sync();
-  return ()=>{active=false;};
- },[shopId,isConnected,pendingOutbox,syncingOutbox]);
+ },[shopId,isConnected,pendingOutbox]);
  useEffect(() => {
   if (!supabaseConfigured || !supabase || !shopId) return;
   let active = true;
