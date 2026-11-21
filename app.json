@@ -1,0 +1,13 @@
+{
+  "expo": {
+    "name": "GUNX SMART BUSINESS",
+    "slug": "gunx-smart-business",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "newArchEnabled": true,
+    "ios": { "supportsTablet": true, "bundleIdentifier": "com.gunx.smartbusiness" },
+    "android": { "package": "com.gunx.smartbusiness" },
+    "web": { "bundler": "metro" }
+  }
+}
