@@ -82,7 +82,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 const a = StyleSheet.create({
   safe:{flex:1,backgroundColor:"#081522",justifyContent:"center",padding:20},
   card:{width:"100%",maxWidth:460,alignSelf:"center",backgroundColor:"#102438",borderColor:"#1D3A50",borderWidth:1,borderRadius:18,padding:22},
-  logoImage:{width:190,height:126,alignSelf:"center",marginBottom:8},
+  logoImage:{width:240,height:155,alignSelf:"center",marginBottom:12},
   brand:{color:"#D7B56D",fontWeight:"900",letterSpacing:1.3,fontSize:12},
   title:{color:"#F4F7FA",fontWeight:"900",fontSize:25,marginTop:12,marginBottom:8},
   copy:{color:"#91A4B5",fontSize:13,lineHeight:20,marginBottom:12},
