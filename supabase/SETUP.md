@@ -51,3 +51,8 @@ Apply `supabase/migrations/0006_debt_ledger.sql` after migration 0005. It create
 - `record_debt_payment` to lock the debt row, reject overpayment and update the balance in one transaction.
 
 The app's Debts screen reads the shop-scoped debt ledger and uses these RPCs when Supabase is configured. The repayment UI currently records cash repayments; mobile money and bank methods are supported by the database RPC but are not yet selectable in the UI. Apply all migrations 0001–0006 before testing the live debt screen.
+
+
+### Migration 0007 — stock receiving
+
+Apply `supabase/migrations/0007_stock_receiving.sql` after 0006. The Stock screen's stock-in action calls `receive_stock`, which checks the user's owner/manager/stockkeeper role, locks the product row, updates stock and appends an immutable `stock_movements` record in one transaction. The UI's shared quantity field is used for the selected product. Apply migrations 0001–0007 before live testing.
