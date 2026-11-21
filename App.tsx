@@ -137,6 +137,7 @@ function Dashboard() {
  async function receiveStock(productId:string) {
   const quantity=Number(stockInAmount);
   if(!Number.isFinite(quantity)||quantity<=0){setNotice("Weka kiasi cha stock kinachoingia.");return;}
+  if(supabaseConfigured&&isConnected===false){setNotice("Stock-in haiwezi kuthibitishwa bila mtandao. Hakuna mabadiliko yaliyofanywa.");return;}
   if(supabaseConfigured){
    if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
    setCloudLoading(true);
@@ -152,6 +153,7 @@ function Dashboard() {
  async function addExpense() {
   const amount=Number(expenseAmount);
   if(!expenseName.trim()||!Number.isFinite(amount)||amount<=0){setNotice("Weka jina la gharama na kiasi sahihi.");return;}
+  if(supabaseConfigured&&isConnected===false){setNotice("Gharama haijahifadhiwa. Unganisha mtandao ili iandikwe kwenye database.");return;}
   if(supabaseConfigured){
    if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
    setCloudLoading(true);
@@ -167,6 +169,7 @@ function Dashboard() {
  async function addDebt() {
   const amount=Number(debtAmount);
   if(!debtorName.trim()||!Number.isFinite(amount)||amount<=0){setNotice("Weka jina la mteja na deni sahihi.");return;}
+  if(supabaseConfigured&&isConnected===false){setNotice("Deni halijahifadhiwa. Unganisha mtandao ili kuepuka deni kurudiwa.");return;}
   if(supabaseConfigured){
    if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
    setCloudLoading(true);
@@ -186,6 +189,7 @@ function Dashboard() {
   if(!Number.isFinite(amount)||amount<=0){setNotice("Weka kiasi cha marejesho sahihi.");return;}
   const debt=debts.find(d=>d.id===id);
   if(!debt||amount>debt.balance){setNotice("Marejesho hayawezi kuzidi deni lililobaki.");return;}
+  if(supabaseConfigured&&isConnected===false){setNotice("Marejesho hayajahifadhiwa. Unganisha mtandao kabla ya kurekodi malipo ya deni.");return;}
   if(supabaseConfigured){
    if(!supabase){setNotice("Database haijaunganishwa.");return;}
    setCloudLoading(true);
