@@ -33,6 +33,7 @@ Apply migrations in numeric order:
 - `0003_protect_financial_ledgers.sql`: prevents authenticated clients from updating or deleting sales, sale items, payments, stock movement history and debt repayment records. Corrections must be represented by compensating records.
 - `0004_role_permissions.sql`: initial role-based write policies for owners, managers, cashiers and stockkeepers.
 - `0005_atomic_checkout.sql`: atomic server-side checkout with database pricing, stock row locks and idempotent retries.
+- `0010_staff_membership_admin.sql`: owner-only RPCs to add an existing Auth user by UUID, change non-owner staff roles, and remove non-owner staff.
 
 The policies include an initial role boundary, but require review and testing. Validate cross-table shop consistency with database constraints/triggers and implement refund/return RPCs. Do not treat these migrations as a completed security audit. Apply them to a staging Supabase project and test with at least two unrelated users and multiple staff roles before production.
 
@@ -41,4 +42,4 @@ The policies include an initial role boundary, but require review and testing. V
 The React Native screens still use in-memory sample data. The app now includes a Supabase client, an email/password auth gate, initial shop creation, and a typed checkout RPC wrapper. However, no Supabase project URL/key is configured in this repository, the auth and checkout flows have not been tested against a live project, the POS still uses in-memory demo products and sales, and offline SQLite storage, sync queue, automated payment verification and backup service are not configured. Demo records reset when the app process restarts. Manual payment phone numbers in the app are instructions only and do not activate subscriptions automatically.
 
 
-Role permissions in migration 0004 are an initial role boundary. Review and test all table access, especially membership administration, refunds, cross-table tenant consistency and RPCs, before production.
+Role permissions in migration 0004 are an initial role boundary. Migration 0010 adds owner-only membership RPCs; it does not send email invitations. The target employee must already have a Supabase Auth account, and the owner must obtain that account's user UUID through a trusted onboarding flow. Do not expose arbitrary user UUID lookup to untrusted clients. Review and test all table access, especially membership administration, refunds, cross-table tenant consistency and RPCs, before production.
