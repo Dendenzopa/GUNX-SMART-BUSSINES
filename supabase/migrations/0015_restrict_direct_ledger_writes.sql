@@ -15,7 +15,7 @@ language plpgsql
 set search_path = public, pg_temp
 as $$
 begin
-  if auth.uid() is not null then
+  if auth.uid() is not null and current_user not in ('postgres','service_role') then
     if new.stock_quantity is distinct from old.stock_quantity then
       raise exception 'STOCK_RPC_REQUIRED: Change stock through receive_stock, checkout_sale or refund_sale.'
         using errcode = '42501';
