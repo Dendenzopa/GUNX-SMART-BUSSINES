@@ -1,73 +1,39 @@
-import React from "react";
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View } from "react-native";
-
-const tools = [
-  ["POS", "Point of Sale", "Record sales and issue receipts"],
-  ["STK", "Products & Stock", "Products, stock levels and movements"],
-  ["CRM", "Customers & Debts", "Customer balances and credit book"],
-  ["EXP", "Expenses", "Track operating costs"],
-  ["RPT", "Reports", "Sales, costs and net profit"],
-  ["TEAM", "Staff", "Team access and roles"]
-];
-
-function Metric({ label, value }: { label: string; value: string }) {
-  return <View style={styles.metric}><Text style={styles.metricLabel}>{label}</Text><Text style={styles.metricValue}>{value}</Text></View>;
-}
-
+import React, { useMemo, useState } from "react";
+import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View, Pressable } from "react-native";
+import { demoProducts, demoSales, demoExpenses } from "./src/data/demoData";
+import { formatTZS, netProfit, totalSales } from "./src/domain/money";
+import type { Product, Sale } from "./src/domain/types";
+type Screen = "Home" | "POS" | "Stock" | "Reports";
+type CartLine = { productId: string; quantity: number };
+function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
+function Metric({label,value}:{label:string;value:string}) { return <View style={s.metric}><Text style={s.label}>{label}</Text><Text style={s.value}>{value}</Text></View>; }
 export default function App() {
-  return (
-    <SafeAreaView style={styles.safe}>
-      <StatusBar barStyle="light-content" backgroundColor="#081522" />
-      <ScrollView contentContainerStyle={styles.container}>
-        <View style={styles.header}>
-          <View><Text style={styles.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={styles.brand}>GUNX <Text style={styles.gold}>SMART</Text></Text><Text style={styles.brand}>BUSINESS</Text></View>
-          <View style={styles.avatar}><Text style={styles.avatarText}>GX</Text></View>
-        </View>
-        <View style={styles.hero}>
-          <Text style={styles.heroLabel}>BUSINESS OVERVIEW</Text>
-          <Text style={styles.heroTitle}>Welcome back</Text>
-          <Text style={styles.muted}>Your business, all in one place.</Text>
-        </View>
-        <View style={styles.row}><Metric label="TODAY'S SALES" value="TZS 0" /><Metric label="NET PROFIT" value="TZS 0" /></View>
-        <View style={styles.row}><Metric label="LOW STOCK" value="0 items" /><Metric label="CUSTOMER DEBT" value="TZS 0" /></View>
-        <View style={styles.section}><Text style={styles.sectionTitle}>Business tools</Text><Text style={styles.muted}>Manage your operations</Text></View>
-        <View style={styles.grid}>
-          {tools.map(([mark, title, subtitle]) => <View key={mark} style={styles.tool}>
-            <View style={styles.mark}><Text style={styles.markText}>{mark}</Text></View>
-            <Text style={styles.toolTitle}>{title}</Text><Text style={styles.toolSubtitle}>{subtitle}</Text>
-          </View>)}
-        </View>
-        <View style={styles.footer}><Text style={styles.footerTitle}>GUNX SMART BUSINESS</Text><Text style={styles.muted}>Starter dashboard · Demo figures only</Text></View>
-      </ScrollView>
-    </SafeAreaView>
-  );
+ const [screen,setScreen]=useState<Screen>("Home");
+ const [products,setProducts]=useState<Product[]>(demoProducts);
+ const [sales,setSales]=useState<Sale[]>(demoSales);
+ const [cart,setCart]=useState<CartLine[]>([]);
+ const [notice,setNotice]=useState("DEMO MODE — changes are temporary and reset when the app restarts.");
+ const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
+ const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
+ function add(p:Product) { setCart(current=>{const q=(current.find(x=>x.productId===p.id)?.quantity||0)+1;if(q>p.stockQuantity){setNotice("Stock limit reached.");return current;}return current.some(x=>x.productId===p.id)?current.map(x=>x.productId===p.id?{...x,quantity:q}:x):[...current,{productId:p.id,quantity:1}];});setNotice(p.name+" added to cart."); }
+ function checkout() {
+  if(!cart.length){setNotice("Add a product before checkout.");return;}
+  const lines=cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return {productId:p.id,productName:p.name,quantity:x.quantity,unitPrice:p.sellingPrice,unitCost:p.costPrice,lineTotal:p.sellingPrice*x.quantity};});
+  const total=lines.reduce((a,x)=>a+x.lineTotal,0);
+  const sale:Sale={id:"local-"+Date.now(),receiptNumber:"DEMO-"+String(sales.length+1).padStart(4,"0"),createdAt:new Date().toISOString(),lines,subtotal:total,discount:0,total,amountPaid:total,balance:0,paymentMethod:"cash",status:"completed"};
+  setSales(v=>[sale,...v]);setProducts(v=>v.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:p.stockQuantity-line.quantity}:p;}));setCart([]);setNotice("Demo checkout completed: "+sale.receiptNumber);setScreen("Home");
+ }
+ return <SafeAreaView style={s.safe}><StatusBar barStyle="light-content" backgroundColor="#081522"/>
+  <View style={s.header}><View><Text style={s.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={s.brand}>GUNX <Text style={s.gold}>SMART</Text> BUSINESS</Text></View><Text style={s.logo}>GX</Text></View>
+  <View style={s.nav}>{(["Home","POS","Stock","Reports"] as Screen[]).map(x=><Pressable key={x} onPress={()=>setScreen(x)} style={[s.navItem,screen===x&&s.navOn]}><Text style={[s.navText,screen===x&&s.navTextOn]}>{x}</Text></Pressable>)}</View>
+  <ScrollView contentContainerStyle={s.content}>
+   {screen==="Home"&&<><View style={s.hero}><Text style={s.eyebrow}>BUSINESS OVERVIEW</Text><Text style={s.heroTitle}>Welcome back</Text><Text style={s.muted}>Your business, all in one place.</Text></View><View style={s.row}><Metric label="TOTAL SALES" value={formatTZS(totalSales(sales))}/><Metric label="EST. NET PROFIT*" value={formatTZS(netProfit(sales,demoExpenses))}/></View><View style={s.row}><Metric label="LOW STOCK" value={lowStock+" items"}/><Metric label="SALES COUNT" value={String(sales.length)}/></View><Text style={s.heading}>Quick actions</Text><View style={s.row}><View style={s.flex}><Button label="＋ New sale" onPress={()=>setScreen("POS")}/></View><View style={s.flex}><Button label="View stock" quiet onPress={()=>setScreen("Stock")}/></View></View><Text style={s.notice}>{notice}</Text><Text style={s.foot}>*Demo estimate only. Not connected to a live business database.</Text></>}
+   {screen==="POS"&&<><Text style={s.pageTitle}>Point of Sale</Text><Text style={s.muted}>Tap a product to add it to the cart.</Text>{products.filter(p=>p.active).map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>{formatTZS(p.sellingPrice)} · Stock {p.stockQuantity}</Text></View><Button label="Add" quiet onPress={()=>add(p)}/></View>)}<View style={s.panel}><Text style={s.heading}>Cart ({cart.reduce((a,x)=>a+x.quantity,0)} items)</Text>{cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return <Text key={x.productId} style={s.muted}>{p.name} × {x.quantity} — {formatTZS(p.sellingPrice*x.quantity)}</Text>;})}<Text style={s.total}>Total: {formatTZS(cartTotal)}</Text><Button label="Complete demo cash sale" onPress={checkout}/><Button label="Clear cart" quiet onPress={()=>setCart([])}/></View><Text style={s.notice}>{notice}</Text></>}
+   {screen==="Stock"&&<><Text style={s.pageTitle}>Products & Stock</Text><Text style={s.muted}>Sample inventory and reorder levels.</Text>{products.map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>SKU {p.sku} · Cost {formatTZS(p.costPrice)} · Sell {formatTZS(p.sellingPrice)}</Text></View><Text style={s.stock}>{p.stockQuantity} {p.unit}</Text></View>)}<Text style={s.foot}>Low stock means quantity is at or below the reorder level.</Text></>}
+   {screen==="Reports"&&<><Text style={s.pageTitle}>Reports</Text><Text style={s.muted}>Summary from demo transactions only.</Text><Metric label="RECORDED SALES" value={formatTZS(totalSales(sales))}/><Metric label="SAMPLE EXPENSES" value={formatTZS(demoExpenses.reduce((a,x)=>a+x.amount,0))}/><Metric label="ESTIMATED NET PROFIT" value={formatTZS(netProfit(sales,demoExpenses))}/><Text style={s.foot}>Returns, tax, debt collection and date filters are not implemented yet.</Text></>}
+  </ScrollView>
+ </SafeAreaView>;
 }
-
-const styles = StyleSheet.create({
-  safe:{flex:1,backgroundColor:"#081522"},
-  container:{padding:20,paddingBottom:40,maxWidth:900,width:"100%",alignSelf:"center"},
-  header:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",marginBottom:30},
-  eyebrow:{color:"#43C99A",fontSize:10,fontWeight:"800",letterSpacing:2},
-  brand:{color:"#F4F7FA",fontSize:25,fontWeight:"900",letterSpacing:1},
-  gold:{color:"#D7B56D"},
-  avatar:{width:46,height:46,borderRadius:16,backgroundColor:"#123C37",alignItems:"center",justifyContent:"center",borderWidth:1,borderColor:"#43C99A"},
-  avatarText:{color:"#75E0B8",fontWeight:"900"},
-  hero:{backgroundColor:"#102438",borderColor:"#1D3A50",borderWidth:1,padding:22,borderRadius:20,marginBottom:16},
-  heroLabel:{color:"#D7B56D",fontSize:10,fontWeight:"800",letterSpacing:1.5},
-  heroTitle:{color:"#FFF",fontSize:26,fontWeight:"800",marginTop:9},
-  muted:{color:"#91A4B5",fontSize:13,marginTop:5},
-  row:{flexDirection:"row",gap:12,marginBottom:12},
-  metric:{flex:1,minHeight:100,backgroundColor:"#102438",borderWidth:1,borderColor:"#1D3A50",borderRadius:16,padding:16,justifyContent:"center"},
-  metricLabel:{color:"#91A4B5",fontSize:10,fontWeight:"800",letterSpacing:1},
-  metricValue:{color:"#F4F7FA",fontSize:21,fontWeight:"800",marginTop:10},
-  section:{marginTop:24,marginBottom:14},
-  sectionTitle:{color:"#FFF",fontSize:19,fontWeight:"800"},
-  grid:{flexDirection:"row",flexWrap:"wrap",gap:12},
-  tool:{flexBasis:"47%",flexGrow:1,minWidth:140,backgroundColor:"#102438",borderColor:"#1D3A50",borderWidth:1,borderRadius:16,padding:16,minHeight:145},
-  mark:{width:38,height:32,borderRadius:10,backgroundColor:"#123C37",alignItems:"center",justifyContent:"center",marginBottom:14},
-  markText:{color:"#75E0B8",fontSize:10,fontWeight:"900"},
-  toolTitle:{color:"#F4F7FA",fontSize:15,fontWeight:"800"},
-  toolSubtitle:{color:"#91A4B5",fontSize:11,lineHeight:16,marginTop:6},
-  footer:{alignItems:"center",marginTop:30,paddingTop:18,borderTopWidth:1,borderTopColor:"#1D3A50"},
-  footerTitle:{color:"#D7B56D",fontWeight:"800",letterSpacing:1}
+const s=StyleSheet.create({
+ safe:{flex:1,backgroundColor:"#081522"},header:{padding:17,flexDirection:"row",justifyContent:"space-between",alignItems:"center"},eyebrow:{color:"#43C99A",fontSize:10,fontWeight:"800",letterSpacing:1.5},brand:{color:"#F4F7FA",fontSize:19,fontWeight:"900"},gold:{color:"#D7B56D"},logo:{color:"#75E0B8",backgroundColor:"#123C37",padding:12,borderRadius:13,fontWeight:"900"},nav:{flexDirection:"row",gap:7,paddingHorizontal:12,paddingBottom:8},navItem:{flex:1,padding:11,alignItems:"center",backgroundColor:"#102438",borderRadius:11},navOn:{backgroundColor:"#174A40",borderWidth:1,borderColor:"#43C99A"},navText:{color:"#91A4B5",fontSize:12,fontWeight:"700"},navTextOn:{color:"#75E0B8"},content:{padding:16,paddingBottom:40,maxWidth:900,width:"100%",alignSelf:"center"},hero:{padding:20,backgroundColor:"#102438",borderRadius:17,borderWidth:1,borderColor:"#1D3A50",marginBottom:12},heroTitle:{color:"#FFF",fontSize:25,fontWeight:"900",marginTop:8},muted:{color:"#91A4B5",fontSize:12,marginTop:4},row:{flexDirection:"row",gap:10,marginBottom:10},flex:{flex:1},metric:{flex:1,minHeight:82,padding:13,backgroundColor:"#102438",borderRadius:14,borderWidth:1,borderColor:"#1D3A50",marginBottom:9,justifyContent:"center"},label:{color:"#91A4B5",fontSize:9,fontWeight:"800"},value:{color:"#F4F7FA",fontSize:17,fontWeight:"900",marginTop:8},heading:{color:"#FFF",fontSize:17,fontWeight:"800",marginTop:12,marginBottom:8},pageTitle:{color:"#FFF",fontSize:24,fontWeight:"900"},button:{backgroundColor:"#16785C",padding:13,borderRadius:11,alignItems:"center",justifyContent:"center",marginTop:7},quiet:{backgroundColor:"#173247",borderWidth:1,borderColor:"#2B4B61"},buttonText:{color:"#F5FFFA",fontSize:12,fontWeight:"800"},notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,marginTop:14},foot:{color:"#8194A5",fontSize:11,lineHeight:17,marginTop:15},list:{flexDirection:"row",alignItems:"center",gap:10,padding:13,backgroundColor:"#102438",borderWidth:1,borderColor:"#1D3A50",borderRadius:13,marginTop:9},item:{color:"#F4F7FA",fontSize:14,fontWeight:"800"},stock:{color:"#75E0B8",fontWeight:"900",backgroundColor:"#173D36",padding:9,borderRadius:8,fontSize:11},panel:{backgroundColor:"#102438",borderWidth:1,borderColor:"#1D3A50",padding:14,borderRadius:14,marginTop:15},total:{color:"#F2D99F",fontSize:18,fontWeight:"900",marginTop:14}
 });
