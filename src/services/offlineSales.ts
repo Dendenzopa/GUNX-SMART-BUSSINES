@@ -1,5 +1,5 @@
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import type { Product, Sale } from "../domain/types";
+import type { DebtEntry, Expense, Product, Sale } from "../domain/types";
 
 export interface PendingSale {
   shopId: string;
@@ -45,4 +45,32 @@ export async function readCachedProducts(shopId: string): Promise<Product[]> {
 export async function writeCachedProducts(shopId: string, products: Product[]): Promise<void> {
   if (!shopId) return;
   await AsyncStorage.setItem(productsKeyFor(shopId), JSON.stringify(products));
+}
+
+export interface CachedBusinessSnapshot {
+  sales: Sale[];
+  expenses: Expense[];
+  debts: DebtEntry[];
+  refundTotal: number;
+  cachedAt: string;
+}
+
+const snapshotKeyFor = (shopId: string) => `gunx:business-cache:v1:${shopId}`;
+
+export async function readCachedBusinessSnapshot(shopId: string): Promise<CachedBusinessSnapshot | null> {
+  if (!shopId) return null;
+  try {
+    const raw = await AsyncStorage.getItem(snapshotKeyFor(shopId));
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as CachedBusinessSnapshot;
+    if (!Array.isArray(parsed.sales) || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.debts) || !Number.isFinite(parsed.refundTotal)) return null;
+    return parsed;
+  } catch {
+    return null;
+  }
+}
+
+export async function writeCachedBusinessSnapshot(shopId: string, snapshot: CachedBusinessSnapshot): Promise<void> {
+  if (!shopId) return;
+  await AsyncStorage.setItem(snapshotKeyFor(shopId), JSON.stringify(snapshot));
 }
