@@ -48,9 +48,15 @@ function Dashboard() {
  useEffect(() => {
   if(!shopId)return;
   let active=true;
-  readPendingSales(shopId).then(items=>{
+  Promise.all([readPendingSales(shopId),readCachedProducts(shopId)]).then(([items,cached])=>{
    if(!active)return;
    setPendingOutbox(items);
+   if(cached.length){
+    const reserved=new Map<string,number>();
+    items.forEach(item=>item.items.forEach(line=>reserved.set(line.product_id,(reserved.get(line.product_id)??0)+line.quantity)));
+    setProducts(cached.map(product=>({...product,stockQuantity:Math.max(0,product.stockQuantity-(reserved.get(product.id)??0))})));
+    setHasShopProductCache(true);
+   }
    if(items.length)setSales(current=>[...items.map(item=>({...item.sale})),...current.filter(sale=>!items.some(item=>item.sale.id===sale.id))]);
   });
   return ()=>{active=false;};
@@ -88,7 +94,6 @@ function Dashboard() {
  useEffect(() => {
   if (!supabaseConfigured || !supabase || !shopId) return;
   let active = true;
-  readCachedProducts(shopId).then(cached=>{if(active&&cached.length){setProducts(cached);setHasShopProductCache(true);}});
   setCloudLoading(true);
   supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name")
    .then(({data,error}) => {
