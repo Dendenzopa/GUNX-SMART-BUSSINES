@@ -30,3 +30,13 @@ Before production, test concurrent checkouts for the same product, retries after
 ## React Native checkout service
 
 A typed RPC wrapper is available at `src/services/checkout.ts`. It calls `checkout_sale`, validates basic client input, and returns the server-generated receipt details. The POS screen has not yet been switched to this service because the app still needs an active shop context and cloud-loaded product catalogue. Do not treat the demo checkout button as a real transaction.
+
+## Current live app integration status
+
+When Supabase environment variables are present and a user is signed in with a shop membership, the app now:
+- Loads that shop's active product catalogue from `products`.
+- Loads that shop's sales with sale lines and payment method, plus expenses, for the dashboard/report summary.
+- Submits cash POS checkouts through `checkout_sale` and refreshes stock after success.
+- Saves new expense entries to `expenses`.
+
+The following screens still use in-memory demo state and are not cloud-persisted yet: debt creation/repayments, manual stock adjustments/stock-in, returns/refunds, and customer management. POS currently exposes cash checkout only. The app still requires a real Supabase project, applied migrations 0001–0005, configured Auth email settings and staging tests. Do not treat the code as production-ready until those are completed.
