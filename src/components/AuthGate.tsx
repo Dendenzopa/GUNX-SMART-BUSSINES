@@ -47,12 +47,17 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [session]);
 
-  // Refresh active-user analytics whenever the signed-in app returns to foreground.
+  // Retry both installation registration and activity when the signed-in app
+  // returns to foreground. This recovers from temporary offline/RPC failures.
   useEffect(() => {
     if (!session || !supabase) return;
-    void recordSignedInActivity();
+    const refreshAnalytics = () => {
+      void registerAppInstallation();
+      void recordSignedInActivity();
+    };
+    refreshAnalytics();
     const subscription = AppState.addEventListener("change", (state) => {
-      if (state === "active") void recordSignedInActivity();
+      if (state === "active") refreshAnalytics();
     });
     return () => subscription.remove();
   }, [session?.user.id]);
