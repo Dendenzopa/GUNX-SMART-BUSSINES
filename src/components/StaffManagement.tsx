@@ -8,7 +8,7 @@ type Member = { user_id: string; role: string };
 const roles: { id: Role; label: string; detail: string }[] = [
   { id: "manager", label: "Meneja", detail: "Usimamizi wa shughuli za duka" },
   { id: "cashier", label: "Cashier", detail: "Mauzo na malipo" },
-  { id: "stockkeeper", label: "Stock", detail: "Bidhaa na stock" },
+  { id: "stockkeeper", label: "Stock", detail: "Kupokea na kufuatilia stock ya bidhaa zilizopo" },
 ];
 
 export default function StaffManagement() {
