@@ -63,7 +63,12 @@ function Dashboard() {
    for(const item of pendingOutbox){
     try{
      const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash"});
-     setSales(current=>current.map(sale=>sale.id===item.sale.id?{...sale,id:result.saleId,receiptNumber:result.receiptNumber,status:"completed"}:sale));
+     const {data:confirmedSale}=await supabase.from("sales").select("*,sale_items(*),payments(method)").eq("id",result.saleId).single();
+     setSales(current=>current.map(sale=>sale.id===item.sale.id?(confirmedSale?{
+      id:confirmedSale.id,receiptNumber:confirmedSale.receipt_number,createdAt:confirmedSale.created_at,
+      lines:(confirmedSale.sale_items??[]).map((line:any)=>({id:line.id,productId:line.product_id??"",productName:line.product_name_snapshot,quantity:Number(line.quantity),unitPrice:Number(line.unit_price),unitCost:Number(line.unit_cost_snapshot),lineTotal:Number(line.line_total)})),
+      subtotal:Number(confirmedSale.subtotal),discount:Number(confirmedSale.discount),total:Number(confirmedSale.total),amountPaid:Number(confirmedSale.amount_paid),balance:Math.max(0,Number(confirmedSale.total)-Number(confirmedSale.amount_paid)),paymentMethod:confirmedSale.payments?.[0]?.method??"cash",status:"completed"
+     }:{...sale,id:result.saleId,receiptNumber:result.receiptNumber,total:result.total,subtotal:result.total,amountPaid:result.total,balance:0,status:"completed"}):sale));
      remaining=remaining.filter(entry=>entry.idempotencyKey!==item.idempotencyKey);
      setPendingOutbox([...remaining]);
      await writePendingSales(shopId,remaining);
