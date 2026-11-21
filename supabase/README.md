@@ -23,3 +23,18 @@ The current app still uses in-memory demo data. This schema is a foundation only
 6. Add automated tests, backup/restore procedures and deployment secrets configuration.
 
 Never calculate authoritative profit from client-provided totals. Use sale item cost snapshots, valid returns and approved expenses.
+
+
+## Added security migrations
+
+Apply migrations in numeric order:
+
+- `0001_initial_schema.sql`: base shop, product, customer, sales, payment, expense, stock and debt tables.
+- `0002_membership_rls.sql`: authenticated shop membership policies and the `create_shop(p_name)` RPC. A user creates a shop through this function; the function creates the owner membership atomically.
+- `0003_protect_financial_ledgers.sql`: prevents authenticated clients from updating or deleting sales, sale items, payments, stock movement history and debt repayment records. Corrections must be represented by compensating records.
+
+The policies currently enforce shop membership, not fine-grained staff roles. Before production, add and test role-aware permissions (owner/manager/cashier/stockkeeper), validate cross-table shop consistency with database constraints/triggers, and implement checkout/refund RPCs. Do not treat these migrations as a completed security audit. Apply them to a staging Supabase project and test with at least two unrelated users and multiple staff roles before production.
+
+## Current app status
+
+The React Native screens still use in-memory sample data. No Supabase URL/key, authentication flow, offline SQLite store, sync queue, production checkout RPC, automated payment verification, or backup service is configured. Demo records reset when the app process restarts. Manual payment phone numbers in the app are instructions only and do not activate subscriptions automatically.
