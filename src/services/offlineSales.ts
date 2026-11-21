@@ -7,6 +7,7 @@ export interface PendingSale {
   items: { product_id: string; quantity: number }[];
   sale: Sale;
   queuedAt: string;
+  syncIssue?: string;
 }
 
 const keyFor = (shopId: string) => `gunx:offline-sales:v1:${shopId}`;
