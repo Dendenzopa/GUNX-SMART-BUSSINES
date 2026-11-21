@@ -72,6 +72,8 @@ function Dashboard() {
      break;
     }
    }
+   const {data:latestProducts,error:productsError}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
+   if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped);}
    syncingOutboxRef.current=false;
   };
   void sync();
