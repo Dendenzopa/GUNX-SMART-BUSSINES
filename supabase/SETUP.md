@@ -13,8 +13,11 @@
    - `supabase/migrations/0007_stock_receiving.sql`
    - `supabase/migrations/0008_sale_returns_refunds.sql`
    - `supabase/migrations/0009_offline_price_guard.sql`
+   - `supabase/migrations/0010_staff_membership_admin.sql`
 3. Copy `.env.example` to `.env.local` and set the Supabase project URL and anon/publishable key.
-4. Install dependencies with `npm install`, then run `npx expo start`.
+4. Deploy the staff invitation Edge Function: `supabase functions deploy invite-staff` (keep JWT verification enabled).
+5. Ensure the Supabase Edge Function environment has the platform-provided `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`. Never put the service-role key in the mobile app or repository.
+6. Install dependencies with `npm install`, then run `npx expo start`.
 
 ## Security
 
@@ -31,6 +34,8 @@
 - `create_manual_debt` / `record_debt_payment`: create customer debt and append repayments while preventing overpayment.
 - `receive_stock`: checks owner/manager/stockkeeper role, updates product stock and appends a stock movement.
 - `refund_sale`: checks owner/manager role, validates quantities and the paid sale, records refund lines, restores stock and appends return stock movements in one transaction. Retries with the same idempotency key return the existing refund.
+- `add_shop_member`, `update_shop_member_role`, `remove_shop_member`: owner-only membership administration; the owner cannot be removed or demoted through these functions.
+- `invite-staff` Edge Function: validates the signed-in caller and owner membership server-side, sends an email invitation with Supabase Auth Admin, then adds the invited account to the selected shop. Deploy this function before using email invitations.
 
 ## App integration status
 
@@ -58,6 +63,7 @@ An EAS build still requires an Expo account/project setup and the appropriate bu
 - Refund UI currently pays cash only. Database RPC supports cash, mobile money and bank refund methods.
 - POS UI currently offers cash checkout only.
 - Offline cash checkout now has a device-local AsyncStorage outbox, cached product catalogue, and automatic retry when connectivity returns. A prior online catalogue download is required; cached stock is checked locally before queueing. Pending sales are clearly marked and excluded from confirmed sales/profit totals until the server accepts them; after sync, the app replaces the provisional receipt with server-confirmed sale details. The app also keeps a shop-scoped last-synced snapshot of sales, expenses, debts and refund totals for read-only offline viewing. The offline sync sends the locally displayed total as an expected-total guard; the database rejects the sale if current server prices differ, leaving it pending for owner review rather than silently charging a different amount. Offline expense creation, debt creation/repayment, stock-in and refunds are deliberately blocked while connected mode is configured, rather than being shown as saved without a durable idempotent queue. This remains an initial offline workflow: no multi-device stock reservation, conflict-resolution protocol, background sync guarantee or encrypted local business-data database is implemented. Cached records may be stale and are stored in device AsyncStorage; protect access to the device.
-- Full reports export (PDF/Excel), staff management, automatic mobile-money verification and subscription payment activation are not complete.
+- PDF and Excel-compatible CSV report exports are implemented. Staff management UI supports email invitations, role changes and removal, but email invitations require the `invite-staff` Edge Function to be deployed and the database migration `0010` to be applied. Invitations are not live until that setup is complete.
+- Automatic mobile-money verification and subscription payment activation are not implemented.
 - No live Supabase project has been connected or tested by this repository workflow. Migrations must be applied and tested in your own staging project.
 - Passing TypeScript CI does not prove database policies or payment flows are production-ready.
