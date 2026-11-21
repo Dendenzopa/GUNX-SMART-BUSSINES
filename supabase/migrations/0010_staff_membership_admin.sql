@@ -1,6 +1,6 @@
 -- GUNX SMART BUSINESS: owner-controlled staff membership administration.
--- This manages already-registered Supabase Auth users. Email invitations require a
--- trusted server/Edge Function and are intentionally not implemented in this migration.
+-- This migration manages registered Supabase Auth users. Email invitations are handled by
+-- the trusted invite-staff Edge Function, which must be deployed separately.
 
 create or replace function public.add_shop_member(
   p_shop_id uuid,
@@ -20,7 +20,7 @@ begin
   if p_user_id is null or p_user_id = auth.uid() then
     raise exception 'Choose another registered user';
   end if;
-  if p_role not in ('manager','cashier','stockkeeper') then
+  if p_role is null or p_role not in ('manager','cashier','stockkeeper') then
     raise exception 'Unsupported staff role';
   end if;
   if not exists (select 1 from auth.users u where u.id = p_user_id) then
@@ -53,7 +53,7 @@ begin
   if p_user_id is null or p_user_id = auth.uid() then
     raise exception 'The owner role cannot be changed here';
   end if;
-  if p_role not in ('manager','cashier','stockkeeper') then
+  if p_role is null or p_role not in ('manager','cashier','stockkeeper') then
     raise exception 'Unsupported staff role';
   end if;
 
