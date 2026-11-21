@@ -17,13 +17,18 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
   const [editing, setEditing] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
+  const [canManage, setCanManage] = useState(false);
 
   async function load() {
     if (!supabase || !shopId) return;
     setBusy(true);
-    const { data, error } = await supabase.from("products")
-      .select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active")
-      .eq("shop_id", shopId).order("name");
+    const [{ data, error }, roleResult] = await Promise.all([
+      supabase.from("products")
+        .select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active")
+        .eq("shop_id", shopId).order("name"),
+      supabase.rpc("has_shop_role", { p_shop_id: shopId, p_roles: ["owner", "manager"] }),
+    ]);
+    setCanManage(!roleResult.error && roleResult.data === true);
     setBusy(false);
     if (error) { setMessage("Bidhaa hazijapakiwa: " + error.message); return; }
     setItems((data ?? []).map((p: any) => ({
@@ -88,7 +93,7 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
   return <ScrollView keyboardShouldPersistTaps="handled">
     <Text style={s.title}>Usimamizi wa bidhaa</Text>
     <Text style={s.copy}>Ongeza bidhaa, hariri bei na taarifa, au ifiche bidhaa isiyouzwa. Stock inaongezwa kupitia sehemu ya Pokea stock.</Text>
-    <View style={s.panel}>
+    {canManage ? <View style={s.panel}>
       <Text style={s.heading}>{editing ? "Hariri bidhaa" : "Ongeza bidhaa mpya"}</Text>
       <TextInput value={name} onChangeText={setName} placeholder="Jina la bidhaa" placeholderTextColor="#8194A5" style={s.input}/>
       <TextInput value={sku} onChangeText={setSku} placeholder="SKU / Barcode (hiari)" placeholderTextColor="#8194A5" style={s.input}/>
@@ -99,7 +104,8 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
       <Pressable disabled={busy} onPress={save} style={s.button}><Text style={s.buttonText}>{busy ? "Inahifadhi..." : editing ? "Hifadhi mabadiliko" : "Ongeza bidhaa"}</Text></Pressable>
       {editing && <Pressable onPress={reset} style={s.secondary}><Text style={s.buttonText}>Ghairi uhariri</Text></Pressable>}
       {!!message && <Text style={s.message}>{message}</Text>}
-    </View>
+    </View> : <Text style={s.copy}>Kubadilisha katalogi, kuficha au kurejesha bidhaa kunaruhusiwa kwa Owner na Manager pekee. Stockkeeper anaweza kupokea stock kupitia sehemu ya Pokea stock.</Text>}
+    {!!message && !canManage && <Text style={s.message}>{message}</Text>}
     <View style={s.row}><Text style={s.heading}>Bidhaa zilizopo ({items.filter(p => p.active).length})</Text><Pressable onPress={load}><Text style={s.refresh}>Refresh</Text></Pressable></View>
     {busy && <ActivityIndicator color="#43C99A"/>}
     {items.map(p => <View key={p.id} style={s.item}>
@@ -108,12 +114,12 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
         <Text style={s.copy}>{p.sku || "Hakuna SKU"} · {p.unit} · Stock {p.stockQuantity}</Text>
         <Text style={s.price}>Gharama {formatTZS(p.costPrice)} · Bei {formatTZS(p.sellingPrice)}</Text>
       </View>
-      <View style={s.actions}>
+      {canManage && <View style={s.actions}>
         {p.active ? <>
           <Pressable onPress={() => startEdit(p)} style={s.small}><Text style={s.buttonText}>Hariri</Text></Pressable>
           <Pressable onPress={() => archive(p)} style={s.small}><Text style={s.buttonText}>Ficha</Text></Pressable>
         </> : <Pressable onPress={() => restore(p)} style={s.small}><Text style={s.buttonText}>Rejesha</Text></Pressable>}
-      </View>
+      </View>}
     </View>)}
     {!busy && items.length === 0 && <Text style={s.copy}>Bado hakuna bidhaa. Ongeza bidhaa ya kwanza hapo juu.</Text>}
   </ScrollView>;
