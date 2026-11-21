@@ -14,7 +14,7 @@ const roles: { id: Role; label: string; detail: string }[] = [
 export default function StaffManagement() {
   const { shopId } = useShopContext();
   const [members, setMembers] = useState<Member[]>([]);
-  const [userId, setUserId] = useState("");
+  const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("cashier");
   const [owner, setOwner] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -38,18 +38,18 @@ export default function StaffManagement() {
   useEffect(() => { void load(); }, [load]);
 
   async function addMember() {
-    const target = userId.trim();
-    if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(target)) {
-      setNotice("Weka Supabase Auth User ID sahihi (UUID) ya mfanyakazi aliyesajiliwa.");
+    const target = email.trim().toLowerCase();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(target) || target.length > 254) {
+      setNotice("Weka email sahihi ya mfanyakazi.");
       return;
     }
     if (!supabase || !shopId || !owner) return;
     setBusy(true);
-    const { error } = await supabase.rpc("add_shop_member", { p_shop_id: shopId, p_user_id: target, p_role: role });
+    const { error } = await supabase.functions.invoke("invite-staff", { body: { shopId, email: target, role } });
     setBusy(false);
-    if (error) { setNotice("Mfanyakazi hajaongezwa: " + error.message); return; }
-    setUserId("");
-    setNotice("Mfanyakazi ameongezwa.");
+    if (error) { setNotice("Mwaliko haujatumwa: " + error.message + ". Hakikisha Edge Function invite-staff imedeployiwa."); return; }
+    setEmail("");
+    setNotice("Mwaliko umetumwa kwa " + target + ". Mfanyakazi ataweza kuingia baada ya kukamilisha usajili wa email.");
     await load();
   }
 
@@ -78,8 +78,8 @@ export default function StaffManagement() {
     {!owner && !loading && <Text style={s.notice}>Akaunti hii haina ruhusa ya mmiliki. Unaweza kuona orodha tu; maamuzi ya ruhusa yanathibitishwa na database.</Text>}
     {owner && <View style={s.panel}>
       <Text style={s.heading}>Ongeza mfanyakazi</Text>
-      <Text style={s.copy}>Ingiza Supabase Auth User ID (UUID) ya mtu aliyekwisha fungua akaunti. Mialiko ya email bado haijaunganishwa.</Text>
-      <TextInput value={userId} onChangeText={setUserId} autoCapitalize="none" placeholder="Supabase User ID (UUID)" placeholderTextColor="#8194A5" style={s.input}/>
+      <Text style={s.copy}>Ingiza email ya mfanyakazi. Mfumo utatuma mwaliko wa kujiunga na duka.</Text>
+      <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email ya mfanyakazi" placeholderTextColor="#8194A5" style={s.input}/>
       <Text style={s.heading}>Chagua nafasi</Text>
       {roles.map(item => <Pressable key={item.id} onPress={() => setRole(item.id)} style={[s.role, role === item.id && s.selected]}>
         <Text style={s.roleTitle}>{item.label} {role === item.id ? "✓" : ""}</Text><Text style={s.copy}>{item.detail}</Text>
