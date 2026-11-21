@@ -21,12 +21,36 @@
    - `supabase/migrations/0015_restrict_direct_ledger_writes.sql`
    - `supabase/migrations/0016_require_audited_opening_stock.sql`
    - `supabase/migrations/0017_product_catalogue_management_only.sql`
+   - `supabase/migrations/0018_platform_owner_analytics.sql`
 3. Copy `.env.example` to `.env.local` and set the Supabase project URL and anon/publishable key.
 4. Deploy the staff invitation Edge Function: `supabase functions deploy invite-staff` (keep JWT verification enabled).
 5. Deploy the trusted Pro activation Edge Function: `supabase functions deploy activate-pro --no-verify-jwt`. This endpoint uses its own `x-gunx-admin-token` check; generate a long random secret and set it with `supabase secrets set GUNX_PRO_ADMIN_TOKEN=...`.
 6. Ensure Edge Function secrets include `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY`. Never put either the service-role key or `GUNX_PRO_ADMIN_TOKEN` in the mobile app, website bundle or repository.
 7. Ensure the staff invitation Edge Function environment has the platform-provided `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 8. Install dependencies with `npm install`, then run `npx expo start`.
+
+
+## Platform Owner and usage analytics
+
+After creating and confirming the account that will own the platform, find that account's UUID in **Supabase Dashboard → Authentication → Users**. Do not use the email as an authorization rule and never share the account password or API secrets. In SQL Editor, run this statement with the exact UUID from your own project:
+
+```sql
+insert into public.platform_admins (user_id, note)
+values ('YOUR_AUTH_USER_UUID', 'GUNX SMART BUSINESS platform owner')
+on conflict (user_id) do nothing;
+```
+
+The migration automatically grants the platform owner's own shop a no-cost Pro entitlement, including shops already owned by that account and shops created later. Other shops/customers are not exempt. The app's Platform Owner tab appears only after the signed-in account is recognized by the server-side `is_platform_admin()` check. Never add a client-side admin flag or expose the service-role key.
+
+The Owner dashboard reports:
+- First-open installations, counted once per locally stored installation UUID.
+- New installations in the last 7 and 30 days.
+- Registered Supabase Auth accounts.
+- Registered users active in the last 7 and 30 days (best-effort activity heartbeat).
+- Total shops.
+
+**Important measurement limits:** an installation count is not the same as an APK file download or a unique person/device. Reinstalling or clearing app storage can create another installation ID. WhatsApp does not provide the app owner with reliable download analytics. To count APK download requests, the APK must be hosted behind a controlled download endpoint/website that logs requests; that hosting endpoint is not included in this migration yet. Do not present installation counts as download counts.
+
 
 ## Security
 
