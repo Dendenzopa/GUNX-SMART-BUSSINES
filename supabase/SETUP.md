@@ -42,6 +42,16 @@ When Supabase environment variables are configured and a signed-in user has a sh
 - Process full-receipt cash refunds for fully paid sales through `refund_sale`.
 - Exclude fully refunded sales from sales and estimated gross-profit totals, and show refund totals separately.
 
+## Android test build
+
+A manual GitHub Actions workflow is available at **Actions → GUNX Android test APK → Run workflow**. It generates the Expo Android native project, builds a signed-by-debug-keystore installable debug APK, and uploads it as the artifact `gunx-smart-business-android-debug` for 14 days. This APK is for device testing only, not Google Play release.
+
+For managed EAS builds, `eas.json` includes:
+- `preview`: internal Android APK distribution.
+- `production`: Android App Bundle (AAB) profile for a release build.
+
+An EAS build still requires an Expo account/project setup and the appropriate build credentials. No release signing credentials are stored in this repository.
+
 ## Current limitations — not production certification
 
 - Returns UI currently refunds the entire receipt; partial-line returns are supported by the database design but not yet exposed in the UI.
