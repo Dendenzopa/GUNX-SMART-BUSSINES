@@ -39,7 +39,7 @@ export default function StaffManagement() {
 
   async function addMember() {
     const target = email.trim().toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(target) || target.length > 254) {
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target) || target.length > 254) {
       setNotice("Weka email sahihi ya mfanyakazi.");
       return;
     }
