@@ -224,7 +224,7 @@ returns uuid
 language plpgsql
 security definer
 set search_path = public, pg_temp
-as $
+as $$
 declare
   v_customer_id uuid;
   v_debt_id uuid;
@@ -268,7 +268,7 @@ begin
   returning id into v_debt_id;
   return v_debt_id;
 end;
-$;
+$$;
 
 revoke all on function public.create_manual_debt(uuid, text, numeric, text) from public;
 grant execute on function public.create_manual_debt(uuid, text, numeric, text) to authenticated;
