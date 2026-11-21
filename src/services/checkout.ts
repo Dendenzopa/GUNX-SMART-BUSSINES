@@ -13,6 +13,7 @@ export interface CheckoutInput {
   paymentMethod: PaymentMethod;
   amountPaid?: number;
   customerId?: string;
+  expectedTotal?: number;
 }
 
 export interface CheckoutResult {
@@ -43,6 +44,7 @@ export async function submitCheckout(input: CheckoutInput): Promise<CheckoutResu
     p_payment_method: input.paymentMethod,
     p_amount_paid: input.amountPaid ?? null,
     p_customer_id: input.customerId ?? null,
+    p_expected_total: input.expectedTotal ?? null,
   });
 
   if (error) throw new Error(error.message);
