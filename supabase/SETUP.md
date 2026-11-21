@@ -40,3 +40,14 @@ When Supabase environment variables are present and a user is signed in with a s
 - Saves new expense entries to `expenses`.
 
 The following screens still use in-memory demo state and are not cloud-persisted yet: debt creation/repayments, manual stock adjustments/stock-in, returns/refunds, and customer management. POS currently exposes cash checkout only. The app still requires a real Supabase project, applied migrations 0001–0005, configured Auth email settings and staging tests. Do not treat the code as production-ready until those are completed.
+
+
+### Migration 0006 — customer debt ledger
+
+Apply `supabase/migrations/0006_debt_ledger.sql` after migration 0005. It creates:
+- `debts` with the original amount and server-maintained outstanding balance.
+- `debt_payments` as an append-only repayment history.
+- `create_manual_debt` to create a customer and debt atomically.
+- `record_debt_payment` to lock the debt row, reject overpayment and update the balance in one transaction.
+
+The app's Debts screen reads the shop-scoped debt ledger and uses these RPCs when Supabase is configured. The repayment UI currently records cash repayments; mobile money and bank methods are supported by the database RPC but are not yet selectable in the UI. Apply all migrations 0001–0006 before testing the live debt screen.
