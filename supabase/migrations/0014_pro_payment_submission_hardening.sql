@@ -44,3 +44,5 @@ for each row execute function public.guard_pro_payment_submission_rate();
 
 comment on function public.guard_pro_payment_submission_rate() is
 'Limits authenticated owners to five GUNX PRO payment-reference submissions per rolling 24 hours.';
+
+revoke all on function public.guard_pro_payment_submission_rate() from public, anon, authenticated;
