@@ -2,8 +2,9 @@ import React, { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
+import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
 
-const ShopContext = createContext<{ shopId: string | null }>({ shopId: null });
+const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null }>({ shopId: null, isPlatformAdmin: false, userId: null });
 export function useShopContext() { return useContext(ShopContext); }
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
@@ -14,12 +15,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [shopName, setShopName] = useState("");
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [shopLoading, setShopLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
 
   useEffect(() => {
+    void registerAppInstallation();
     if (!supabaseConfigured || !supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) setMessage(error.message);
@@ -33,6 +36,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     });
     return () => listener.subscription.unsubscribe();
   }, []);
+
+  useEffect(() => {
+    if (!session || !supabase) { setIsPlatformAdmin(false); return; }
+    let active = true;
+    void recordSignedInActivity();
+    supabase.rpc("is_platform_admin").then(({ data, error }) => {
+      if (active) setIsPlatformAdmin(!error && data === true);
+    });
+    return () => { active = false; };
+  }, [session]);
 
   useEffect(() => {
     if (!session || !supabase) return;
@@ -76,7 +89,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha duka lako...</Text></SafeAreaView>;
   if (session && !shopId && !needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Duka halijathibitishwa</Text><Text style={a.copy}>{message || "Imeshindikana kuthibitisha uanachama wa duka. Hakuna taarifa za demo zitakazoonyeshwa kama data halisi."}</Text><Pressable onPress={()=>supabase?.auth.signOut()} style={a.button}><Text style={a.buttonText}>Toka kisha ujaribu tena</Text></Pressable></View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
-  return <ShopContext.Provider value={{ shopId }}>{children}</ShopContext.Provider>;
+  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id }}>{children}</ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
