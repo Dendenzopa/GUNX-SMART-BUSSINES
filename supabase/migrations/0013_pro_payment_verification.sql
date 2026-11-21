@@ -101,6 +101,7 @@ begin
     into v_expires
   from public.shop_subscriptions
   where shop_id = v_payment.shop_id;
+  if not found then v_expires := now() + interval '30 days'; end if;
 
   insert into public.shop_subscriptions(
     shop_id, plan_code, status, started_at, expires_at, provider, provider_reference, updated_at
