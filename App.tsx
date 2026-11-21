@@ -56,14 +56,15 @@ function Dashboard() {
   return ()=>{active=false;};
  },[shopId]);
  useEffect(() => {
-  if(!supabaseConfigured||!supabase||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
+  const client=supabase;
+  if(!supabaseConfigured||!client||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
   syncingOutboxRef.current=true;
   const sync=async()=>{
    let remaining=[...pendingOutbox];
    for(const item of pendingOutbox){
     try{
      const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash"});
-     const {data:confirmedSale}=await supabase.from("sales").select("*,sale_items(*),payments(method)").eq("id",result.saleId).single();
+     const {data:confirmedSale}=await client.from("sales").select("*,sale_items(*),payments(method)").eq("id",result.saleId).single();
      setSales(current=>current.map(sale=>sale.id===item.sale.id?(confirmedSale?{
       id:confirmedSale.id,receiptNumber:confirmedSale.receipt_number,createdAt:confirmedSale.created_at,
       lines:(confirmedSale.sale_items??[]).map((line:any)=>({id:line.id,productId:line.product_id??"",productName:line.product_name_snapshot,quantity:Number(line.quantity),unitPrice:Number(line.unit_price),unitCost:Number(line.unit_cost_snapshot),lineTotal:Number(line.line_total)})),
@@ -78,7 +79,7 @@ function Dashboard() {
      break;
     }
    }
-   const {data:latestProducts,error:productsError}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
+   const {data:latestProducts,error:productsError}=await client.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
    if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,mapped);}
    syncingOutboxRef.current=false;
   };
