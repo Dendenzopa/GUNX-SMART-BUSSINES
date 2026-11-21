@@ -1,6 +1,10 @@
 name: GUNX Android test APK
 
 on:
+  push:
+    branches: [main]
+    paths:
+      - '.github/workflows/android-apk.yml'
   workflow_dispatch:
   workflow_call:
 
