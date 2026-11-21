@@ -17,6 +17,7 @@
    - `supabase/migrations/0011_shop_subscriptions.sql`
    - `supabase/migrations/0012_enforce_free_plan_limits.sql`
    - `supabase/migrations/0013_pro_payment_verification.sql`
+   - `supabase/migrations/0014_pro_payment_submission_hardening.sql`
 3. Copy `.env.example` to `.env.local` and set the Supabase project URL and anon/publishable key.
 4. Deploy the staff invitation Edge Function: `supabase functions deploy invite-staff` (keep JWT verification enabled).
 5. Deploy the trusted Pro activation Edge Function: `supabase functions deploy activate-pro --no-verify-jwt`. This endpoint uses its own `x-gunx-admin-token` check; generate a long random secret and set it with `supabase secrets set GUNX_PRO_ADMIN_TOKEN=...`.
