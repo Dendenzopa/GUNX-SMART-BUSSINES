@@ -38,3 +38,6 @@ The policies currently enforce shop membership, not fine-grained staff roles. Be
 ## Current app status
 
 The React Native screens still use in-memory sample data. No Supabase URL/key, authentication flow, offline SQLite store, sync queue, production checkout RPC, automated payment verification, or backup service is configured. Demo records reset when the app process restarts. Manual payment phone numbers in the app are instructions only and do not activate subscriptions automatically.
+
+
+Role permissions in migration 0004 are an initial role boundary. Review and test all table access, especially membership administration, refunds, cross-table tenant consistency and RPCs, before production.
