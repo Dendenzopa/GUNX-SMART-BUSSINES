@@ -153,13 +153,23 @@ begin
       select 1 from public.sales s
       where s.shop_id = p_shop_id and s.customer_id = p_customer_id
         and s.status = 'partially_paid' and s.amount_paid < s.total
+    ) or exists (
+      select 1 from public.debts d
+      where d.shop_id = p_shop_id and d.customer_id = p_customer_id and d.balance > 0
     ) into v_customer_already_owes;
 
     if not v_customer_already_owes then
-      select count(distinct s.customer_id) into v_debtor_count
-      from public.sales s
-      where s.shop_id = p_shop_id and s.customer_id is not null
-        and s.status = 'partially_paid' and s.amount_paid < s.total;
+      select count(*) into v_debtor_count
+      from (
+        select s.customer_id
+        from public.sales s
+        where s.shop_id = p_shop_id and s.customer_id is not null
+          and s.status = 'partially_paid' and s.amount_paid < s.total
+        union
+        select d.customer_id
+        from public.debts d
+        where d.shop_id = p_shop_id and d.balance > 0
+      ) active_debtors;
       if v_debtor_count >= 10 then
         raise exception 'FREE_DEBTOR_LIMIT: Free plan allows up to 10 customers with outstanding debt. Upgrade to GUNX PRO.'
           using errcode = 'P0001';
@@ -234,9 +244,15 @@ begin
   from public.shop_subscriptions where shop_id = p_shop_id;
 
   if not v_is_pro then
-    select count(distinct customer_id) into v_debtor_count
-    from public.debts
-    where shop_id = p_shop_id and balance > 0;
+    select count(*) into v_debtor_count
+    from (
+      select d.customer_id from public.debts d
+      where d.shop_id = p_shop_id and d.balance > 0
+      union
+      select s.customer_id from public.sales s
+      where s.shop_id = p_shop_id and s.customer_id is not null
+        and s.status = 'partially_paid' and s.amount_paid < s.total
+    ) active_debtors;
     if v_debtor_count >= 10 then
       raise exception 'FREE_DEBTOR_LIMIT: Free plan allows up to 10 customers with outstanding debt. Upgrade to GUNX PRO.'
         using errcode = 'P0001';
