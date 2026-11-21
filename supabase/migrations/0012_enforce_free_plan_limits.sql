@@ -201,5 +201,61 @@ $$;
 revoke all on function public.checkout_sale(uuid, uuid, jsonb, text, numeric, uuid, numeric) from public;
 grant execute on function public.checkout_sale(uuid, uuid, jsonb, text, numeric, uuid, numeric) to authenticated;
 
+
+-- Manual debt creation is a separate workflow from POS credit sales. Enforce the
+-- same 10-customer outstanding-debtor quota here, using the debt ledger's balance.
+create or replace function public.create_manual_debt(
+  p_shop_id uuid,
+  p_customer_name text,
+  p_amount numeric,
+  p_description text default null
+)
+returns uuid
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $
+declare
+  v_customer_id uuid;
+  v_debt_id uuid;
+  v_is_pro boolean := false;
+  v_debtor_count bigint := 0;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if not public.has_shop_role(p_shop_id, array['owner','manager','cashier']) then raise exception 'Not permitted'; end if;
+  if p_customer_name is null or length(trim(p_customer_name)) < 2 or length(trim(p_customer_name)) > 120 then
+    raise exception 'Customer name must be 2-120 characters';
+  end if;
+  if p_amount is null or p_amount <= 0 then raise exception 'Debt amount must be positive'; end if;
+
+  perform pg_advisory_xact_lock(hashtextextended(p_shop_id::text || ':plan-quota', 0));
+  select coalesce(bool_or(plan_code = 'pro' and status = 'active' and expires_at > now()), false)
+    into v_is_pro
+  from public.shop_subscriptions where shop_id = p_shop_id;
+
+  if not v_is_pro then
+    select count(distinct customer_id) into v_debtor_count
+    from public.debts
+    where shop_id = p_shop_id and balance > 0;
+    if v_debtor_count >= 10 then
+      raise exception 'FREE_DEBTOR_LIMIT: Free plan allows up to 10 customers with outstanding debt. Upgrade to GUNX PRO.'
+        using errcode = 'P0001';
+    end if;
+  end if;
+
+  insert into public.customers(shop_id, name)
+  values (p_shop_id, trim(p_customer_name))
+  returning id into v_customer_id;
+
+  insert into public.debts(shop_id, customer_id, description, original_amount, balance, created_by)
+  values (p_shop_id, v_customer_id, nullif(trim(coalesce(p_description, '')), ''), round(p_amount, 2), round(p_amount, 2), auth.uid())
+  returning id into v_debt_id;
+  return v_debt_id;
+end;
+$;
+
+revoke all on function public.create_manual_debt(uuid, text, numeric, text) from public;
+grant execute on function public.create_manual_debt(uuid, text, numeric, text) to authenticated;
+
 comment on function public.checkout_sale(uuid, uuid, jsonb, text, numeric, uuid, numeric) is
 'Atomic checkout with idempotency, current-price and stock checks, plus server-enforced Free monthly sales and outstanding-debtor limits.';
