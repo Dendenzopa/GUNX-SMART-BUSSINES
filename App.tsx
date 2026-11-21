@@ -3,11 +3,12 @@ import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View, Pressable,
 import { demoProducts, demoSales, demoExpenses } from "./src/data/demoData";
 import { formatTZS, netProfit, totalSales } from "./src/domain/money";
 import type { Product, Sale, Expense, DebtEntry } from "./src/domain/types";
+import AuthGate from "./src/components/AuthGate";
 type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Payments" | "Reports";
 type CartLine = { productId: string; quantity: number };
 function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
 function Metric({label,value}:{label:string;value:string}) { return <View style={s.metric}><Text style={s.label}>{label}</Text><Text style={s.value}>{value}</Text></View>; }
-export default function App() {
+function Dashboard() {
  const [screen,setScreen]=useState<Screen>("Home");
  const [products,setProducts]=useState<Product[]>(demoProducts);
  const [sales,setSales]=useState<Sale[]>(demoSales);
@@ -51,3 +52,6 @@ export default function App() {
 const s=StyleSheet.create({
  safe:{flex:1,backgroundColor:"#081522"},header:{padding:17,flexDirection:"row",justifyContent:"space-between",alignItems:"center"},eyebrow:{color:"#43C99A",fontSize:10,fontWeight:"800",letterSpacing:1.5},brand:{color:"#F4F7FA",fontSize:19,fontWeight:"900"},gold:{color:"#D7B56D"},logoWrap:{alignItems:"center",backgroundColor:"#123C37",borderWidth:1,borderColor:"#D7B56D",borderRadius:13,paddingHorizontal:12,paddingVertical:5},logo:{color:"#75E0B8",fontSize:23,fontWeight:"900"},logoCaption:{color:"#D7B56D",fontSize:8,fontWeight:"900",letterSpacing:1},navScroll:{maxHeight:52},nav:{flexDirection:"row",gap:7,paddingHorizontal:12,paddingBottom:8},navItem:{paddingHorizontal:16,paddingVertical:11,alignItems:"center",backgroundColor:"#102438",borderRadius:11},field:{backgroundColor:"#0B1B2A",borderWidth:1,borderColor:"#2B4B61",borderRadius:9,color:"#F4F7FA",paddingHorizontal:12,paddingVertical:11,marginTop:9,fontSize:13},paymentNumber:{color:"#F2D99F",fontSize:25,fontWeight:"900",letterSpacing:1,marginTop:9,marginBottom:6},navOn:{backgroundColor:"#174A40",borderWidth:1,borderColor:"#43C99A"},navText:{color:"#91A4B5",fontSize:12,fontWeight:"700"},navTextOn:{color:"#75E0B8"},content:{padding:16,paddingBottom:40,maxWidth:900,width:"100%",alignSelf:"center"},hero:{padding:20,backgroundColor:"#102438",borderRadius:17,borderWidth:1,borderColor:"#1D3A50",marginBottom:12},heroTitle:{color:"#FFF",fontSize:25,fontWeight:"900",marginTop:8},muted:{color:"#91A4B5",fontSize:12,marginTop:4},row:{flexDirection:"row",gap:10,marginBottom:10},flex:{flex:1},metric:{flex:1,minHeight:82,padding:13,backgroundColor:"#102438",borderRadius:14,borderWidth:1,borderColor:"#1D3A50",marginBottom:9,justifyContent:"center"},label:{color:"#91A4B5",fontSize:9,fontWeight:"800"},value:{color:"#F4F7FA",fontSize:17,fontWeight:"900",marginTop:8},heading:{color:"#FFF",fontSize:17,fontWeight:"800",marginTop:12,marginBottom:8},pageTitle:{color:"#FFF",fontSize:24,fontWeight:"900"},button:{backgroundColor:"#16785C",padding:13,borderRadius:11,alignItems:"center",justifyContent:"center",marginTop:7},quiet:{backgroundColor:"#173247",borderWidth:1,borderColor:"#2B4B61"},buttonText:{color:"#F5FFFA",fontSize:12,fontWeight:"800"},notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,marginTop:14},foot:{color:"#8194A5",fontSize:11,lineHeight:17,marginTop:15},list:{flexDirection:"row",alignItems:"center",gap:10,padding:13,backgroundColor:"#102438",borderWidth:1,borderColor:"#1D3A50",borderRadius:13,marginTop:9},item:{color:"#F4F7FA",fontSize:14,fontWeight:"800"},stock:{color:"#75E0B8",fontWeight:"900",backgroundColor:"#173D36",padding:9,borderRadius:8,fontSize:11},panel:{backgroundColor:"#102438",borderWidth:1,borderColor:"#1D3A50",padding:14,borderRadius:14,marginTop:15},total:{color:"#F2D99F",fontSize:18,fontWeight:"900",marginTop:14}
 });
+
+
+export default function App() { return <AuthGate><Dashboard /></AuthGate>; }
