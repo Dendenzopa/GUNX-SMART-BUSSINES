@@ -50,7 +50,7 @@ function Dashboard() {
    if(!active) return;
    if(!salesResult.error && salesResult.data) setSales(salesResult.data.map((r:any)=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:Number(x.unit_cost_snapshot),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":"completed"})));
    if(!expensesResult.error && expensesResult.data) setExpenses(expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),createdAt:e.created_at})));
-   if(!debtsResult.error && debtsResult.data) setDebts(debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})));
+   if(!debtsResult.error && debtsResult.data) setDebts(debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.[0]?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})));
   });
   return () => { active = false; };
  },[shopId]);
@@ -96,7 +96,7 @@ function Dashboard() {
    if(error){setNotice("Deni halijahifadhiwa: "+error.message);return;}
    const {data:rows,error:loadError}=await supabase.from("debts").select("id,customer_id,description,original_amount,balance,created_at,customers(name)").eq("id",data).single();
    if(loadError||!rows){setNotice("Deni limeundwa, lakini halikuweza kuonyeshwa. Fungua tena ukurasa.");return;}
-   setDebts(v=>[{id:rows.id,customerId:rows.customer_id,customerName:rows.customers?.name??debtorName.trim(),saleId:"manual",originalAmount:Number(rows.original_amount),amountPaid:0,balance:Number(rows.balance),createdAt:rows.created_at},...v]);
+   setDebts(v=>[{id:rows.id,customerId:rows.customer_id,customerName:rows.customers?.[0]?.name??debtorName.trim(),saleId:"manual",originalAmount:Number(rows.original_amount),amountPaid:0,balance:Number(rows.balance),createdAt:rows.created_at},...v]);
    setDebtorName("");setDebtAmount("");setNotice("Deni limehifadhiwa kwenye database.");return;
   }
   setDebts(v=>[{id:"local-debt-"+Date.now(),customerId:"local-customer",customerName:debtorName.trim(),saleId:"manual",originalAmount:amount,amountPaid:0,balance:amount,createdAt:new Date().toISOString()},...v]);
