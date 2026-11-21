@@ -2,7 +2,7 @@ name: GUNX Android standalone APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/platform-owner-analytics]
     paths:
       - '.github/workflows/android-apk.yml'
       - 'App.tsx'
