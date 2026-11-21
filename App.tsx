@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import NetInfo from "@react-native-community/netinfo";
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View, Pressable, TextInput, Image } from "react-native";
 import { demoProducts, demoSales, demoExpenses } from "./src/data/demoData";
 import { formatTZS, netProfit, totalSales } from "./src/domain/money";
@@ -6,6 +7,7 @@ import type { Product, Sale, Expense, DebtEntry } from "./src/domain/types";
 import AuthGate, { useShopContext } from "./src/components/AuthGate";
 import { supabase, supabaseConfigured } from "./src/lib/supabase";
 import { submitCheckout } from "./src/services/checkout";
+import { readPendingSales, writePendingSales, type PendingSale } from "./src/services/offlineSales";
 type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Returns" | "Payments" | "Reports";
 type CartLine = { productId: string; quantity: number };
 function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
@@ -31,9 +33,52 @@ function Dashboard() {
  const [notice,setNotice]=useState(supabaseConfigured ? "Imeunganishwa na huduma za duka; data hupakiwa kutoka Supabase." : "DEMO MODE — changes are temporary and reset when the app restarts.");
  const [cloudLoading,setCloudLoading]=useState(false);
  const [pendingCheckoutKey,setPendingCheckoutKey]=useState<string | null>(null);
+ const [isConnected,setIsConnected]=useState<boolean | null>(null);
+ const [pendingOutbox,setPendingOutbox]=useState<PendingSale[]>([]);
+ const [syncingOutbox,setSyncingOutbox]=useState(false);
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
  const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
  const outstandingDebt=debts.reduce((sum,d)=>sum+d.balance,0);
+ useEffect(() => {
+  const unsubscribe=NetInfo.addEventListener(state=>setIsConnected(Boolean(state.isConnected)));
+  NetInfo.fetch().then(state=>setIsConnected(Boolean(state.isConnected)));
+  return unsubscribe;
+ },[]);
+ useEffect(() => {
+  if(!shopId)return;
+  let active=true;
+  readPendingSales(shopId).then(items=>{
+   if(!active)return;
+   setPendingOutbox(items);
+   if(items.length)setSales(current=>[...items.map(item=>({...item.sale})),...current.filter(sale=>!items.some(item=>item.sale.id===sale.id))]);
+  });
+  return ()=>{active=false;};
+ },[shopId]);
+ useEffect(() => {
+  if(!supabaseConfigured||!supabase||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutbox)return;
+  let active=true;
+  const sync=async()=>{
+   setSyncingOutbox(true);
+   let remaining=[...pendingOutbox];
+   for(const item of pendingOutbox){
+    try{
+     const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash"});
+     if(!active)return;
+     setSales(current=>current.map(sale=>sale.id===item.sale.id?{...sale,id:result.saleId,receiptNumber:result.receiptNumber,status:"completed"}:sale));
+     remaining=remaining.filter(entry=>entry.idempotencyKey!==item.idempotencyKey);
+     setPendingOutbox([...remaining]);
+     await writePendingSales(shopId,remaining);
+     setNotice("Mauzo ya offline yamesawazishwa: "+result.receiptNumber);
+    }catch{
+     setNotice("Mauzo "+item.sale.receiptNumber+" bado yanasubiri mtandao/server. Hayajatumwa mara mbili.");
+     break;
+    }
+   }
+   if(active)setSyncingOutbox(false);
+  };
+  void sync();
+  return ()=>{active=false;};
+ },[shopId,isConnected,pendingOutbox,syncingOutbox]);
  useEffect(() => {
   if (!supabaseConfigured || !supabase || !shopId) return;
   let active = true;
@@ -152,9 +197,24 @@ function Dashboard() {
   setSales(v=>v.map(item=>item.id===sale.id?{...item,status:"refunded"}:item));
   setRefundReason("");setNotice("Demo refund imeandikwa na stock imerudishwa.");
  }
+ async function queueOfflineCheckout(key:string) {
+  if(!shopId){setNotice("Shop ID haipo; haiwezekani kuweka mauzo kwenye foleni.");return;}
+  const lines=cart.map(line=>{const p=products.find(item=>item.id===line.productId);if(!p)throw new Error("Bidhaa haipo kwenye orodha ya ndani.");return {productId:p.id,productName:p.name,quantity:line.quantity,unitPrice:p.sellingPrice,unitCost:p.costPrice,lineTotal:p.sellingPrice*line.quantity};});
+  const total=lines.reduce((sum,line)=>sum+line.lineTotal,0);
+  const sale:Sale={id:"pending-"+key,receiptNumber:"PENDING-"+key.slice(0,8).toUpperCase(),createdAt:new Date().toISOString(),lines,subtotal:total,discount:0,total,amountPaid:total,balance:0,paymentMethod:"cash",status:"pending_sync"};
+  const item:PendingSale={shopId,idempotencyKey:key,items:cart.map(line=>({product_id:line.productId,quantity:line.quantity})),sale,queuedAt:new Date().toISOString()};
+  const next=[...pendingOutbox.filter(entry=>entry.idempotencyKey!==key),item];
+  await writePendingSales(shopId,next);
+  setPendingOutbox(next);setSales(current=>[sale,...current]);
+  setProducts(current=>current.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:Math.max(0,p.stockQuantity-line.quantity)}:p;}));
+  setCart([]);setPendingCheckoutKey(null);
+  setNotice("Mauzo yamehifadhiwa kwenye simu bila mtandao. Yatasawazishwa mtandao utakaporudi; bado hayajathibitishwa na server.");
+  setScreen("Home");
+ }
  async function checkout() {
   if(!cart.length){setNotice("Add a product before checkout.");return;}
   if (supabaseConfigured) {
+   if(isConnected===false){try{await queueOfflineCheckout(pendingCheckoutKey??makeIdempotencyKey());}catch(e){setNotice("Haikuweza kuhifadhi mauzo offline: "+(e instanceof Error?e.message:"hitilafu"));}return;}
    if (!shopId || !supabase) { setNotice("Akaunti haijaunganishwa na duka. Ingia tena au unda duka."); return; }
    const key=pendingCheckoutKey ?? makeIdempotencyKey();
    if(!pendingCheckoutKey) setPendingCheckoutKey(key);
@@ -166,7 +226,7 @@ function Dashboard() {
     if(!error&&data)setProducts(data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active})));
     setNotice("Mauzo yamehifadhiwa: "+result.receiptNumber+" · "+formatTZS(result.total));
     setScreen("Home");
-   } catch(e) { setNotice("Mauzo hayajakamilika: "+(e instanceof Error?e.message:"Hitilafu isiyojulikana")+". Hakikisha muamala haujakamilika kabla ya kujaribu tena."); }
+   } catch(e) { const network=await NetInfo.fetch();if(!network.isConnected){try{await queueOfflineCheckout(key);}catch(queueError){setNotice("Mtandao umekatika na mauzo hayajahifadhiwa offline: "+(queueError instanceof Error?queueError.message:"hitilafu"));}}else{setNotice("Mauzo hayajakamilika: "+(e instanceof Error?e.message:"Hitilafu isiyojulikana")+". Hakikisha muamala haujakamilika kabla ya kujaribu tena.");} }
    finally { setCloudLoading(false); }
    return;
   }
@@ -180,7 +240,7 @@ function Dashboard() {
   <View style={s.header}><View><Text style={s.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={s.brand}>GUNX <Text style={s.gold}>SMART</Text> BUSINESS</Text><Text style={s.muted}>Sales · Stock · Finance</Text></View><Image source={require("./assets/gunx-smart-business-logo.jpg")} style={s.logoImage} resizeMode="contain"/></View>
   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.navScroll}><View style={s.nav}>{(["Home","POS","Stock","Debts","Expenses","Returns","Payments","Reports"] as Screen[]).map(x=><Pressable key={x} onPress={()=>setScreen(x)} style={[s.navItem,screen===x&&s.navOn]}><Text style={[s.navText,screen===x&&s.navTextOn]}>{x}</Text></Pressable>)}</View></ScrollView>
   <ScrollView contentContainerStyle={s.content}>
-   {screen==="Home"&&<><View style={s.hero}><Text style={s.eyebrow}>BUSINESS OVERVIEW</Text><Text style={s.heroTitle}>Welcome back</Text><Text style={s.muted}>Your business, all in one place.</Text></View><View style={s.row}><Metric label="TOTAL SALES" value={formatTZS(totalSales(sales))}/><Metric label="EST. NET PROFIT*" value={formatTZS(netProfit(sales,expenses))}/></View><View style={s.row}><Metric label="LOW STOCK" value={lowStock+" items"}/><Metric label="SALES COUNT" value={String(sales.length)}/></View><View style={s.row}><Metric label="MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/><Metric label="GHARAMA" value={formatTZS(expenses.reduce((a,x)=>a+x.amount,0))}/></View><Text style={s.heading}>Quick actions</Text><View style={s.row}><View style={s.flex}><Button label="＋ New sale" onPress={()=>setScreen("POS")}/></View><View style={s.flex}><Button label="View stock" quiet onPress={()=>setScreen("Stock")}/></View></View><Text style={s.notice}>{notice}</Text><Text style={s.foot}>{supabaseConfigured ? "*Makadirio ya faida kutokana na mauzo, gharama na refunds zilizopakiwa; hakiki hesabu kabla ya maamuzi ya fedha." : "*Demo estimate only. Not connected to a live business database."}</Text></>}
+   {screen==="Home"&&<><View style={s.hero}><Text style={s.eyebrow}>BUSINESS OVERVIEW</Text><Text style={s.heroTitle}>Welcome back</Text><Text style={s.muted}>Your business, all in one place.</Text></View><View style={s.row}><Metric label="TOTAL SALES" value={formatTZS(totalSales(sales))}/><Metric label="EST. NET PROFIT*" value={formatTZS(netProfit(sales,expenses))}/></View><View style={s.row}><Metric label="LOW STOCK" value={lowStock+" items"}/><Metric label="SALES COUNT" value={String(sales.length)}/></View><View style={s.row}><Metric label="MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/><Metric label="GHARAMA" value={formatTZS(expenses.reduce((a,x)=>a+x.amount,0))}/></View><Text style={s.heading}>Quick actions</Text><View style={s.row}><View style={s.flex}><Button label="＋ New sale" onPress={()=>setScreen("POS")}/></View><View style={s.flex}><Button label="View stock" quiet onPress={()=>setScreen("Stock")}/></View></View><Text style={s.notice}>{isConnected===false?"OFFLINE · ":isConnected===true?"ONLINE · ":""}{pendingOutbox.length>0?pendingOutbox.length+" mauzo yanasubiri kusawazishwa. ":""}{notice}</Text><Text style={s.foot}>{supabaseConfigured ? "*Makadirio ya faida kutokana na mauzo, gharama na refunds zilizopakiwa; hakiki hesabu kabla ya maamuzi ya fedha." : "*Demo estimate only. Not connected to a live business database."}</Text></>}
    {screen==="POS"&&<><Text style={s.pageTitle}>Point of Sale</Text><Text style={s.muted}>{supabaseConfigured ? (cloudLoading ? "Inapakia bidhaa..." : "Bidhaa za duka lako kutoka database.") : "Tap a product to add it to the cart."}</Text>{products.filter(p=>p.active).map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>{formatTZS(p.sellingPrice)} · Stock {p.stockQuantity}</Text></View><Button label="Add" quiet onPress={()=>add(p)}/></View>)}<View style={s.panel}><Text style={s.heading}>Cart ({cart.reduce((a,x)=>a+x.quantity,0)} items)</Text>{cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return <Text key={x.productId} style={s.muted}>{p.name} × {x.quantity} — {formatTZS(p.sellingPrice*x.quantity)}</Text>;})}<Text style={s.total}>Total: {formatTZS(cartTotal)}</Text><Button label={supabaseConfigured ? "Complete cash sale" : "Complete demo cash sale"} onPress={checkout}/><Button label="Clear cart" quiet onPress={()=>setCart([])}/></View><Text style={s.notice}>{notice}</Text></>}
    {screen==="Stock"&&<><Text style={s.pageTitle}>Products & Stock</Text><Text style={s.muted}>{supabaseConfigured ? "Stock ya duka lako. Ingiza kiasi kisha chagua bidhaa kuongeza stock." : "Sample inventory and reorder levels."}</Text><View style={s.panel}><Text style={s.heading}>Pokea stock</Text><TextInput value={stockInAmount} onChangeText={setStockInAmount} placeholder="Kiasi kinachoingia" placeholderTextColor="#8194A5" keyboardType="decimal-pad" style={s.field}/></View>{products.map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>SKU {p.sku} · Cost {formatTZS(p.costPrice)} · Sell {formatTZS(p.sellingPrice)}</Text></View><View><Text style={s.stock}>{p.stockQuantity} {p.unit}</Text><Button label="＋ Stock in" quiet onPress={()=>receiveStock(p.id)}/></View></View>)}<Text style={s.foot}>Low stock means quantity is at or below the reorder level. Stock-in actions are recorded in stock movement history.</Text></>}
    {screen==="Debts"&&<><Text style={s.pageTitle}>Kitabu cha Madeni</Text><Text style={s.muted}>Rekodi madeni ya wateja na malipo wanayorejesha.</Text><View style={s.panel}><Text style={s.heading}>Ongeza deni jipya</Text><TextInput value={debtorName} onChangeText={setDebtorName} placeholder="Jina la mteja" placeholderTextColor="#8194A5" style={s.field}/><TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder="Kiasi cha deni (TZS)" placeholderTextColor="#8194A5" keyboardType="numeric" style={s.field}/><Button label={supabaseConfigured ? "Hifadhi deni" : "Hifadhi deni (demo)"} onPress={addDebt}/></View><Metric label="JUMLA YA MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/>{debts.map(d=><View key={d.id} style={s.panel}><Text style={s.item}>{d.customerName}</Text><Text style={s.muted}>Deni la awali: {formatTZS(d.originalAmount)} · Amelipa: {formatTZS(d.amountPaid)}</Text><Text style={s.total}>Baki: {formatTZS(d.balance)}</Text>{d.balance>0&&<><TextInput value={repaymentAmount} onChangeText={setRepaymentAmount} placeholder="Kiasi cha kurejesha (TZS)" placeholderTextColor="#8194A5" keyboardType="numeric" style={s.field}/><Button label="Rekodi marejesho" quiet onPress={()=>repayDebt(d.id)}/></>}</View>)}<Text style={s.foot}>{supabaseConfigured ? "Madeni na marejesho huhifadhiwa kwenye database ya duka." : "Data hii ni ya majaribio kwenye kumbukumbu ya muda ya app; bado haisawazishwi na database."}</Text></>}
