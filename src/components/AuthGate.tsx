@@ -22,7 +22,6 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [mode, setMode] = useState<"login" | "signup">("login");
 
   useEffect(() => {
-    void registerAppInstallation();
     if (!supabaseConfigured || !supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) setMessage(error.message);
@@ -40,6 +39,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!session || !supabase) { setIsPlatformAdmin(false); return; }
     let active = true;
+    void registerAppInstallation();
     void recordSignedInActivity();
     supabase.rpc("is_platform_admin").then(({ data, error }) => {
       if (active) setIsPlatformAdmin(!error && data === true);
