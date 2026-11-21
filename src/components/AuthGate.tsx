@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Image } from "react-native";
+import { ActivityIndicator, AppState, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
@@ -46,6 +46,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     });
     return () => { active = false; };
   }, [session]);
+
+  // Refresh active-user analytics whenever the signed-in app returns to foreground.
+  useEffect(() => {
+    if (!session || !supabase) return;
+    void recordSignedInActivity();
+    const subscription = AppState.addEventListener("change", (state) => {
+      if (state === "active") void recordSignedInActivity();
+    });
+    return () => subscription.remove();
+  }, [session?.user.id]);
 
   useEffect(() => {
     if (!session || !supabase) return;
