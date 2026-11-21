@@ -2,7 +2,7 @@ export type ID = string;
 export type PaymentMethod = "cash" | "mobile_money" | "bank" | "credit";
 export type SaleStatus = "completed" | "partially_paid" | "refunded";
 export interface Product { id: ID; name: string; sku: string; unit: string; costPrice: number; sellingPrice: number; stockQuantity: number; reorderLevel: number; active: boolean; }
-export interface SaleLine { productId: ID; productName: string; quantity: number; unitPrice: number; unitCost: number; lineTotal: number; }
+export interface SaleLine { id?: ID; productId: ID; productName: string; quantity: number; unitPrice: number; unitCost: number; lineTotal: number; }
 export interface Sale { id: ID; receiptNumber: string; createdAt: string; lines: SaleLine[]; subtotal: number; discount: number; total: number; amountPaid: number; balance: number; paymentMethod: PaymentMethod; status: SaleStatus; }
 export interface Expense { id: ID; description: string; category: string; amount: number; createdAt: string; }
 export interface Customer { id: ID; name: string; phone?: string; }
