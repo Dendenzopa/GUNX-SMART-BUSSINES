@@ -34,6 +34,7 @@ function Dashboard() {
  const [cloudLoading,setCloudLoading]=useState(false);
  const [pendingCheckoutKey,setPendingCheckoutKey]=useState<string | null>(null);
  const [isConnected,setIsConnected]=useState<boolean | null>(null);
+ const [hasShopProductCache,setHasShopProductCache]=useState(false);
  const [pendingOutbox,setPendingOutbox]=useState<PendingSale[]>([]);
  const syncingOutboxRef=useRef(false);
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
@@ -73,7 +74,7 @@ function Dashboard() {
     }
    }
    const {data:latestProducts,error:productsError}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
-   if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped);}
+   if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,mapped);}
    syncingOutboxRef.current=false;
   };
   void sync();
@@ -81,13 +82,13 @@ function Dashboard() {
  useEffect(() => {
   if (!supabaseConfigured || !supabase || !shopId) return;
   let active = true;
-  readCachedProducts(shopId).then(cached=>{if(active&&cached.length)setProducts(cached);});
+  readCachedProducts(shopId).then(cached=>{if(active&&cached.length){setProducts(cached);setHasShopProductCache(true);}});
   setCloudLoading(true);
   supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name")
    .then(({data,error}) => {
     if (!active) return;
     if (error) setNotice("Imeshindikana kupakia bidhaa: "+error.message);
-    else { const mapped=(data ?? []).map((p:any) => ({id:p.id,name:p.name,sku:p.sku ?? "",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped); }
+    else { const mapped=(data ?? []).map((p:any) => ({id:p.id,name:p.name,sku:p.sku ?? "",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,mapped); }
     setCloudLoading(false);
    });
   Promise.all([
@@ -199,6 +200,7 @@ function Dashboard() {
  }
  async function queueOfflineCheckout(key:string) {
   if(!shopId){setNotice("Shop ID haipo; haiwezekani kuweka mauzo kwenye foleni.");return;}
+  if(!hasShopProductCache){setNotice("Hatujahifadhi orodha ya bidhaa ya duka hili kwenye simu. Unganisha intaneti kwanza ili kupakua bidhaa kabla ya kutumia POS offline.");return;}
   const lines=cart.map(line=>{const p=products.find(item=>item.id===line.productId);if(!p)throw new Error("Bidhaa haipo kwenye orodha ya ndani.");return {productId:p.id,productName:p.name,quantity:line.quantity,unitPrice:p.sellingPrice,unitCost:p.costPrice,lineTotal:p.sellingPrice*line.quantity};});
   const total=lines.reduce((sum,line)=>sum+line.lineTotal,0);
   const sale:Sale={id:"pending-"+key,receiptNumber:"PENDING-"+key.slice(0,8).toUpperCase(),createdAt:new Date().toISOString(),lines,subtotal:total,discount:0,total,amountPaid:total,balance:0,paymentMethod:"cash",status:"pending_sync"};
