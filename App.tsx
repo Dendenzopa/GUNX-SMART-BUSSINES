@@ -69,7 +69,7 @@ function Dashboard() {
    let remaining=[...pendingOutbox];
    for(const item of pendingOutbox){
     try{
-     const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash"});
+     const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash",expectedTotal:item.sale.total});
      const {data:confirmedSale}=await client.from("sales").select("*,sale_items(*),payments(method)").eq("id",result.saleId).single();
      setSales(current=>current.map(sale=>sale.id===item.sale.id?(confirmedSale?{
       id:confirmedSale.id,receiptNumber:confirmedSale.receipt_number,createdAt:confirmedSale.created_at,
@@ -80,8 +80,9 @@ function Dashboard() {
      setPendingOutbox([...remaining]);
      await writePendingSales(shopId,remaining);
      setNotice("Mauzo ya offline yamesawazishwa: "+result.receiptNumber);
-    }catch{
-     setNotice("Mauzo "+item.sale.receiptNumber+" bado yanasubiri mtandao/server. Hayajatumwa mara mbili.");
+    }catch(error){
+     const message=error instanceof Error?error.message:"";
+     setNotice(message.includes("PRICE_CHANGED")?"Bei ya bidhaa imebadilika tangu mauzo ya offline. Muamala umeachwa pending ili usitozwe bei tofauti bila idhini; unahitaji kuhakikiwa na mmiliki.":"Mauzo "+item.sale.receiptNumber+" bado yanasubiri mtandao/server. Hayajatumwa mara mbili.");
      break;
     }
    }
