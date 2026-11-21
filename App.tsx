@@ -7,7 +7,7 @@ import type { Product, Sale, Expense, DebtEntry } from "./src/domain/types";
 import AuthGate, { useShopContext } from "./src/components/AuthGate";
 import { supabase, supabaseConfigured } from "./src/lib/supabase";
 import { submitCheckout } from "./src/services/checkout";
-import { readPendingSales, writePendingSales, type PendingSale } from "./src/services/offlineSales";
+import { readPendingSales, writePendingSales, readCachedProducts, writeCachedProducts, type PendingSale } from "./src/services/offlineSales";
 type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Returns" | "Payments" | "Reports";
 type CartLine = { productId: string; quantity: number };
 function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
@@ -79,12 +79,13 @@ function Dashboard() {
  useEffect(() => {
   if (!supabaseConfigured || !supabase || !shopId) return;
   let active = true;
+  readCachedProducts(shopId).then(cached=>{if(active&&cached.length)setProducts(cached);});
   setCloudLoading(true);
   supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name")
    .then(({data,error}) => {
     if (!active) return;
     if (error) setNotice("Imeshindikana kupakia bidhaa: "+error.message);
-    else setProducts((data ?? []).map((p:any) => ({id:p.id,name:p.name,sku:p.sku ?? "",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active})));
+    else { const mapped=(data ?? []).map((p:any) => ({id:p.id,name:p.name,sku:p.sku ?? "",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped); }
     setCloudLoading(false);
    });
   Promise.all([
@@ -220,7 +221,7 @@ function Dashboard() {
     const result=await submitCheckout({shopId,idempotencyKey:key,items:cart.map(x=>({product_id:x.productId,quantity:x.quantity})),paymentMethod:"cash"});
     setCart([]);setPendingCheckoutKey(null);
     const {data,error}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
-    if(!error&&data)setProducts(data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active})));
+    if(!error&&data){const mapped=data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped);}
     setNotice("Mauzo yamehifadhiwa: "+result.receiptNumber+" · "+formatTZS(result.total));
     setScreen("Home");
    } catch(e) { const network=await NetInfo.fetch();if(!network.isConnected){try{await queueOfflineCheckout(key);}catch(queueError){setNotice("Mtandao umekatika na mauzo hayajahifadhiwa offline: "+(queueError instanceof Error?queueError.message:"hitilafu"));}}else{setNotice("Mauzo hayajakamilika: "+(e instanceof Error?e.message:"Hitilafu isiyojulikana")+". Hakikisha muamala haujakamilika kabla ya kujaribu tena.");} }
