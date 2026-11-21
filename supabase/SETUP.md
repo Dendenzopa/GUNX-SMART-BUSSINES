@@ -6,6 +6,7 @@
    - `supabase/migrations/0002_membership_rls.sql`
    - `supabase/migrations/0003_protect_financial_ledgers.sql`
    - `supabase/migrations/0004_role_permissions.sql`
+   - `supabase/migrations/0005_atomic_checkout.sql`
 3. Copy `.env.example` to `.env.local` and set the project URL and anon/publishable key.
 4. Install dependencies with `npm install`, then run `npx expo start`.
 
@@ -19,3 +20,9 @@ Security:
 Current limitation:
 The app's sales, stock, debt and expense screens still use temporary in-memory demo data. This setup adds the Supabase client and is the foundation for auth wiring; it does not yet make those modules cloud-backed.
 
+
+## Checkout RPC
+
+The `checkout_sale` function is a database-side transaction. It accepts a shop UUID, client-generated idempotency UUID, JSON array of `{ "product_id": "...", "quantity": 1 }`, payment method, amount paid, and optional customer UUID. The server loads current product prices and costs and locks stock rows. It rejects unavailable stock, inactive/foreign-shop products, duplicate lines, and invalid quantities. A retry with the same shop and idempotency key returns the original sale rather than charging stock twice.
+
+Before production, test concurrent checkouts for the same product, retries after network timeouts, partial payments/credit semantics, customer ownership, and rollback after forced failures. This RPC has not yet been deployed to a Supabase project or exercised against live data. The React Native POS still uses local demo state and does not call this RPC yet.
