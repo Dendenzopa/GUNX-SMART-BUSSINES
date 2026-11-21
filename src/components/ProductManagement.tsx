@@ -75,6 +75,16 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
     await load(); onProductsChanged();
   }
 
+  async function restore(p: Product) {
+    if (!supabase || !shopId) return;
+    setBusy(true);
+    const { error } = await supabase.from("products").update({ active: true }).eq("id", p.id).eq("shop_id", shopId);
+    setBusy(false);
+    if (error) { setMessage("Bidhaa haijarejeshwa: " + error.message); return; }
+    setMessage(p.name + " imerejeshwa kwenye bidhaa zinazouzwa.");
+    await load(); onProductsChanged();
+  }
+
   return <ScrollView keyboardShouldPersistTaps="handled">
     <Text style={s.title}>Usimamizi wa bidhaa</Text>
     <Text style={s.copy}>Ongeza bidhaa, hariri bei na taarifa, au ifiche bidhaa isiyouzwa. Stock inaongezwa kupitia sehemu ya Pokea stock.</Text>
@@ -98,10 +108,12 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
         <Text style={s.copy}>{p.sku || "Hakuna SKU"} · {p.unit} · Stock {p.stockQuantity}</Text>
         <Text style={s.price}>Gharama {formatTZS(p.costPrice)} · Bei {formatTZS(p.sellingPrice)}</Text>
       </View>
-      {p.active && <View style={s.actions}>
-        <Pressable onPress={() => startEdit(p)} style={s.small}><Text style={s.buttonText}>Hariri</Text></Pressable>
-        <Pressable onPress={() => archive(p)} style={s.small}><Text style={s.buttonText}>Ficha</Text></Pressable>
-      </View>}
+      <View style={s.actions}>
+        {p.active ? <>
+          <Pressable onPress={() => startEdit(p)} style={s.small}><Text style={s.buttonText}>Hariri</Text></Pressable>
+          <Pressable onPress={() => archive(p)} style={s.small}><Text style={s.buttonText}>Ficha</Text></Pressable>
+        </> : <Pressable onPress={() => restore(p)} style={s.small}><Text style={s.buttonText}>Rejesha</Text></Pressable>}
+      </View>
     </View>)}
     {!busy && items.length === 0 && <Text style={s.copy}>Bado hakuna bidhaa. Ongeza bidhaa ya kwanza hapo juu.</Text>}
   </ScrollView>;
