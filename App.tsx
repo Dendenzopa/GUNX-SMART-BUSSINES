@@ -238,6 +238,7 @@ function Dashboard() {
   setRefundReason("");setNotice("Demo refund imeandikwa na stock imerudishwa.");
  }
  async function retryPendingSale(key:string) {
+  if(!shopId){setNotice("Hakuna duka lililochaguliwa.");return;}
   if(isConnected!==true){setNotice("Unganisha intaneti kabla ya kujaribu tena.");return;}
   const item=pendingOutbox.find(entry=>entry.idempotencyKey===key);
   if(!item||item.syncIssue==="PRICE_CHANGED"||item.syncIssue==="STOCK_CHANGED"){setNotice("Mauzo haya yanahitaji ukaguzi wa mmiliki; retry ya moja kwa moja imezuiwa.");return;}
