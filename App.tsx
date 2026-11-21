@@ -68,6 +68,7 @@ function Dashboard() {
   const sync=async()=>{
    let remaining=[...pendingOutbox];
    for(const item of pendingOutbox){
+    if(item.syncIssue)continue;
     try{
      const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash",expectedTotal:item.sale.total});
      const {data:confirmedSale}=await client.from("sales").select("*,sale_items(*),payments(method)").eq("id",result.saleId).single();
