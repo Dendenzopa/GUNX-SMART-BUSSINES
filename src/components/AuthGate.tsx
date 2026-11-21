@@ -14,6 +14,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [shopName, setShopName] = useState("");
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
+  const [shopLoading, setShopLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -22,6 +23,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     if (!supabaseConfigured || !supabase) { setLoading(false); return; }
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) setMessage(error.message);
+      if (data.session) setShopLoading(true);
       setSession(data.session);
       setLoading(false);
     });
@@ -35,12 +37,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!session || !supabase) return;
     let active = true;
+    setShopLoading(true);
     supabase.from("shop_members").select("shop_id").eq("user_id", session.user.id).limit(1).maybeSingle()
       .then(({ data, error }) => {
         if (!active) return;
         if (error) setMessage("Imeshindikana kusoma duka: " + error.message);
         setNeedsShop(!data && !error);
         setShopId(data?.shop_id ?? null);
+        setShopLoading(false);
       });
     return () => { active = false; };
   }, [session]);
@@ -69,6 +73,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (!supabaseConfigured) return <>{children}</>;
   if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
   if (!session) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/gunx-smart-business-logo.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "login" ? "Karibu tena" : "Fungua akaunti"}</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={authenticate} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "login" ? "Ingia" : "Jisajili"}</Text></Pressable><Pressable onPress={()=>{setMode(mode === "login" ? "signup" : "login");setMessage("");}}><Text style={a.link}>{mode === "login" ? "Huna akaunti? Jisajili" : "Tayari una akaunti? Ingia"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}</View></SafeAreaView>;
+  if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha duka lako...</Text></SafeAreaView>;
+  if (session && !shopId && !needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Duka halijathibitishwa</Text><Text style={a.copy}>{message || "Imeshindikana kuthibitisha uanachama wa duka. Hakuna taarifa za demo zitakazoonyeshwa kama data halisi."}</Text><Pressable onPress={()=>supabase?.auth.signOut()} style={a.button}><Text style={a.buttonText}>Toka kisha ujaribu tena</Text></Pressable></View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   return <ShopContext.Provider value={{ shopId }}>{children}</ShopContext.Provider>;
 }
