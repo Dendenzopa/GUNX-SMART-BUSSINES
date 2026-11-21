@@ -46,6 +46,6 @@ When Supabase environment variables are configured and a signed-in user has a sh
 - Returns UI currently refunds the entire receipt; partial-line returns are supported by the database design but not yet exposed in the UI.
 - Refund UI currently pays cash only. Database RPC supports cash, mobile money and bank refund methods.
 - POS UI currently offers cash checkout only.
-- Offline-first outbox/synchronization, full reports export (PDF/Excel), staff management, automatic mobile-money verification and subscription payment activation are not complete.
+- Offline cash checkout now has a device-local AsyncStorage outbox, cached product catalogue, and automatic retry when connectivity returns. Pending sales are clearly marked and excluded from confirmed sales/profit totals until the server accepts them. This is an initial offline-sales workflow, not yet a complete offline-first system: expenses, debt, stock-in, refunds and report data are not queued offline; cross-device conflict handling and multi-device stock reservations are not implemented.\n- Full reports export (PDF/Excel), staff management, automatic mobile-money verification and subscription payment activation are not complete.
 - No live Supabase project has been connected or tested by this repository workflow. Migrations must be applied and tested in your own staging project.
 - Passing TypeScript CI does not prove database policies or payment flows are production-ready.
