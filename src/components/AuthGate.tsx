@@ -72,7 +72,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    if (!session || !supabase) { setIsPlatformAdmin(false); return; }
+    // Clear the previous account's UI privilege immediately while the server
+    // checks the newly signed-in account. The dashboard RPC remains authoritative.
+    setIsPlatformAdmin(false);
+    if (!session || !supabase) return;
     let active = true;
     void registerAppInstallation();
     void recordSignedInActivity();
