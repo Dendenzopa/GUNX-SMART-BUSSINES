@@ -6,12 +6,17 @@
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "newArchEnabled": true,
+    "icon": "./assets/gunx-smart-business-app-icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.gunx.smartbusiness"
     },
     "android": {
-      "package": "com.gunx.smartbusiness"
+      "package": "com.gunx.smartbusiness",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/gunx-smart-business-app-icon.png",
+        "backgroundColor": "#081522"
+      }
     },
     "web": {
       "bundler": "metro"
