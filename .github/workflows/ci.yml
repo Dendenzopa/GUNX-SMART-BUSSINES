@@ -24,7 +24,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
-          convert assets/gunx-smart-business-logo.jpg -strip -interlace none assets/gunx-smart-business-logo-splash.png
+          convert assets/GUNX20Smart20Business20Logo-1.jpg -strip -interlace none assets/gunx-smart-business-logo-splash.png
           identify assets/gunx-smart-business-logo-splash.png
       - name: Expo web export
         run: npm run build:web
