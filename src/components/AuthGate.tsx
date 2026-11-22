@@ -1,35 +1,72 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Image } from "react-native";
+import { ActivityIndicator, Linking, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 
 const ShopContext = createContext<{ shopId: string | null }>({ shopId: null });
 export function useShopContext() { return useContext(ShopContext); }
 
+const AUTH_REDIRECT_URL = "gunxsmartbusiness://auth/callback";
+
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [newPassword, setNewPassword] = useState("");
   const [shopName, setShopName] = useState("");
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
-  const [mode, setMode] = useState<"login" | "signup">("login");
+  const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">("login");
 
   useEffect(() => {
     if (!supabaseConfigured || !supabase) { setLoading(false); return; }
-    supabase.auth.getSession().then(({ data, error }) => {
+
+    const handleAuthUrl = async (url: string | null) => {
+      if (!url || !supabase) return;
+      try {
+        const parsed = new URL(url);
+        const fragment = new URLSearchParams(parsed.hash.replace(/^#/, ""));
+        const query = parsed.searchParams;
+        const accessToken = fragment.get("access_token") ?? query.get("access_token");
+        const refreshToken = fragment.get("refresh_token") ?? query.get("refresh_token");
+        const flowType = fragment.get("type") ?? query.get("type");
+        if (accessToken && refreshToken) {
+          const { error } = await supabase.auth.setSession({ access_token: accessToken, refresh_token: refreshToken });
+          if (error) setMessage("Imeshindikana kuthibitisha link: " + error.message);
+          else if (flowType === "recovery") {
+            setMode("reset");
+            setMessage("Weka password yako mpya.");
+          } else {
+            setMode("login");
+            setMessage("Email imethibitishwa. Sasa unaweza kuingia.");
+          }
+        } else if (parsed.searchParams.get("error_description")) {
+          setMessage(decodeURIComponent(parsed.searchParams.get("error_description") ?? "Link imeisha muda wake."));
+        }
+      } catch {
+        setMessage("Link haijatambulika. Omba link mpya kisha ujaribu tena.");
+      }
+    };
+
+    void supabase.auth.getSession().then(({ data, error }) => {
       if (error) setMessage(error.message);
       setSession(data.session);
       setLoading(false);
     });
+
+    void Linking.getInitialURL().then(handleAuthUrl);
+    const urlSubscription = Linking.addEventListener("url", event => { void handleAuthUrl(event.url); });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
       if (!next) { setNeedsShop(false); setShopId(null); }
     });
-    return () => listener.subscription.unsubscribe();
+    return () => {
+      urlSubscription.remove();
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   useEffect(() => {
@@ -50,11 +87,46 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     if (!email.trim() || password.length < 8) { setMessage("Weka email na password yenye angalau herufi 8."); return; }
     setBusy(true); setMessage("");
     const result = mode === "signup"
-      ? await supabase.auth.signUp({ email: email.trim(), password })
+      ? await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: AUTH_REDIRECT_URL } })
       : await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (result.error) setMessage(result.error.message);
-    else if (mode === "signup" && !result.data.session) setMessage("Akaunti imetengenezwa. Thibitisha email yako kisha ingia.");
+    else if (mode === "signup" && !result.data.session) setMessage("Akaunti imetengenezwa. Angalia Gmail kuthibitisha email. Usipopata ujumbe, bonyeza Tuma tena email.");
+  }
+
+  async function resendConfirmation() {
+    if (!supabase || !email.trim()) { setMessage("Weka email uliyotumia kujisajili kwanza."); return; }
+    setBusy(true); setMessage("");
+    const { error } = await supabase.auth.resend({
+      type: "signup",
+      email: email.trim(),
+      options: { emailRedirectTo: AUTH_REDIRECT_URL }
+    });
+    setBusy(false);
+    setMessage(error ? "Imeshindikana kutuma email: " + error.message : "Ombi limetumwa. Angalia Inbox na Spam/Junk ya Gmail.");
+  }
+
+  async function sendPasswordReset() {
+    if (!supabase || !email.trim()) { setMessage("Weka email ya akaunti yako kwanza."); return; }
+    setBusy(true); setMessage("");
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: AUTH_REDIRECT_URL });
+    setBusy(false);
+    setMessage(error ? "Imeshindikana kutuma link: " + error.message : "Ikiwa akaunti inatumia email hii, link ya kubadilisha password imetumwa. Angalia Inbox na Spam/Junk.");
+  }
+
+  async function saveNewPassword() {
+    if (!supabase || newPassword.length < 8) { setMessage("Password mpya iwe na angalau herufi 8."); return; }
+    setBusy(true); setMessage("");
+    const { error } = await supabase.auth.updateUser({ password: newPassword });
+    setBusy(false);
+    if (error) setMessage("Password haikubadilishwa: " + error.message);
+    else {
+      setPassword("");
+      setNewPassword("");
+      setMode("login");
+      await supabase.auth.signOut();
+      setMessage("Password imebadilishwa. Sasa ingia kwa password yako mpya.");
+    }
   }
 
   async function createShop() {
@@ -68,7 +140,18 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!supabaseConfigured) return <>{children}</>;
   if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
-  if (!session) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "login" ? "Karibu tena" : "Fungua akaunti"}</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={authenticate} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "login" ? "Ingia" : "Jisajili"}</Text></Pressable><Pressable onPress={()=>{setMode(mode === "login" ? "signup" : "login");setMessage("");}}><Text style={a.link}>{mode === "login" ? "Huna akaunti? Jisajili" : "Tayari una akaunti? Ingia"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}</View></SafeAreaView>;
+  if (!session || mode === "reset") return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Sahau password?" : mode === "reset" ? "Weka password mpya" : "Karibu tena"}</Text>
+    {mode !== "reset" && <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/>}
+    {mode === "login" || mode === "signup" ? <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/> : null}
+    {mode === "reset" && <TextInput value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Password mpya (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/>}
+    <Pressable disabled={busy} onPress={mode === "signup" || mode === "login" ? authenticate : mode === "forgot" ? sendPasswordReset : saveNewPassword} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "signup" ? "Jisajili" : mode === "forgot" ? "Tuma link ya kubadilisha password" : mode === "reset" ? "Hifadhi password mpya" : "Ingia"}</Text></Pressable>
+    {mode === "login" && <Pressable onPress={()=>{setMode("forgot");setMessage("");}}><Text style={a.link}>Forgot Password? / Nimesahau password</Text></Pressable>}
+    {mode === "signup" && <Pressable disabled={busy} onPress={resendConfirmation}><Text style={a.link}>Tuma tena email ya uthibitisho</Text></Pressable>}
+    {mode !== "login" && mode !== "reset" && <Pressable onPress={()=>{setMode("login");setMessage("");}}><Text style={a.link}>Rudi kwenye Login</Text></Pressable>}
+    {mode === "login" && <Pressable onPress={()=>{setMode("signup");setMessage("");}}><Text style={a.link}>Huna akaunti? Jisajili</Text></Pressable>}
+    {mode === "reset" && <Pressable onPress={()=>{setMode("login");setMessage("Omba link mpya kama link hii imeisha muda wake.");}}><Text style={a.link}>Rudi kwenye Login</Text></Pressable>}
+    {!!message&&<Text style={a.message}>{message}</Text>}
+  </View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   return <ShopContext.Provider value={{ shopId }}>{children}</ShopContext.Provider>;
 }
