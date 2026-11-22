@@ -10,6 +10,7 @@ export function useShopContext() { return useContext(ShopContext); }
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [sessionCheckTimedOut, setSessionCheckTimedOut] = useState(false);
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
   const [shopName, setShopName] = useState("");
@@ -23,18 +24,52 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!supabaseConfigured || !supabase) { setLoading(false); return; }
+    let active = true;
     supabase.auth.getSession().then(({ data, error }) => {
+      if (!active) return;
       if (error) setMessage(error.message);
       if (data.session) setShopLoading(true);
       setSession(data.session);
       setLoading(false);
+      setSessionCheckTimedOut(false);
+    }).catch((error: unknown) => {
+      if (!active) return;
+      setMessage(error instanceof Error ? error.message : "Imeshindikana kusoma akaunti iliyohifadhiwa.");
+      setLoading(false);
+      setSessionCheckTimedOut(true);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
       if (!next) { setNeedsShop(false); setShopId(null); }
     });
-    return () => listener.subscription.unsubscribe();
+    return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
+
+  // Do not leave the opening spinner running forever if local session storage is slow.
+  // Keep the user outside the app until session state is safely resolved.
+  useEffect(() => {
+    if (!loading || sessionCheckTimedOut) return;
+    const timeout = setTimeout(() => setSessionCheckTimedOut(true), 10000);
+    return () => clearTimeout(timeout);
+  }, [loading, sessionCheckTimedOut]);
+
+  async function retrySessionCheck() {
+    if (!supabase) return;
+    setSessionCheckTimedOut(false);
+    setLoading(true);
+    setMessage("");
+    try {
+      const { data, error } = await supabase.auth.getSession();
+      if (error) setMessage(error.message);
+      if (data.session) setShopLoading(true);
+      setSession(data.session);
+      setLoading(false);
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Imeshindikana kusoma akaunti iliyohifadhiwa.");
+      setSessionCheckTimedOut(true);
+      setLoading(false);
+    }
+  }
 
   useEffect(() => {
     if (!session || !supabase) { setIsPlatformAdmin(false); return; }
@@ -99,7 +134,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   if (!supabaseConfigured) return <>{children}</>;
-  if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
+  if (loading && !sessionCheckTimedOut) return <SafeAreaView style={a.safe}><Image source={require("../../assets/gunx-smart-business-logo.jpg")} style={a.logoImage} resizeMode="contain"/><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inafungua akaunti yako...</Text></SafeAreaView>;
+  if (loading && sessionCheckTimedOut) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/gunx-smart-business-logo.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.title}>Kufungua app kunachukua muda</Text><Text style={a.copy}>{message || "Imeshindikana kusoma taarifa za akaunti kwa wakati. Hakikisha simu ina intaneti kisha jaribu tena."}</Text><Pressable onPress={retrySessionCheck} style={a.button}><Text style={a.buttonText}>Jaribu tena</Text></Pressable></View></SafeAreaView>;
   if (!session) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/gunx-smart-business-logo.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "login" ? "Karibu tena" : "Fungua akaunti"}</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={authenticate} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "login" ? "Ingia" : "Jisajili"}</Text></Pressable><Pressable onPress={()=>{setMode(mode === "login" ? "signup" : "login");setMessage("");}}><Text style={a.link}>{mode === "login" ? "Huna akaunti? Jisajili" : "Tayari una akaunti? Ingia"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}</View></SafeAreaView>;
   if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha duka lako...</Text></SafeAreaView>;
   if (session && !shopId && !needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Duka halijathibitishwa</Text><Text style={a.copy}>{message || "Imeshindikana kuthibitisha uanachama wa duka. Hakuna taarifa za demo zitakazoonyeshwa kama data halisi."}</Text><Pressable onPress={()=>supabase?.auth.signOut()} style={a.button}><Text style={a.buttonText}>Toka kisha ujaribu tena</Text></Pressable></View></SafeAreaView>;
