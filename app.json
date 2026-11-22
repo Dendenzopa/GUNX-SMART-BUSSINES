@@ -21,7 +21,7 @@
       [
         "expo-splash-screen",
         {
-          "image": "./assets/gunx-smart-business-logo-splash.png",
+          "image": "./assets/GUNX20Smart20Business20Logo-1.jpg",
           "imageWidth": 240,
           "resizeMode": "contain",
           "backgroundColor": "#081522"
