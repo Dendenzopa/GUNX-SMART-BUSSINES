@@ -234,3 +234,49 @@ revoke all on function public.refund_sale(uuid,uuid,uuid,jsonb,text,text) from p
 
 comment on function public.refund_sale_in_branch(uuid,uuid,uuid,uuid,jsonb,text,text) is
 'Branch-authorized refund wrapper that restores branch inventory once and retains legacy financial/refund validation.';
+
+-- Child rows inherit the branch boundary of their parent transaction.
+drop policy if exists sale_items_role_select on public.sale_items;
+create policy sale_items_branch_role_select on public.sale_items
+for select to authenticated
+using (
+  exists (
+    select 1 from public.sales s
+    where s.id = sale_id
+      and public.has_branch_access(s.shop_id, s.branch_id)
+      and (
+        public.has_shop_role(s.shop_id, array['owner','manager'])
+        or (public.has_shop_role(s.shop_id, array['cashier']) and s.created_by = (select auth.uid()))
+      )
+  )
+);
+
+drop policy if exists sale_refund_items_management_select on public.sale_refund_items;
+create policy sale_refund_items_branch_management_select on public.sale_refund_items
+for select to authenticated
+using (
+  exists (
+    select 1 from public.sale_refunds r
+    where r.id = refund_id
+      and public.has_branch_access(r.shop_id, r.branch_id)
+      and public.has_shop_role(r.shop_id, array['owner','manager'])
+  )
+);
+
+-- Expense writes are restricted to authorized management in the selected branch.
+drop policy if exists expenses_member_insert on public.expenses;
+create policy expenses_branch_insert on public.expenses
+for insert to authenticated
+with check (
+  public.has_branch_access(shop_id, branch_id)
+  and public.has_shop_role(shop_id, array['owner','manager'])
+);
+drop policy if exists expenses_member_update on public.expenses;
+create policy expenses_branch_update on public.expenses
+for update to authenticated
+using (public.has_branch_access(shop_id, branch_id) and public.has_shop_role(shop_id, array['owner','manager']))
+with check (public.has_branch_access(shop_id, branch_id) and public.has_shop_role(shop_id, array['owner','manager']));
+drop policy if exists expenses_member_delete on public.expenses;
+create policy expenses_branch_delete on public.expenses
+for delete to authenticated
+using (public.has_branch_access(shop_id, branch_id) and public.has_shop_role(shop_id, array['owner','manager']));
