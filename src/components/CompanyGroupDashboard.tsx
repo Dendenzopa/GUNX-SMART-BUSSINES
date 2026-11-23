@@ -7,10 +7,23 @@ type GroupOption = { id: string; name: string; role: "group_owner" | "group_admi
 type BranchMetric = { shop_id: string; shop_name: string; branch_id: string; branch_name: string; sales_count: number; sales_total: number; expenses_total: number; net_after_expenses: number; debt_outstanding: number; stock_units: number; stock_value: number; low_stock_products: number };
 type MemberOption = { user_id: string; role: "group_owner" | "group_admin" | "group_viewer" };
 
+function dateInputValue(date: Date) {
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
+  return year + "-" + month + "-" + day;
+}
+
 export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: string | null; shopRole: string | null }) {
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [rows, setRows] = useState<BranchMetric[]>([]);
+  const [toDate, setToDate] = useState(() => dateInputValue(new Date()));
+  const [fromDate, setFromDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 29);
+    return dateInputValue(date);
+  });
   const [groupName, setGroupName] = useState("");
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [memberUserId, setMemberUserId] = useState("");
@@ -67,15 +80,25 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
 
   const loadOverview = useCallback(async (groupId: string) => {
     if (!supabase || !groupId) { setRows([]); return; }
+    const datePattern = /^\\d{4}-\\d{2}-\\d{2}$/;
+    const fromTime = Date.parse(fromDate + "T00:00:00Z");
+    const toTime = Date.parse(toDate + "T00:00:00Z");
+    const dayCount = (toTime - fromTime) / 86400000;
+    if (!datePattern.test(fromDate) || !datePattern.test(toDate) ||
+        !Number.isFinite(dayCount) || dayCount < 0 || dayCount > 366 ||
+        new Date(fromTime).toISOString().slice(0, 10) !== fromDate ||
+        new Date(toTime).toISOString().slice(0, 10) !== toDate) {
+      setRows([]);
+      setNotice("Weka tarehe sahihi. Kipindi cha ripoti kisiwe zaidi ya siku 367.");
+      return;
+    }
     const { data, error } = await supabase.rpc("get_company_group_enterprise_overview", {
-      p_group_id: groupId,
-      p_from: new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10),
-      p_to: new Date().toISOString().slice(0, 10)
+      p_group_id: groupId, p_from: fromDate, p_to: toDate
     });
     if (error) { setRows([]); setNotice("Ripoti haijapakiwa: " + error.message); return; }
     setRows((data ?? []) as BranchMetric[]);
-    setNotice("Ripoti ya siku 30 imepakiwa. Madeni na thamani ya stock ni salio la sasa.");
-  }, []);
+    setNotice("Ripoti ya " + fromDate + " hadi " + toDate + " imepakiwa. Madeni na stock ni salio la sasa.");
+  }, [fromDate, toDate]);
 
   useEffect(() => { void loadGroups(); }, [loadGroups]);
   useEffect(() => {
@@ -134,7 +157,21 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
       <Pressable disabled={busy || !shopId} onPress={linkCurrentShop} style={s.button}><Text style={s.buttonText}>{busy ? "Inaunganisha..." : "Ongeza biashara hii kwenye kundi"}</Text></Pressable>
     </View>}
     {!!selectedGroupId && <>
-      <Text style={s.section}>Muhtasari wa siku 30</Text>
+      <Text style={s.section}>Kipindi cha ripoti</Text>
+      <View style={s.metrics}>
+        <View style={{flex:1}}>
+          <Text style={s.muted}>Kuanzia (YYYY-MM-DD)</Text>
+          <TextInput value={fromDate} onChangeText={setFromDate} placeholder="2026-11-01" placeholderTextColor="#8194A5" style={s.input}/>
+        </View>
+        <View style={{flex:1}}>
+          <Text style={s.muted}>Mpaka (YYYY-MM-DD)</Text>
+          <TextInput value={toDate} onChangeText={setToDate} placeholder="2026-11-24" placeholderTextColor="#8194A5" style={s.input}/>
+        </View>
+      </View>
+      <Pressable disabled={busy} onPress={() => void loadOverview(selectedGroupId)} style={s.button}>
+        <Text style={s.buttonText}>Tengeneza ripoti kwa tarehe hizi</Text>
+      </Pressable>
+      <Text style={s.section}>Muhtasari wa mauzo na gharama</Text>
       <View style={s.metrics}>
         <View style={s.metric}><Text style={s.metricLabel}>MAUZO · SIKU 30</Text><Text style={s.metricValue}>{formatTZS(totalSales)}</Text></View>
         <View style={s.metric}><Text style={s.metricLabel}>GHARAMA · SIKU 30</Text><Text style={s.metricValue}>{formatTZS(totalExpenses)}</Text></View>
