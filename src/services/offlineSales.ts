@@ -74,6 +74,6 @@ export async function readCachedBusinessSnapshot(shopId: string, userId: string 
 }
 
 export async function writeCachedBusinessSnapshot(shopId: string, userId: string | null, branchId: string, snapshot: CachedBusinessSnapshot): Promise<void> {
-  if (!shopId || !userId) return;
-  await AsyncStorage.setItem(snapshotKeyFor(shopId,userId), JSON.stringify(snapshot));
+  if (!shopId || !userId || !branchId) return;
+  await AsyncStorage.setItem(snapshotKeyFor(shopId,userId,branchId), JSON.stringify(snapshot));
 }
