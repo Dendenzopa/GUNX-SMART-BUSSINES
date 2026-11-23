@@ -203,7 +203,7 @@ end;
 $$;
 
 revoke all on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,uuid,numeric,text) from public, anon;
-grant execute on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,numeric,text) to authenticated;
+grant execute on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,uuid,numeric,text) to authenticated;
 
-comment on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,numeric,text) is
+comment on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,uuid,numeric,text) is
 'Atomically transfers inventory between two branches the caller is assigned to, recording both stock movements and an audit transfer.';
