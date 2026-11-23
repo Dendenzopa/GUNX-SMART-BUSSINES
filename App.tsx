@@ -128,7 +128,7 @@ function Dashboard() {
   void sync();
  },[shopId,branchId,userId,effectiveRole,isConnected,pendingOutbox]);
  useEffect(() => {
-  if (!supabaseConfigured || !supabase || !shopId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
+  if (!supabaseConfigured || !supabase || !shopId || !branchId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
   let active = true;
   setCloudLoading(true);
   Promise.all([readCachedBusinessSnapshot(shopId,userId,branchId??""),readPendingSales(shopId,userId,effectiveRole)]).then(([snapshot,pending])=>{
