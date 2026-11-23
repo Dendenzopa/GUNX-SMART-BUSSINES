@@ -140,6 +140,17 @@ declare
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   if p_idempotency_key is null then raise exception 'Transfer idempotency key required'; end if;
+  if p_from_branch_id is null or p_to_branch_id is null or p_from_branch_id = p_to_branch_id then
+    raise exception 'Choose two different branches';
+  end if;
+  if p_quantity is null or p_quantity <= 0 or p_quantity > 100000000 then
+    raise exception 'Invalid transfer quantity';
+  end if;
+  if not public.has_shop_role(p_shop_id, array['owner','manager','stockkeeper'])
+     or not public.has_branch_access(p_shop_id, p_from_branch_id)
+     or not public.has_branch_access(p_shop_id, p_to_branch_id) then
+    raise exception 'Not permitted to transfer stock between these branches';
+  end if;
   perform pg_advisory_xact_lock(hashtextextended(p_shop_id::text || ':branch-transfer:' || p_idempotency_key::text, 0));
   select * into v_existing from public.branch_stock_transfers
   where shop_id=p_shop_id and idempotency_key=p_idempotency_key;
@@ -151,17 +162,6 @@ begin
       raise exception 'TRANSFER_IDEMPOTENCY_MISMATCH: Key already belongs to a different transfer';
     end if;
     return v_existing.id;
-  end if;
-  if p_from_branch_id is null or p_to_branch_id is null or p_from_branch_id = p_to_branch_id then
-    raise exception 'Choose two different branches';
-  end if;
-  if p_quantity is null or p_quantity <= 0 or p_quantity > 100000000 then
-    raise exception 'Invalid transfer quantity';
-  end if;
-  if not public.has_shop_role(p_shop_id, array['owner','manager','stockkeeper'])
-     or not public.has_branch_access(p_shop_id, p_from_branch_id)
-     or not public.has_branch_access(p_shop_id, p_to_branch_id) then
-    raise exception 'Not permitted to transfer stock between these branches';
   end if;
 
   -- Lock in a deterministic order to avoid deadlocks during concurrent transfers.
