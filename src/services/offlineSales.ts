@@ -31,12 +31,12 @@ export async function writePendingSales(shopId: string, userId: string | null, r
   await AsyncStorage.setItem(keyFor(shopId,userId,role), JSON.stringify(items));
 }
 
-const productsKeyFor = (shopId: string) => `gunx:product-cache:v1:${shopId}`;
+const productsKeyFor = (shopId: string, branchId: string) => `gunx:product-cache:v2:${shopId}:${branchId}`;
 
-export async function readCachedProducts(shopId: string): Promise<Product[]> {
-  if (!shopId) return [];
+export async function readCachedProducts(shopId: string, branchId: string): Promise<Product[]> {
+  if (!shopId || !branchId) return [];
   try {
-    const raw = await AsyncStorage.getItem(productsKeyFor(shopId));
+    const raw = await AsyncStorage.getItem(productsKeyFor(shopId,branchId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed as Product[] : [];
@@ -45,7 +45,7 @@ export async function readCachedProducts(shopId: string): Promise<Product[]> {
   }
 }
 
-export async function writeCachedProducts(shopId: string, products: Product[]): Promise<void> {
+export async function writeCachedProducts(shopId: string, branchId: string, products: Product[]): Promise<void> {
   if (!shopId) return;
   await AsyncStorage.setItem(productsKeyFor(shopId), JSON.stringify(products));
 }
