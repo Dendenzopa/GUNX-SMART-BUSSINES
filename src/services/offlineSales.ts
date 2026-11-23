@@ -10,12 +10,13 @@ export interface PendingSale {
   syncIssue?: string;
 }
 
-const keyFor = (shopId: string) => `gunx:offline-sales:v1:${shopId}`;
+const keyFor = (shopId: string, userId: string | null, role: string) =>
+  role === "owner" ? `gunx:offline-sales:v1:${shopId}` : `gunx:offline-sales:v2:${shopId}:${userId ?? "unknown"}`;
 
-export async function readPendingSales(shopId: string): Promise<PendingSale[]> {
-  if (!shopId) return [];
+export async function readPendingSales(shopId: string, userId: string | null, role: string): Promise<PendingSale[]> {
+  if (!shopId || !userId) return [];
   try {
-    const raw = await AsyncStorage.getItem(keyFor(shopId));
+    const raw = await AsyncStorage.getItem(keyFor(shopId,userId,role));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed as PendingSale[] : [];
@@ -24,9 +25,9 @@ export async function readPendingSales(shopId: string): Promise<PendingSale[]> {
   }
 }
 
-export async function writePendingSales(shopId: string, items: PendingSale[]): Promise<void> {
-  if (!shopId) throw new Error("Shop ID inahitajika kuhifadhi mauzo yanayosubiri.");
-  await AsyncStorage.setItem(keyFor(shopId), JSON.stringify(items));
+export async function writePendingSales(shopId: string, userId: string | null, role: string, items: PendingSale[]): Promise<void> {
+  if (!shopId || !userId) throw new Error("Shop ID na user ID vinahitajika kuhifadhi mauzo yanayosubiri.");
+  await AsyncStorage.setItem(keyFor(shopId,userId,role), JSON.stringify(items));
 }
 
 const productsKeyFor = (shopId: string) => `gunx:product-cache:v1:${shopId}`;
@@ -56,12 +57,12 @@ export interface CachedBusinessSnapshot {
   cachedAt: string;
 }
 
-const snapshotKeyFor = (shopId: string) => `gunx:business-cache:v1:${shopId}`;
+const snapshotKeyFor = (shopId: string, userId: string | null) => `gunx:business-cache:v2:${shopId}:${userId ?? "unknown"}`;
 
-export async function readCachedBusinessSnapshot(shopId: string): Promise<CachedBusinessSnapshot | null> {
-  if (!shopId) return null;
+export async function readCachedBusinessSnapshot(shopId: string, userId: string | null): Promise<CachedBusinessSnapshot | null> {
+  if (!shopId || !userId) return null;
   try {
-    const raw = await AsyncStorage.getItem(snapshotKeyFor(shopId));
+    const raw = await AsyncStorage.getItem(snapshotKeyFor(shopId,userId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedBusinessSnapshot;
     if (!Array.isArray(parsed.sales) || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.debts) || !Number.isFinite(parsed.refundTotal)) return null;
@@ -71,7 +72,7 @@ export async function readCachedBusinessSnapshot(shopId: string): Promise<Cached
   }
 }
 
-export async function writeCachedBusinessSnapshot(shopId: string, snapshot: CachedBusinessSnapshot): Promise<void> {
-  if (!shopId) return;
-  await AsyncStorage.setItem(snapshotKeyFor(shopId), JSON.stringify(snapshot));
+export async function writeCachedBusinessSnapshot(shopId: string, userId: string | null, snapshot: CachedBusinessSnapshot): Promise<void> {
+  if (!shopId || !userId) return;
+  await AsyncStorage.setItem(snapshotKeyFor(shopId,userId), JSON.stringify(snapshot));
 }
