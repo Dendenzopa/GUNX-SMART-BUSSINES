@@ -19,7 +19,7 @@ function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet
 function Metric({label,value}:{label:string;value:string}) { return <View style={s.metric}><Text style={s.label}>{label}</Text><Text style={s.value}>{value}</Text></View>; }
 function makeIdempotencyKey() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => { const r = Math.floor(Math.random()*16); return (ch==="x"?r:(r&3)|8).toString(16); }); }
 function Dashboard() {
- const { shopId, isPlatformAdmin, shopRole, userId } = useShopContext();
+ const { shopId, isPlatformAdmin, shopRole, userId, branchId, branches, setBranchId } = useShopContext();
  const effectiveRole = shopRole ?? (supabaseConfigured ? "cashier" : "owner");
  const allowedScreens: Record<"owner"|"manager"|"cashier"|"stockkeeper", Screen[]> = {
   owner: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"],
@@ -91,7 +91,7 @@ function Dashboard() {
    for(const item of pendingOutbox){
     if(item.syncIssue)continue;
     try{
-     const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash",expectedTotal:item.sale.total});
+     const result=await submitCheckout({shopId:item.shopId,branchId:item.branchId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash",expectedTotal:item.sale.total});
      const {data:confirmedSale}=await client.from("sales").select("*,sale_items(*),payments(method)").eq("id",result.saleId).single();
      const costResult=(effectiveRole==="owner"||effectiveRole==="manager")?await client.rpc("get_sale_item_costs",{p_shop_id:shopId,p_sale_id:result.saleId}):{data:[]};
      const costByItemId=new Map((costResult.data??[]).map((row:any)=>[row.sale_item_id,Number(row.unit_cost_snapshot)]));
@@ -184,9 +184,9 @@ function Dashboard() {
   if(!Number.isFinite(quantity)||quantity<=0){setNotice("Weka kiasi cha stock kinachoingia.");return;}
   if(supabaseConfigured&&isConnected===false){setNotice("Stock-in haiwezi kuthibitishwa bila mtandao. Hakuna mabadiliko yaliyofanywa.");return;}
   if(supabaseConfigured){
-   if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
+   if(!supabase||!shopId||!branchId){setNotice("Hakuna duka au tawi lililochaguliwa.");return;}
    setCloudLoading(true);
-   const {data,error}=await supabase.rpc("receive_stock",{p_shop_id:shopId,p_product_id:productId,p_quantity:quantity,p_note:"Stock received from app"});
+   const {data,error}=await supabase.rpc("receive_stock_in_branch",{p_shop_id:shopId,p_branch_id:branchId,p_product_id:productId,p_quantity:quantity,p_note:"Stock received from app"});
    setCloudLoading(false);
    if(error){setNotice("Stock haijaongezwa: "+error.message);return;}
    setProducts(v=>v.map(p=>p.id===productId?{...p,stockQuantity:Number(data)}:p));
@@ -287,12 +287,12 @@ function Dashboard() {
   setNotice("Jaribio la kusawazisha limeanzishwa.");
  }
  async function queueOfflineCheckout(key:string) {
-  if(!shopId){setNotice("Shop ID haipo; haiwezekani kuweka mauzo kwenye foleni.");return;}
+  if(!shopId||!branchId){setNotice("Chagua tawi kabla ya kuweka mauzo kwenye foleni.");return;}
   if(!hasShopProductCache){setNotice("Hatujahifadhi orodha ya bidhaa ya duka hili kwenye simu. Unganisha intaneti kwanza ili kupakua bidhaa kabla ya kutumia POS offline.");return;}
   const lines=cart.map(line=>{const p=products.find(item=>item.id===line.productId);if(!p)throw new Error("Bidhaa haipo kwenye orodha ya ndani.");if(line.quantity>p.stockQuantity)throw new Error("Stock ya "+p.name+" haitoshi kulingana na cache ya mwisho.");return {productId:p.id,productName:p.name,quantity:line.quantity,unitPrice:p.sellingPrice,unitCost:p.costPrice,lineTotal:p.sellingPrice*line.quantity};});
   const total=lines.reduce((sum,line)=>sum+line.lineTotal,0);
   const sale:Sale={id:"pending-"+key,receiptNumber:"PENDING-"+key.slice(0,8).toUpperCase(),createdAt:new Date().toISOString(),lines,subtotal:total,discount:0,total,amountPaid:total,balance:0,paymentMethod:"cash",status:"pending_sync"};
-  const item:PendingSale={shopId,idempotencyKey:key,items:cart.map(line=>({product_id:line.productId,quantity:line.quantity})),sale,queuedAt:new Date().toISOString()};
+  const item:PendingSale={shopId,branchId:branchId??"",idempotencyKey:key,items:cart.map(line=>({product_id:line.productId,quantity:line.quantity})),sale,queuedAt:new Date().toISOString()};
   const next=[...pendingOutbox.filter(entry=>entry.idempotencyKey!==key),item];
   await writePendingSales(shopId,userId,effectiveRole,next);
   setPendingOutbox(next);setSales(current=>[sale,...current]);
@@ -305,12 +305,12 @@ function Dashboard() {
   if(!cart.length){setNotice("Add a product before checkout.");return;}
   if (supabaseConfigured) {
    if(isConnected===false){try{await queueOfflineCheckout(pendingCheckoutKey??makeIdempotencyKey());}catch(e){setNotice("Haikuweza kuhifadhi mauzo offline: "+(e instanceof Error?e.message:"hitilafu"));}return;}
-   if (!shopId || !supabase) { setNotice("Akaunti haijaunganishwa na duka. Ingia tena au unda duka."); return; }
+   if (!shopId || !supabase || !branchId) { setNotice("Chagua tawi halali kabla ya kufanya mauzo."); return; }
    const key=pendingCheckoutKey ?? makeIdempotencyKey();
    if(!pendingCheckoutKey) setPendingCheckoutKey(key);
    setCloudLoading(true);setNotice("Inatuma mauzo salama kwenye database...");
    try {
-    const result=await submitCheckout({shopId,idempotencyKey:key,items:cart.map(x=>({product_id:x.productId,quantity:x.quantity})),paymentMethod:"cash"});
+    const result=await submitCheckout({shopId,branchId:branchId??"",idempotencyKey:key,items:cart.map(x=>({product_id:x.productId,quantity:x.quantity})),paymentMethod:"cash"});
     setCart([]);setPendingCheckoutKey(null);
     const {data,error}=await supabase.rpc("get_shop_products",{p_shop_id:shopId});
     if(!error&&data){const mapped=data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped);}
@@ -329,6 +329,7 @@ function Dashboard() {
  return <SafeAreaView style={s.safe}><StatusBar barStyle="light-content" backgroundColor="#081522"/>
   <View style={s.header}><Image source={require("./assets/GUNX20Smart20Business20Logo-1.jpg")} style={s.logoImage} resizeMode="contain"/><View style={s.headerText}><Text style={s.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={s.brand}>GUNX <Text style={s.gold}>SMART</Text> BUSINESS</Text><Text style={s.muted}>Sales · Stock · Finance</Text></View></View>
   <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.navScroll}><View style={s.nav}>{visibleScreens.map(x=><Pressable key={x} onPress={()=>setScreen(x)} style={[s.navItem,screen===x&&s.navOn]}><Text style={[s.navText,screen===x&&s.navTextOn]}>{x==="Owner"?"PLATFORM OWNER":x}</Text></Pressable>)}</View></ScrollView>
+  {branches.length>0&&<ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.navScroll}><View style={s.nav}>{branches.map(branch=><Pressable key={branch.id} onPress={()=>{setBranchId(branch.id);setCart([]);setNotice("Tawi limebadilishwa: "+branch.name+". Cart ya awali imeondolewa ili kuzuia mauzo kwenye tawi lisilo sahihi.");}} style={[s.navItem,branchId===branch.id&&s.navOn]}><Text style={[s.navText,branchId===branch.id&&s.navTextOn]}>{branch.name}</Text></Pressable>)}</View></ScrollView>}
   <ScrollView contentContainerStyle={s.content}>
     {screen==="Home"&&<>
      <View style={s.hero}><Text style={s.eyebrow}>{effectiveRole==="owner"?"BUSINESS OWNER DASHBOARD":effectiveRole==="manager"?"BUSINESS MANAGER DASHBOARD":effectiveRole==="cashier"?"CASHIER DASHBOARD":"STOCKKEEPER DASHBOARD"}</Text><Text style={s.heroTitle}>Welcome back</Text><Text style={s.muted}>{effectiveRole==="owner"?"Muhtasari wa biashara yako.":effectiveRole==="manager"?"Muhtasari wa shughuli za biashara.":effectiveRole==="cashier"?"Mauzo yako na kazi za kaunta.":"Bidhaa na hali ya stock."}</Text></View>
