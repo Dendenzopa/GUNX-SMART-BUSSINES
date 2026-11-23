@@ -61,15 +61,22 @@ function Dashboard() {
  const reportSalesValue=totalSales(reportSales);
  const reportExpenseValue=reportExpenses.reduce((sum,expense)=>sum+expense.amount,0);
  const reportProfit=netProfit(reportSales,reportExpenses);
+ async function mapProductsForBranch(rows:any[]) {
+  if(!supabase||!shopId||!branchId) return [] as Product[];
+  const {data,error}=await supabase.rpc("get_branch_stock",{p_shop_id:shopId,p_branch_id:branchId});
+  if(error) throw new Error("Imeshindikana kusoma stock ya tawi: "+error.message);
+  const stockByProduct=new Map((data??[]).map((row:any)=>[row.product_id,row]));
+  return rows.map((p:any)=>{const stock=stockByProduct.get(p.id) as any;return {id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price??0),sellingPrice:Number(p.selling_price),stockQuantity:Number(stock?.quantity??0),reorderLevel:Number(stock?.reorder_level??p.reorder_level),active:p.active};});
+ }
  useEffect(() => {
   const unsubscribe=NetInfo.addEventListener(state=>setIsConnected(Boolean(state.isConnected)));
   NetInfo.fetch().then(state=>setIsConnected(Boolean(state.isConnected)));
   return unsubscribe;
  },[]);
  useEffect(() => {
-  if(!shopId)return;
+  if(!shopId||!branchId)return;
   let active=true;
-  Promise.all([readPendingSales(shopId,userId,effectiveRole),readCachedProducts(shopId)]).then(([items,cached])=>{
+  Promise.all([readPendingSales(shopId,userId,effectiveRole),readCachedProducts(shopId,branchId??"")]).then(([items,cached])=>{
    if(!active)return;
    setPendingOutbox(items);
    if(cached.length){
@@ -81,7 +88,7 @@ function Dashboard() {
    if(items.length)setSales(current=>[...items.map(item=>({...item.sale})),...current.filter(sale=>!items.some(item=>item.sale.id===sale.id))]);
   });
   return ()=>{active=false;};
- },[shopId,userId,effectiveRole]);
+ },[shopId,userId,effectiveRole,branchId]);
  useEffect(() => {
   const client=supabase;
   if(!supabaseConfigured||!client||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
@@ -115,7 +122,7 @@ function Dashboard() {
     }
    }
    const {data:latestProducts,error:productsError}=await client.rpc("get_shop_products",{p_shop_id:shopId});
-   if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,mapped);}
+   if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,branchId??"",mapped);}
    syncingOutboxRef.current=false;
   };
   void sync();
@@ -133,17 +140,17 @@ function Dashboard() {
    setNotice("Data ya mwisho iliyohifadhiwa kwenye simu inaonyeshwa. Inatafuta taarifa mpya mtandaoni.");
   });
   supabase.rpc("get_shop_products",{p_shop_id:shopId})
-   .then(({data,error}) => {
+   .then(async ({data,error}) => {
     if (!active) return;
     if (error) setNotice("Imeshindikana kupakia bidhaa: "+error.message);
-    else { const mapped=(data ?? []).map((p:any) => ({id:p.id,name:p.name,sku:p.sku ?? "",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,mapped); }
+    else { try { const mapped=await mapProductsForBranch(data??[]);setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,branchId??"",mapped); } catch(error) { setNotice(error instanceof Error?error.message:"Imeshindikana kupakia stock ya tawi."); } }
     setCloudLoading(false);
    });
   Promise.all([
-   supabase.from("sales").select("*,sale_items(*),payments(method)").eq("shop_id",shopId).order("created_at",{ascending:false}),
-   supabase.from("expenses").select("id,description,category,amount,created_at").eq("shop_id",shopId).order("created_at",{ascending:false}),
-   supabase.from("debts").select("id,customer_id,description,original_amount,balance,created_at,customers(name)").eq("shop_id",shopId).order("created_at",{ascending:false}),
-   supabase.from("sale_refunds").select("refund_total").eq("shop_id",shopId),
+   supabase.from("sales").select("*,sale_items(*),payments(method)").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}),
+   supabase.from("expenses").select("id,description,category,amount,created_at").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}),
+   supabase.from("debts").select("id,customer_id,description,original_amount,balance,created_at,customers(name)").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}),
+   supabase.from("sale_refunds").select("refund_total").eq("shop_id",shopId).eq("branch_id",branchId),
    supabase.rpc("get_sale_item_costs",{p_shop_id:shopId})
   ]).then(async([salesResult,expensesResult,debtsResult,refundsResult,costsResult]) => {
    if(!active) return;
@@ -164,7 +171,7 @@ function Dashboard() {
    }
   });
   return () => { active = false; };
- },[shopId,userId,effectiveRole]);
+ },[shopId,userId,effectiveRole,branchId]);
  async function refreshProductsFromCloud() {
   if(!supabase||!shopId)return;
   const {data,error}=await supabase.rpc("get_shop_products",{p_shop_id:shopId});
@@ -202,7 +209,7 @@ function Dashboard() {
   if(supabaseConfigured){
    if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
    setCloudLoading(true);
-   const {data,error}=await supabase.from("expenses").insert({shop_id:shopId,description:expenseName.trim(),category:"General",amount}).select("id,description,category,amount,created_at").single();
+   const {data,error}=await supabase.from("expenses").insert({shop_id:shopId,branch_id:branchId,description:expenseName.trim(),category:"General",amount}).select("id,description,category,amount,created_at").single();
    setCloudLoading(false);
    if(error){setNotice("Gharama haijahifadhiwa: "+error.message);return;}
    setExpenses(v=>[{id:data.id,description:data.description,category:data.category,amount:Number(data.amount),createdAt:data.created_at},...v]);
