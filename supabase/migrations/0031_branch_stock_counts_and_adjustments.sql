@@ -71,7 +71,7 @@ declare
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
   if p_idempotency_key is null then raise exception 'Adjustment idempotency key required'; end if;
-  if p_adjustment_type not in ('count','damage','loss','correction') then
+  if p_adjustment_type is null or p_adjustment_type not in ('count','damage','loss','correction') then
     raise exception 'Invalid stock adjustment type';
   end if;
   if p_quantity is null or abs(p_quantity) > 100000000 then
@@ -102,10 +102,8 @@ begin
     if v_existing.branch_id is distinct from p_branch_id
        or v_existing.product_id is distinct from p_product_id
        or v_existing.adjustment_type is distinct from p_adjustment_type
-       or v_existing.quantity_change is distinct from
-          case when p_adjustment_type = 'count' then null else
-            case when p_adjustment_type in ('damage','loss') then -p_quantity else p_quantity end
-          end
+       or (p_adjustment_type <> 'count' and v_existing.quantity_change is distinct from
+            case when p_adjustment_type in ('damage','loss') then -p_quantity else p_quantity end)
        or (p_adjustment_type = 'count' and v_existing.quantity_after is distinct from p_quantity)
        or v_existing.reason is distinct from v_reason then
       raise exception 'STOCK_ADJUSTMENT_IDEMPOTENCY_MISMATCH: Key belongs to a different adjustment';
