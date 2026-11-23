@@ -13,7 +13,7 @@ import StaffManagement from "./src/components/StaffManagement";
 import SubscriptionManagement from "./src/components/SubscriptionManagement";
 import ProductManagement from "./src/components/ProductManagement";
 import PlatformOwnerDashboard from "./src/components/PlatformOwnerDashboard";
-type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Returns" | "Sync" | "Payments" | "Reports" | "Staff" | "Subscription" | "Owner";
+type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Returns" | "Sync" | "Payments" | "Reports" | "Staff" | "Subscription" | "Owner" | "DayClose";
 type CartLine = { productId: string; quantity: number };
 function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
 function Metric({label,value}:{label:string;value:string}) { return <View style={s.metric}><Text style={s.label}>{label}</Text><Text style={s.value}>{value}</Text></View>; }
@@ -22,9 +22,9 @@ function Dashboard() {
  const { shopId, isPlatformAdmin, shopRole, userId, branchId, branches, setBranchId } = useShopContext();
  const effectiveRole = shopRole ?? (supabaseConfigured ? "cashier" : "owner");
  const allowedScreens: Record<"owner"|"manager"|"cashier"|"stockkeeper", Screen[]> = {
-  owner: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"],
-  manager: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Reports"],
-  cashier: ["Home","POS","Debts","Sync"],
+  owner: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription","DayClose"],
+  manager: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Reports","DayClose"],
+  cashier: ["Home","POS","Debts","Sync","DayClose"],
   stockkeeper: ["Home","Stock"]
  };
  const visibleScreens = [...allowedScreens[effectiveRole], ...(isPlatformAdmin ? ["Owner" as Screen] : [])];
@@ -51,6 +51,10 @@ function Dashboard() {
  const [isConnected,setIsConnected]=useState<boolean | null>(null);
  const [hasShopProductCache,setHasShopProductCache]=useState(false);
  const [pendingOutbox,setPendingOutbox]=useState<PendingSale[]>([]);
+ const [activeSession,setActiveSession]=useState<{id:string;opened_at:string;opening_cash:number;opened_by:string}|null>(null);
+ const [openingCash,setOpeningCash]=useState("0");
+ const [countedCash,setCountedCash]=useState("");
+ const [sessionBusy,setSessionBusy]=useState(false);
  const syncingOutboxRef=useRef(false);
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
  const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
@@ -67,6 +71,44 @@ function Dashboard() {
   if(error) throw new Error("Imeshindikana kusoma stock ya tawi: "+error.message);
   const stockByProduct=new Map((data??[]).map((row:any)=>[row.product_id,row]));
   return rows.map((p:any)=>{const stock=stockByProduct.get(p.id) as any;return {id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price??0),sellingPrice:Number(p.selling_price),stockQuantity:Number(stock?.quantity??0),reorderLevel:Number(stock?.reorder_level??p.reorder_level),active:p.active};});
+ }
+ useEffect(() => {
+  if(!supabaseConfigured||!supabase||!shopId||!branchId){setActiveSession(null);return;}
+  let active=true;
+  supabase.from("branch_cash_sessions").select("id,opened_at,opening_cash,opened_by")
+   .eq("shop_id",shopId).eq("branch_id",branchId).eq("status","open").maybeSingle()
+   .then(({data,error})=>{if(!active)return;if(error){setNotice("Imeshindikana kusoma session ya tawi: "+error.message);return;}setActiveSession(data?{...data,opening_cash:Number(data.opening_cash)}:null);});
+  return ()=>{active=false;};
+ },[shopId,branchId]);
+ async function refreshActiveSession(){
+  if(!supabase||!shopId||!branchId){setActiveSession(null);return;}
+  const {data,error}=await supabase.from("branch_cash_sessions").select("id,opened_at,opening_cash,opened_by")
+   .eq("shop_id",shopId).eq("branch_id",branchId).eq("status","open").maybeSingle();
+  if(error){setNotice("Imeshindikana kusoma session ya tawi: "+error.message);return;}
+  setActiveSession(data?{...data,opening_cash:Number(data.opening_cash)}:null);
+ }
+ async function openCashSession(){
+  const amount=Number(openingCash);
+  if(!Number.isFinite(amount)||amount<0){setNotice("Weka cash ya mwanzo iliyo sahihi.");return;}
+  if(!supabase||!shopId||!branchId){setNotice("Chagua duka na tawi kabla ya kufungua siku.");return;}
+  setSessionBusy(true);
+  const {data,error}=await supabase.rpc("open_branch_cash_session",{p_shop_id:shopId,p_branch_id:branchId,p_opening_cash:amount});
+  setSessionBusy(false);
+  if(error){setNotice("Session haijafunguliwa: "+error.message);return;}
+  await refreshActiveSession();setNotice("Siku ya biashara imefunguliwa. Mauzo ya tawi hili sasa yanaweza kuanza.");
+ }
+ async function closeCashSession(){
+  const amount=Number(countedCash);
+  if(!Number.isFinite(amount)||amount<0){setNotice("Weka kiasi cha cash ulichohesabu.");return;}
+  if(!supabase||!activeSession){setNotice("Hakuna session iliyo wazi.");return;}
+  if(pendingOutbox.length>0){setNotice("Huwezi kufunga siku wakati kuna mauzo offline yanayosubiri kusawazishwa. Unganisha intaneti na yasawazishe kwanza.");return;}
+  setSessionBusy(true);
+  const {data,error}=await supabase.rpc("close_branch_cash_session",{p_session_id:activeSession.id,p_counted_cash:amount,p_note:null});
+  setSessionBusy(false);
+  if(error){setNotice("Kufunga siku kumeshindikana: "+error.message);return;}
+  const row=Array.isArray(data)?data[0]:data;
+  setActiveSession(null);setCountedCash("");
+  setNotice("Siku imefungwa. Cash inayotarajiwa: "+formatTZS(Number(row?.expected_cash??0))+" · Iliyohesabiwa: "+formatTZS(Number(row?.counted_cash??amount))+" · Tofauti: "+formatTZS(Number(row?.cash_difference??0))+". Ripoti imetumwa kwa usimamizi.");
  }
  useEffect(() => {
   const unsubscribe=NetInfo.addEventListener(state=>setIsConnected(Boolean(state.isConnected)));
@@ -294,6 +336,7 @@ function Dashboard() {
   setNotice("Jaribio la kusawazisha limeanzishwa.");
  }
  async function queueOfflineCheckout(key:string) {
+  if(!activeSession){setNotice("Fungua siku ya biashara kabla ya kuhifadhi mauzo offline.");return;}
   if(!shopId||!branchId){setNotice("Chagua tawi kabla ya kuweka mauzo kwenye foleni.");return;}
   if(!hasShopProductCache){setNotice("Hatujahifadhi orodha ya bidhaa ya duka hili kwenye simu. Unganisha intaneti kwanza ili kupakua bidhaa kabla ya kutumia POS offline.");return;}
   const lines=cart.map(line=>{const p=products.find(item=>item.id===line.productId);if(!p)throw new Error("Bidhaa haipo kwenye orodha ya ndani.");if(line.quantity>p.stockQuantity)throw new Error("Stock ya "+p.name+" haitoshi kulingana na cache ya mwisho.");return {productId:p.id,productName:p.name,quantity:line.quantity,unitPrice:p.sellingPrice,unitCost:p.costPrice,lineTotal:p.sellingPrice*line.quantity};});
@@ -309,6 +352,7 @@ function Dashboard() {
   setScreen("Home");
  }
  async function checkout() {
+  if(supabaseConfigured&&!activeSession){setNotice("Fungua siku ya biashara kwenye menyu ya Opening/Closing kabla ya kufanya mauzo.");setScreen("DayClose");return;}
   if(!cart.length){setNotice("Add a product before checkout.");return;}
   if (supabaseConfigured) {
    if(isConnected===false){try{await queueOfflineCheckout(pendingCheckoutKey??makeIdempotencyKey());}catch(e){setNotice("Haikuweza kuhifadhi mauzo offline: "+(e instanceof Error?e.message:"hitilafu"));}return;}
@@ -343,7 +387,7 @@ function Dashboard() {
      {(effectiveRole==="owner"||effectiveRole==="manager")&&<><View style={s.row}><Metric label="TOTAL SALES" value={formatTZS(totalSales(sales))}/><Metric label="EST. NET PROFIT*" value={formatTZS(netProfit(sales,expenses))}/></View><View style={s.row}><Metric label="LOW STOCK" value={lowStock+" items"}/><Metric label="SALES COUNT" value={String(sales.length)}/></View><View style={s.row}><Metric label="MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/><Metric label="GHARAMA" value={formatTZS(expenses.reduce((a,x)=>a+x.amount,0))}/></View></>}
      {effectiveRole==="cashier"&&<><View style={s.row}><Metric label="MAUZO YAKO" value={formatTZS(totalSales(sales))}/><Metric label="IDADI YA RISITI" value={String(sales.length)}/></View><Text style={s.muted}>Takwimu hizi zinahusu mauzo yaliyohusishwa na akaunti yako pekee.</Text></>}
      {effectiveRole==="stockkeeper"&&<><View style={s.row}><Metric label="BIDHAA ZINAZOFUATILIWA" value={String(products.filter(p=>p.active).length)}/><Metric label="LOW STOCK" value={lowStock+" items"}/></View><Text style={s.muted}>Una ruhusa ya kuona bidhaa na kupokea stock; taarifa za fedha hazionyeshwi.</Text></>}
-     <Text style={s.heading}>Quick actions</Text><View style={s.row}>{(effectiveRole==="cashier"?[["＋ New sale","POS"]]:effectiveRole==="stockkeeper"?[["View stock","Stock"]]:[["＋ New sale","POS"],["View stock","Stock"]]).map(([label,target])=><View key={target} style={s.flex}><Button label={label} quiet={target==="Stock"} onPress={()=>setScreen(target as Screen)}/></View>)}</View>
+     <Text style={s.heading}>Quick actions</Text><View style={s.row}><View style={s.flex}><Button label="Opening / Closing" quiet onPress={()=>setScreen("DayClose")}/></View>{(effectiveRole==="cashier"?[["＋ New sale","POS"]]:effectiveRole==="stockkeeper"?[["View stock","Stock"]]:[["＋ New sale","POS"],["View stock","Stock"]]).map(([label,target])=><View key={target} style={s.flex}><Button label={label} quiet={target==="Stock"} onPress={()=>setScreen(target as Screen)}/></View>)}</View>
      <Text style={s.notice}>{isConnected===false?"OFFLINE · ":isConnected===true?"ONLINE · ":""}{pendingOutbox.length>0?pendingOutbox.length+" mauzo yanasubiri kusawazishwa. ":""}{notice}</Text>
      {(effectiveRole==="owner"||effectiveRole==="manager")&&<Text style={s.foot}>{supabaseConfigured ? "*Makadirio ya faida kutokana na mauzo, gharama na refunds zilizopakiwa; hakiki hesabu kabla ya maamuzi ya fedha." : "*Demo estimate only. Not connected to a live business database."}</Text>}
     </>}
@@ -355,7 +399,8 @@ function Dashboard() {
    {screen==="Sync"&&<><Text style={s.pageTitle}>Offline Sync Review</Text><Text style={s.muted}>Mauzo yaliyohifadhiwa kwenye simu lakini bado hayajathibitishwa na server. Usifute rekodi hizi kama fedha tayari zimepokelewa.</Text><View style={s.panel}><Metric label="MAUZO YANAYOSUBIRI" value={String(pendingOutbox.length)}/><Text style={s.muted}>Hali ya mtandao: {isConnected===true?"ONLINE":isConnected===false?"OFFLINE":"INAKAGUA"}</Text></View>{pendingOutbox.length===0?<Text style={s.notice}>Hakuna mauzo yanayosubiri kusawazishwa.</Text>:pendingOutbox.map(item=><View key={item.idempotencyKey} style={s.panel}><Text style={s.item}>{item.sale.receiptNumber}</Text><Text style={s.muted}>{new Date(item.queuedAt).toLocaleString("sw-TZ")} · {item.items.length} bidhaa</Text>{item.sale.lines.map((line,index)=><Text key={line.productId+index} style={s.muted}>{line.productName} × {line.quantity} · {formatTZS(line.lineTotal)}</Text>)}<Text style={s.total}>{formatTZS(item.sale.total)}</Text><Text style={s.notice}>{item.syncIssue==="PRICE_CHANGED"?"Bei ya server imebadilika. Muamala umefungwa kwa ukaguzi wa mmiliki; thibitisha bei na mteja kabla ya kuamua hatua inayofuata.":item.syncIssue==="STOCK_CHANGED"?"Stock ya server haitoshi. Kagua stock na uthibitishe kama mauzo yalifanyika kabla ya kuendelea.":item.syncIssue==="SYNC_FAILED"?"Server haikupokea muamala. Jaribu tena baada ya kuthibitisha intaneti na hali ya database.":"Inasubiri kusawazishwa; bado si mauzo yaliyothibitishwa."}</Text>{(!item.syncIssue||item.syncIssue==="SYNC_FAILED")&&<Button label="Jaribu kusawazisha tena" quiet onPress={()=>retryPendingSale(item.idempotencyKey)}/>}</View>)}<Text style={s.foot}>Bei au stock ikibadilika, app haibadilishi bei kimyakimya wala haifuti mauzo. Mmiliki anapaswa kulinganisha risiti ya mteja na rekodi za server kabla ya kuchukua hatua.</Text></>}
    {screen==="Payments"&&<><Text style={s.pageTitle}>Payment Instructions</Text><Text style={s.muted}>Manual payment details supplied by the business owner. Confirm the recipient and amount before sending.</Text><View style={s.panel}><Text style={s.eyebrow}>HALOPESA</Text><Text style={s.paymentNumber}>0621665181</Text><Text style={s.item}>REORNADA BINARY RHESPICIOUS</Text><Text style={s.muted}>Use this number for HaloPesa payments.</Text></View><View style={s.panel}><Text style={s.eyebrow}>M-PESA</Text><Text style={s.paymentNumber}>0797665181</Text><Text style={s.item}>ELIAS PAUL MARWA</Text><Text style={s.muted}>Use this number for M-Pesa payments.</Text></View><Text style={s.notice}>IMPORTANT: These are manual payment instructions only. App payment verification, automatic Pro activation and provider API callbacks are not connected yet. Never mark a payment as successful based only on a screenshot or customer message.</Text></>}
    {screen==="Reports"&&<><Text style={s.pageTitle}>Ripoti za Biashara</Text><Text style={s.muted}>{supabaseConfigured ? "Muhtasari wa miamala iliyopakiwa kutoka database ya duka." : "Muhtasari wa data ya majaribio pekee."}</Text><View style={s.panel}><Text style={s.heading}>Chagua kipindi</Text><View style={s.row}>{([{id:"today",label:"Leo"},{id:"7d",label:"Siku 7"},{id:"30d",label:"Siku 30"}] as const).map(option=><Pressable key={option.id} onPress={()=>setReportRange(option.id)} style={[s.navItem,reportRange===option.id&&s.navOn]}><Text style={[s.navText,reportRange===option.id&&s.navTextOn]}>{option.label}</Text></Pressable>)}</View><View style={s.row}>{([{id:"year",label:"Mwaka huu"},{id:"all",label:"Tangu mwanzo"}] as const).map(option=><Pressable key={option.id} onPress={()=>setReportRange(option.id)} style={[s.navItem,reportRange===option.id&&s.navOn]}><Text style={[s.navText,reportRange===option.id&&s.navTextOn]}>{option.label}</Text></Pressable>)}</View></View><View style={s.panel}><Text style={s.heading}>Pakua / Shiriki Ripoti</Text><Text style={s.muted}>PDF kwa ripoti rasmi, au CSV inayofunguka kwenye Microsoft Excel na programu nyingine za spreadsheet.</Text><View style={s.row}><View style={s.flex}><Button label="Tengeneza PDF" onPress={()=>exportReport("pdf")}/></View><View style={s.flex}><Button label="Export Excel (CSV)" quiet onPress={()=>exportReport("csv")}/></View></View></View><Metric label="MAUZO YALIYOTHIBITISHWA" value={formatTZS(reportSalesValue)}/><Metric label="IDADI YA MAUZO" value={String(reportSales.filter(sale=>sale.status!=="pending_sync").length)}/><Metric label="REFUNDS (JUMLA YA HISTORIA)" value={formatTZS(refundTotal)}/><Metric label="GHARAMA ZA KIPINDI" value={formatTZS(reportExpenseValue)}/><Metric label="FAIDA HALISI YA MAKADIRIO" value={formatTZS(reportProfit)}/><Text style={s.foot}>Ripoti inachuja mauzo na gharama kwa tarehe ya muamala. Refunds zinaonyeshwa kama jumla ya historia kwa sababu snapshot ya sasa haina tarehe ya kila refund. Mauzo yanayosubiri sync hayahesabiwi. Faida ni makadirio kabla ya kodi na gharama ambazo hazijaingizwa.</Text></>}
-     {screen==="Owner"&&isPlatformAdmin&&<PlatformOwnerDashboard/>}
+     {screen==="DayClose"&&<><Text style={s.pageTitle}>Ufunguzi na Kufunga Siku</Text><Text style={s.muted}>Kila tawi lina session yake. Thibitisha cash ya mwanzo kabla ya mauzo, kisha funga siku baada ya kuhesabu cash halisi.</Text>{activeSession?<View style={s.panel}><Text style={s.eyebrow}>SESSION ILIYO WAZI</Text><Text style={s.item}>Imefunguliwa: {new Date(activeSession.opened_at).toLocaleString("sw-TZ")}</Text><Text style={s.muted}>Cash ya mwanzo: {formatTZS(activeSession.opening_cash)}</Text><TextInput value={countedCash} onChangeText={setCountedCash} placeholder="Cash halisi iliyohesabiwa (TZS)" placeholderTextColor="#8194A5" keyboardType="decimal-pad" style={s.field}/><Button label={sessionBusy?"Inafunga...":"Funga siku na tuma ripoti"} onPress={closeCashSession}/><Text style={s.foot}>Kama kuna mauzo offline yanayosubiri, yafanyie sync kabla ya kufunga.</Text></View>:<View style={s.panel}><Text style={s.eyebrow}>HAKUNA SESSION ILIYO WAZI</Text><Text style={s.copy}>Hakikisha cash ya mwanzo imehesabiwa kisha fungua siku ya tawi hili.</Text><TextInput value={openingCash} onChangeText={setOpeningCash} placeholder="Cash ya mwanzo (TZS)" placeholderTextColor="#8194A5" keyboardType="decimal-pad" style={s.field}/><Button label={sessionBusy?"Inafungua...":"Fungua siku ya biashara"} onPress={openCashSession}/></View>}</>}
+   {screen==="Owner"&&isPlatformAdmin&&<PlatformOwnerDashboard/>}
      {screen==="Staff"&&effectiveRole==="owner"&&<StaffManagement/>}
      {screen==="Subscription"&&effectiveRole==="owner"&&<SubscriptionManagement/>}
   </ScrollView>
