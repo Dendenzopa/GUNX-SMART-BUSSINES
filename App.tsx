@@ -93,9 +93,11 @@ function Dashboard() {
     try{
      const result=await submitCheckout({shopId:item.shopId,idempotencyKey:item.idempotencyKey,items:item.items,paymentMethod:"cash",expectedTotal:item.sale.total});
      const {data:confirmedSale}=await client.from("sales").select("*,sale_items(*),payments(method)").eq("id",result.saleId).single();
+     const costResult=(effectiveRole==="owner"||effectiveRole==="manager")?await client.rpc("get_sale_item_costs",{p_shop_id:shopId,p_sale_id:result.saleId}):{data:[]};
+     const costByItemId=new Map((costResult.data??[]).map((row:any)=>[row.sale_item_id,Number(row.unit_cost_snapshot)]));
      setSales(current=>current.map(sale=>sale.id===item.sale.id?(confirmedSale?{
       id:confirmedSale.id,receiptNumber:confirmedSale.receipt_number,createdAt:confirmedSale.created_at,
-      lines:(confirmedSale.sale_items??[]).map((line:any)=>({id:line.id,productId:line.product_id??"",productName:line.product_name_snapshot,quantity:Number(line.quantity),unitPrice:Number(line.unit_price),unitCost:Number(line.unit_cost_snapshot),lineTotal:Number(line.line_total)})),
+      lines:(confirmedSale.sale_items??[]).map((line:any)=>({id:line.id,productId:line.product_id??"",productName:line.product_name_snapshot,quantity:Number(line.quantity),unitPrice:Number(line.unit_price),unitCost:Number(costByItemId.get(line.id)??0),lineTotal:Number(line.line_total)})),
       subtotal:Number(confirmedSale.subtotal),discount:Number(confirmedSale.discount),total:Number(confirmedSale.total),amountPaid:Number(confirmedSale.amount_paid),balance:Math.max(0,Number(confirmedSale.total)-Number(confirmedSale.amount_paid)),paymentMethod:confirmedSale.payments?.[0]?.method??"cash",status:"completed"
      }:{...sale,id:result.saleId,receiptNumber:result.receiptNumber,total:result.total,subtotal:result.total,amountPaid:result.total,balance:0,status:"completed"}):sale));
      remaining=remaining.filter(entry=>entry.idempotencyKey!==item.idempotencyKey);
@@ -112,7 +114,7 @@ function Dashboard() {
      break;
     }
    }
-   const {data:latestProducts,error:productsError}=await client.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
+   const {data:latestProducts,error:productsError}=await client.rpc("get_shop_products",{p_shop_id:shopId});
    if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,mapped);}
    syncingOutboxRef.current=false;
   };
@@ -130,7 +132,7 @@ function Dashboard() {
    setRefundTotal(snapshot.refundTotal);
    setNotice("Data ya mwisho iliyohifadhiwa kwenye simu inaonyeshwa. Inatafuta taarifa mpya mtandaoni.");
   });
-  supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name")
+  supabase.rpc("get_shop_products",{p_shop_id:shopId})
    .then(({data,error}) => {
     if (!active) return;
     if (error) setNotice("Imeshindikana kupakia bidhaa: "+error.message);
@@ -141,10 +143,13 @@ function Dashboard() {
    supabase.from("sales").select("*,sale_items(*),payments(method)").eq("shop_id",shopId).order("created_at",{ascending:false}),
    supabase.from("expenses").select("id,description,category,amount,created_at").eq("shop_id",shopId).order("created_at",{ascending:false}),
    supabase.from("debts").select("id,customer_id,description,original_amount,balance,created_at,customers(name)").eq("shop_id",shopId).order("created_at",{ascending:false}),
-   supabase.from("sale_refunds").select("refund_total").eq("shop_id",shopId)
-  ]).then(async([salesResult,expensesResult,debtsResult,refundsResult]) => {
+   supabase.from("sale_refunds").select("refund_total").eq("shop_id",shopId),
+   supabase.rpc("get_sale_item_costs",{p_shop_id:shopId})
+  ]).then(async([salesResult,expensesResult,debtsResult,refundsResult,costsResult]) => {
    if(!active) return;
-   const mappedSales:Sale[]|null=!salesResult.error&&salesResult.data?salesResult.data.map((r:any):Sale=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({id:x.id,productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:Number(x.unit_cost_snapshot),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":"completed"})):null;
+   const costByItemId=new Map((costsResult.data??[]).map((row:any)=>[row.sale_item_id,Number(row.unit_cost_snapshot)]));
+   const mappedSales:Sale[]|null=!salesResult.error&&salesResult.data?salesResult.data.map((r:any):Sale=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({id:x.id,productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:Number(costByItemId.get(x.id)??0),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":"completed"})):null;
+   if(costsResult.error)setNotice("Gharama za bidhaa hazijapakiwa. Faida haitakuwa sahihi hadi mmiliki akague ruhusa za database.");
    const mappedExpenses=!expensesResult.error&&expensesResult.data?expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),createdAt:e.created_at})):null;
    const mappedDebts=!debtsResult.error&&debtsResult.data?debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.[0]?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})):null;
    const mappedRefunds=!refundsResult.error&&refundsResult.data?refundsResult.data.reduce((sum:number,row:any)=>sum+Number(row.refund_total),0):null;
@@ -162,7 +167,7 @@ function Dashboard() {
  },[shopId,userId,effectiveRole]);
  async function refreshProductsFromCloud() {
   if(!supabase||!shopId)return;
-  const {data,error}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
+  const {data,error}=await supabase.rpc("get_shop_products",{p_shop_id:shopId});
   if(!error&&data){const mapped=data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,mapped);}
  }
  function add(p:Product) { if(pendingCheckoutKey){setNotice("Malizia au thibitisha mauzo yaliyosubiri kabla ya kubadilisha cart.");return;} setCart(current=>{const q=(current.find(x=>x.productId===p.id)?.quantity||0)+1;if(q>p.stockQuantity){setNotice("Stock limit reached.");return current;}return current.some(x=>x.productId===p.id)?current.map(x=>x.productId===p.id?{...x,quantity:q}:x):[...current,{productId:p.id,quantity:1}];});setNotice(p.name+" added to cart."); }
@@ -307,7 +312,7 @@ function Dashboard() {
    try {
     const result=await submitCheckout({shopId,idempotencyKey:key,items:cart.map(x=>({product_id:x.productId,quantity:x.quantity})),paymentMethod:"cash"});
     setCart([]);setPendingCheckoutKey(null);
-    const {data,error}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
+    const {data,error}=await supabase.rpc("get_shop_products",{p_shop_id:shopId});
     if(!error&&data){const mapped=data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped);}
     setNotice("Mauzo yamehifadhiwa: "+result.receiptNumber+" · "+formatTZS(result.total));
     setScreen("Home");
