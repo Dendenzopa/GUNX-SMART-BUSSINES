@@ -153,7 +153,9 @@ $$;
 revoke all on function public.set_platform_shop_suspension(uuid,boolean,text) from public, anon;
 grant execute on function public.set_platform_shop_suspension(uuid,boolean,text) to authenticated;
 
-create or replace function public.get_platform_shop_directory(
+drop function if exists public.get_platform_shop_directory(text, integer);
+
+create function public.get_platform_shop_directory(
   p_search text default null,
   p_limit integer default 100
 )
