@@ -29,7 +29,7 @@ begin
   if auth.uid() is null or not public.is_platform_admin() then
     raise exception 'Platform administrator access required' using errcode = '42501';
   end if;
-  if p_status not in ('pending','verified','rejected','all') then
+  if p_status is null or p_status not in ('pending','verified','rejected','all') then
     raise exception 'Invalid payment request status';
   end if;
   if p_limit is null or p_limit < 1 or p_limit > 100 then
