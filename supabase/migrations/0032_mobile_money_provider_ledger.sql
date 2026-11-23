@@ -50,7 +50,13 @@ declare
   v_receipt text;
   v_total numeric;
   v_existing_provider text;
+  v_existing_method text;
 begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if not public.has_shop_role(p_shop_id,array['owner','manager','cashier'])
+     or not public.has_branch_access(p_shop_id,p_branch_id) then
+    raise exception 'Not permitted to checkout in this branch';
+  end if;
   if p_payment_method = 'mobile_money' then
     if p_payment_provider is null or p_payment_provider not in ('mpesa','airtel_money','tigo_pesa','halopesa') then
       raise exception 'Choose a supported mobile-money provider';
@@ -63,14 +69,17 @@ begin
     p_shop_id::text || ':provider-checkout:' || p_idempotency_key::text, 0
   ));
 
-  select s.id, s.receipt_number, s.total, pay.provider
-    into v_sale_id, v_receipt, v_total, v_existing_provider
+  select s.id, s.receipt_number, s.total, pay.provider, pay.method
+    into v_sale_id, v_receipt, v_total, v_existing_provider, v_existing_method
   from public.checkout_requests cr
   join public.sales s on s.id = cr.sale_id
-  left join public.payments pay on pay.sale_id = s.id and pay.method = 'mobile_money'
+  left join public.payments pay on pay.sale_id = s.id
   where cr.shop_id = p_shop_id and cr.idempotency_key = p_idempotency_key;
 
   if v_sale_id is not null then
+    if v_existing_method is not null and v_existing_method is distinct from p_payment_method then
+      raise exception 'PAYMENT_METHOD_IDEMPOTENCY_MISMATCH: Retry must use the original payment method';
+    end if;
     if v_existing_provider is not null and v_existing_provider is distinct from p_payment_provider then
       raise exception 'PAYMENT_PROVIDER_IDEMPOTENCY_MISMATCH: Retry must use the original provider';
     end if;
@@ -167,7 +176,19 @@ declare
   v_refund_id uuid;
   v_total numeric;
   v_existing_provider text;
+  v_existing_method text;
+  v_sale_branch uuid;
 begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if not public.has_shop_role(p_shop_id,array['owner','manager'])
+     or not public.has_branch_access(p_shop_id,p_branch_id) then
+    raise exception 'Not permitted to refund in this branch';
+  end if;
+  select s.branch_id into v_sale_branch from public.sales s
+  where s.id=p_sale_id and s.shop_id=p_shop_id;
+  if not found or v_sale_branch is distinct from p_branch_id then
+    raise exception 'Sale does not belong to the selected branch';
+  end if;
   if p_refund_method = 'mobile_money' then
     if p_refund_provider is null or p_refund_provider not in ('mpesa','airtel_money','tigo_pesa','halopesa') then
       raise exception 'Choose a supported mobile-money refund provider';
@@ -179,11 +200,14 @@ begin
   perform pg_advisory_xact_lock(hashtextextended(
     p_shop_id::text || ':provider-refund:' || p_idempotency_key::text, 0
   ));
-  select r.id,r.refund_total,r.refund_provider
-    into v_refund_id,v_total,v_existing_provider
+  select r.id,r.refund_total,r.refund_provider,r.refund_method
+    into v_refund_id,v_total,v_existing_provider,v_existing_method
   from public.sale_refunds r
   where r.shop_id=p_shop_id and r.idempotency_key=p_idempotency_key;
   if v_refund_id is not null then
+    if v_existing_method is distinct from p_refund_method then
+      raise exception 'REFUND_METHOD_IDEMPOTENCY_MISMATCH: Retry must use the original refund method';
+    end if;
     if v_existing_provider is not null and v_existing_provider is distinct from p_refund_provider then
       raise exception 'REFUND_PROVIDER_IDEMPOTENCY_MISMATCH: Retry must use the original provider';
     end if;
