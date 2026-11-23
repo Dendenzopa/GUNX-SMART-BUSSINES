@@ -3,6 +3,7 @@ import type { DebtEntry, Expense, Product, Sale } from "../domain/types";
 
 export interface PendingSale {
   shopId: string;
+  branchId: string;
   idempotencyKey: string;
   items: { product_id: string; quantity: number }[];
   sale: Sale;
