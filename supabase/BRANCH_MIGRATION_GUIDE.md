@@ -1,6 +1,6 @@
 # GUNX SMART BUSINESS — Branch rollout guide
 
-This guide covers migrations `0024` through `0032` on top of the existing `0023_branch_schema_foundation.sql`.
+This guide covers migrations `0024` through `0033` on top of the existing `0023_branch_schema_foundation.sql`.
 
 ## Before applying
 
@@ -22,6 +22,7 @@ Apply exactly in this order:
 7. `0030_require_open_branch_session_for_sales.sql` — requires an open branch session for new POS sales.
 8. `0031_branch_stock_counts_and_adjustments.sql` — adds auditable branch stock counts, damage/loss write-offs and signed corrections with idempotent RPC writes.
 9. `0032_mobile_money_provider_ledger.sql` — records M-Pesa, Airtel Money, Tigo Pesa and HaloPesa separately for POS payments, debt collections, refunds and expenses.
+10. `0033_enterprise_company_groups.sql` — adds company groups, group-level roles, owner-authorized shop linking/unlinking and secure consolidated shop-level sales/expense reporting.
 
 ## Applying with Supabase CLI
 
@@ -93,7 +94,7 @@ Each query should return no rows. If a query returns rows, stop and investigate 
 - These migrations have not yet been executed against the user's live Supabase database.
 - The repository CI validates TypeScript and Expo web export; it does not execute PostgreSQL migrations or prove RLS behavior.
 - Android device tests, concurrent POS/closing tests, and staging RLS tests are still required.
-- Consolidated multi-company/group reporting is not included in this branch rollout.
+- Enterprise group reporting is introduced by migration `0033`; the current AuthGate still selects one shop membership and the app does not yet provide a multi-company switcher or group dashboard.
 
 
 ## Stock count and adjustment verification
@@ -121,3 +122,18 @@ select method, provider, count(*) from public.debt_payments group by method, pro
 select refund_method, refund_provider, count(*) from public.sale_refunds group by refund_method, refund_provider order by refund_method, refund_provider;
 select payment_method, payment_provider, count(*) from public.expenses group by payment_method, payment_provider order by payment_method, payment_provider;
 ```
+
+
+## Enterprise company-group rollout
+
+Migration `0033_enterprise_company_groups.sql` adds a separate group-membership layer without replacing existing shop membership or branch access:
+
+- A user creates a company group and becomes its group owner.
+- Group roles are `group_owner`, `group_admin` and `group_viewer`; these roles do not grant POS, stock or employee access inside member shops.
+- A shop can be linked only when the caller is both a group owner/admin and the owner of that shop. This is an explicit shop-owner consent boundary.
+- The reporting RPC returns per-shop sales totals/counts and expense totals only for the authorized group and a date range of at most 367 days.
+- Group members do not receive direct access to shop tables through this migration.
+
+Before production rollout, test group isolation with two groups, a user who belongs to both groups, a group viewer, a shop owner who is not a group member, and a non-member. Confirm group viewers can read aggregates but cannot mutate group membership or link shops. Confirm unlinking a shop removes it from subsequent reports.
+
+The mobile app still needs a multi-company selector and consolidated reporting screens. The existing `AuthGate` currently loads one shop membership with `limit(1)`; do not describe the group feature as end-to-end complete until that app flow is implemented and tested. Migration 0033 has not been executed against a live PostgreSQL/Supabase database.
