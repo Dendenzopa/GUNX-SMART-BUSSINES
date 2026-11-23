@@ -26,7 +26,7 @@ for each row execute function public.ensure_product_branch_stock();
 
 -- Ensure products created between migration 0024 and this migration also get rows.
 insert into public.branch_stock(shop_id, branch_id, product_id, quantity, reorder_level)
-select p.shop_id, b.id, p.id, 0, p.reorder_level
+select p.shop_id, b.id, p.id, case when b.is_primary then p.stock_quantity else 0 end, p.reorder_level
 from public.products p
 join public.branches b on b.shop_id = p.shop_id and b.active
 on conflict (branch_id, product_id) do nothing;
