@@ -84,14 +84,29 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   async function authenticate() {
     if (!supabase) return;
-    if (!email.trim() || password.length < 8) { setMessage("Weka email na password yenye angalau herufi 8."); return; }
+    const identifier = email.trim();
+    if (!identifier || password.length < 8) {
+      setMessage("Weka email au namba ya simu, pamoja na password yenye angalau herufi 8.");
+      return;
+    }
+    const isEmail = identifier.includes("@");
+    if (mode === "signup" && !isEmail) {
+      setMessage("Kwa sasa usajili mpya unahitaji email. Kuingia kwa simu kunapatikana kwa akaunti zilizosajiliwa kwa namba ya kimataifa, mfano +255...");
+      return;
+    }
+    if (mode === "login" && !isEmail && !/^\\+[1-9]\\d{7,14}$/.test(identifier)) {
+      setMessage("Namba ya simu iwe katika mfumo wa kimataifa, mfano +2557XXXXXXXX.");
+      return;
+    }
     setBusy(true); setMessage("");
     const result = mode === "signup"
-      ? await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: AUTH_REDIRECT_URL } })
-      : await supabase.auth.signInWithPassword({ email: email.trim(), password });
+      ? await supabase.auth.signUp({ email: identifier, password, options: { emailRedirectTo: AUTH_REDIRECT_URL } })
+      : isEmail
+        ? await supabase.auth.signInWithPassword({ email: identifier, password })
+        : await supabase.auth.signInWithPassword({ phone: identifier, password });
     setBusy(false);
     if (result.error) setMessage(result.error.message);
-    else if (mode === "signup" && !result.data.session) setMessage("Akaunti imetengenezwa. Angalia Gmail kuthibitisha email. Usipopata ujumbe, bonyeza Tuma tena email.");
+    else if (mode === "signup" && !result.data.session) setMessage("Akaunti imetengenezwa. Angalia email kuthibitisha akaunti. Usipopata ujumbe, bonyeza Tuma tena email.");
   }
 
   async function resendConfirmation() {
@@ -107,7 +122,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   async function sendPasswordReset() {
-    if (!supabase || !email.trim()) { setMessage("Weka email ya akaunti yako kwanza."); return; }
+    if (!supabase || !email.trim() || !email.trim().includes("@")) { setMessage("Weka email sahihi ya akaunti yako."); return; }
     setBusy(true); setMessage("");
     const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: AUTH_REDIRECT_URL });
     setBusy(false);
@@ -141,7 +156,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (!supabaseConfigured) return <>{children}</>;
   if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
   if (!session || mode === "reset") return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Sahau password?" : mode === "reset" ? "Weka password mpya" : "Karibu tena"}</Text>
-    {mode !== "reset" && <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/>}
+    {mode !== "reset" && <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder={mode === "forgot" ? "Email ya akaunti" : mode === "signup" ? "Email" : "Email au simu (+255...)"} placeholderTextColor="#8194A5" style={a.input}/>}
     {mode === "login" || mode === "signup" ? <TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/> : null}
     {mode === "reset" && <TextInput value={newPassword} onChangeText={setNewPassword} secureTextEntry placeholder="Password mpya (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/>}
     <Pressable disabled={busy} onPress={mode === "signup" || mode === "login" ? authenticate : mode === "forgot" ? sendPasswordReset : saveNewPassword} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "signup" ? "Jisajili" : mode === "forgot" ? "Tuma link ya kubadilisha password" : mode === "reset" ? "Hifadhi password mpya" : "Ingia"}</Text></Pressable>
