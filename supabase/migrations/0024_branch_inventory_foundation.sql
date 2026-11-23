@@ -1,4 +1,6 @@
 -- GUNX SMART BUSINESS: branch-level inventory foundation.
+-- Required by the composite tenant-safe product foreign key below.
+create unique index if not exists products_shop_id_id_unique on public.products(shop_id, id);
 -- This migration is additive: existing checkout/receiving RPCs remain unchanged until
 -- the app is upgraded to pass an explicitly authorized branch_id.
 -- Do not treat branch_stock as live operational stock until the follow-up RPC migration.
