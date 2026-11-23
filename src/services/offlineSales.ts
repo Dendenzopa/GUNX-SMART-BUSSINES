@@ -58,12 +58,12 @@ export interface CachedBusinessSnapshot {
   cachedAt: string;
 }
 
-const snapshotKeyFor = (shopId: string, userId: string | null) => `gunx:business-cache:v2:${shopId}:${userId ?? "unknown"}`;
+const snapshotKeyFor = (shopId: string, userId: string | null, branchId: string) => `gunx:business-cache:v3:${shopId}:${branchId}:${userId ?? "unknown"}`;
 
-export async function readCachedBusinessSnapshot(shopId: string, userId: string | null): Promise<CachedBusinessSnapshot | null> {
-  if (!shopId || !userId) return null;
+export async function readCachedBusinessSnapshot(shopId: string, userId: string | null, branchId: string): Promise<CachedBusinessSnapshot | null> {
+  if (!shopId || !userId || !branchId) return null;
   try {
-    const raw = await AsyncStorage.getItem(snapshotKeyFor(shopId,userId));
+    const raw = await AsyncStorage.getItem(snapshotKeyFor(shopId,userId,branchId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedBusinessSnapshot;
     if (!Array.isArray(parsed.sales) || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.debts) || !Number.isFinite(parsed.refundTotal)) return null;
@@ -73,7 +73,7 @@ export async function readCachedBusinessSnapshot(shopId: string, userId: string 
   }
 }
 
-export async function writeCachedBusinessSnapshot(shopId: string, userId: string | null, snapshot: CachedBusinessSnapshot): Promise<void> {
+export async function writeCachedBusinessSnapshot(shopId: string, userId: string | null, branchId: string, snapshot: CachedBusinessSnapshot): Promise<void> {
   if (!shopId || !userId) return;
   await AsyncStorage.setItem(snapshotKeyFor(shopId,userId), JSON.stringify(snapshot));
 }
