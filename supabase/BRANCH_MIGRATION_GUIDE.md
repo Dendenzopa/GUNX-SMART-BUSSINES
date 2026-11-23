@@ -1,6 +1,6 @@
 # GUNX SMART BUSINESS — Branch rollout guide
 
-This guide covers migrations `0024` through `0033` on top of the existing `0023_branch_schema_foundation.sql`.
+This guide covers migrations `0024` through `0039` on top of the existing `0023_branch_schema_foundation.sql`.
 
 ## Before applying
 
@@ -26,6 +26,9 @@ Apply exactly in this order:
 11. `0034_enterprise_group_debt_stock_branch_reports.sql` — adds group-authorized, branch-level sales/expense performance, outstanding debt balances and cost-based stock valuation.
 12. `0035_guard_company_group_shop_link_consent.sql` — enforces shop-owner and group-owner/admin consent for company-group link/unlink changes, including direct table updates.
 13. `0036_product_photo_uploads.sql` — adds product image URLs and a `product-images` Storage bucket; only shop owners/managers can upload, update or delete images in their shop folder.
+14. `0037_platform_payment_review.sql` — adds Platform Admin-only Pro payment review queue and approval/rejection RPCs.
+15. `0038_platform_shop_directory.sql` — adds a bounded, searchable Platform Admin shop/subscription directory.
+16. `0039_platform_controls_and_shop_suspension.sql` — adds protected app settings, maintenance/announcement/support controls, platform shop suspension, and centrally enforces suspension through `is_shop_member` and `has_shop_role`. It also extends the shop directory with suspension status/reason.
 
 ## Applying with Supabase CLI
 
@@ -177,3 +180,25 @@ The Enterprise Company Group dashboard can export the currently loaded report as
 
 
 Migration `0038_platform_shop_directory.sql` adds the read-only `get_platform_shop_directory(p_search, p_limit)` RPC for the Platform Owner dashboard. It returns up to 200 shops with owner UUID, shop UUID, creation date, effective subscription status, expiry and pending payment count. Search supports shop name, owner UUID or shop UUID. It does not expose customer email/phone or grant direct table access. Test ordinary-user denial, platform-admin access, empty results, UUID/name search, pagination bounds and expired Pro status.
+
+
+## Platform settings and shop suspension
+
+Migration `0039_platform_controls_and_shop_suspension.sql` adds:
+
+- A protected `platform_app_settings` table. No direct client table access is granted; Platform Admin RPCs read and update an allowlisted set of settings (maintenance mode/message, user announcement, support phone and support email).
+- `get_public_platform_settings()` exposes only those safe display settings. The app displays the announcement and shows a maintenance screen to signed-in non-admin users while maintenance mode is enabled. Platform Admins can still sign in to turn maintenance mode off.
+- `set_platform_shop_suspension(shop_id, suspend, reason)` is restricted to Platform Admins and records the actor, reason and timestamp. The shop directory now includes suspension state.
+- Suspension is enforced in both `is_shop_member()` and `has_shop_role()`, so existing shop-scoped RLS policies and role-checked SECURITY DEFINER RPCs deny suspended shop access. The app shows a suspension notice and configured support contact details instead of asking a suspended owner to create another shop.
+
+Staging tests required before production:
+1. A normal authenticated user and anonymous user must be denied all Platform Admin settings and suspension RPCs.
+2. A Platform Admin can read/update settings; public settings expose only the allowlisted display values and never actor IDs or internal configuration.
+3. Enable maintenance mode: signed-in ordinary users see the maintenance screen, Platform Admin can still access the control dashboard and disable it.
+4. Suspend a test shop: owner, manager, cashier and stockkeeper must be denied shop reads and role-checked RPCs, including direct RPC calls. Other shops and company-group membership must remain unaffected.
+5. Restore the shop: original shop roles and access must work again. Confirm the reason, actor and timestamp are visible to Platform Admins.
+6. Test invalid email, oversized settings/reason, repeated suspend/restore, and concurrent admin changes.
+
+Important: shop suspension blocks the shop workspace and its operational role checks; it does not ban the user's Supabase Auth account globally. If a user owns other shops, those shops remain accessible. Maintenance mode is an app-level access gate in the client, not a database-wide kill switch for direct API clients; if strict API-wide maintenance enforcement is required, add a server-side gate to every mutating RPC in a separately reviewed migration.
+
+Migration `0039` has not been executed against PostgreSQL. Validate the full migration chain and the above RLS/RPC tests on staging before production.
