@@ -251,8 +251,8 @@ function Dashboard() {
     setCloudLoading(false);
    });
   Promise.all([
-   supabase.from("sales").select("*,sale_items(*),payments(method)").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}),
-   supabase.from("expenses").select("id,description,category,amount,created_at").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}),
+   supabase.from("sales").select("*,sale_items(*),payments(method,provider)").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}),
+   supabase.from("expenses").select("id,description,category,amount,payment_method,payment_provider,created_at").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}),
    supabase.from("debts").select("id,customer_id,description,original_amount,balance,created_at,customers(name)").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}),
    supabase.from("sale_refunds").select("refund_total").eq("shop_id",shopId).eq("branch_id",branchId),
    supabase.rpc("get_sale_item_costs",{p_shop_id:shopId})
@@ -261,7 +261,7 @@ function Dashboard() {
    const costByItemId=new Map((costsResult.data??[]).map((row:any)=>[row.sale_item_id,Number(row.unit_cost_snapshot)]));
    const mappedSales:Sale[]|null=!salesResult.error&&salesResult.data?salesResult.data.map((r:any):Sale=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({id:x.id,productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:Number(costByItemId.get(x.id)??0),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",paymentProvider:r.payments?.[0]?.provider??undefined,status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":"completed"})):null;
    if(costsResult.error)setNotice("Gharama za bidhaa hazijapakiwa. Faida haitakuwa sahihi hadi mmiliki akague ruhusa za database.");
-   const mappedExpenses=!expensesResult.error&&expensesResult.data?expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),createdAt:e.created_at})):null;
+   const mappedExpenses=!expensesResult.error&&expensesResult.data?expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),paymentMethod:e.payment_method,paymentProvider:e.payment_provider??undefined,createdAt:e.created_at})):null;
    const mappedDebts=!debtsResult.error&&debtsResult.data?debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.[0]?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})):null;
    const mappedRefunds=!refundsResult.error&&refundsResult.data?refundsResult.data.reduce((sum:number,row:any)=>sum+Number(row.refund_total),0):null;
    const [pending]=await Promise.all([readPendingSales(shopId,userId,effectiveRole)]);
