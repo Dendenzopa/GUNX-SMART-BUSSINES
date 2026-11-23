@@ -96,11 +96,15 @@ drop policy if exists payments_role_insert on public.payments;
 drop policy if exists stock_movements_role_insert on public.stock_movements;
 
 -- Catalogue creation/archive belongs to management; stockkeepers use receive_stock().
+-- Migration 0017 already created the management policies, so remove them before
+-- recreating the final definitions to keep this migration safe on a clean install.
 drop policy if exists products_role_insert on public.products;
+drop policy if exists products_management_insert on public.products;
 create policy products_management_insert on public.products
 for insert to authenticated
 with check (public.has_shop_role(shop_id, array['owner','manager']));
 drop policy if exists products_role_delete on public.products;
+drop policy if exists products_management_delete on public.products;
 create policy products_management_delete on public.products
 for delete to authenticated
 using (public.has_shop_role(shop_id, array['owner','manager']));
