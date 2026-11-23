@@ -19,7 +19,9 @@ Apply exactly in this order:
 4. `0027_branch_scoped_financial_workflows.sql` — adds branch-scoped debt/refund workflows and branch-aware RLS.
 5. `0028_initialize_branches_for_new_businesses.sql` — creates primary branches for new shops, seeds stock rows and assigns members to the primary branch by default.
 6. `0029_branch_opening_and_daily_closing.sql` — adds branch cash sessions and daily close reports.
-7. `0030_require_open_branch_session_for_sales.sql` — requires an open branch session for new POS sales.\n8. `0031_branch_stock_counts_and_adjustments.sql` — adds auditable branch stock counts, damage/loss write-offs and signed corrections with idempotent RPC writes.\n9. `0032_mobile_money_provider_ledger.sql` — records M-Pesa, Airtel Money, Tigo Pesa and HaloPesa separately for POS payments, debt collections, refunds and expenses.
+7. `0030_require_open_branch_session_for_sales.sql` — requires an open branch session for new POS sales.
+8. `0031_branch_stock_counts_and_adjustments.sql` — adds auditable branch stock counts, damage/loss write-offs and signed corrections with idempotent RPC writes.
+9. `0032_mobile_money_provider_ledger.sql` — records M-Pesa, Airtel Money, Tigo Pesa and HaloPesa separately for POS payments, debt collections, refunds and expenses.
 
 ## Applying with Supabase CLI
 
@@ -43,7 +45,8 @@ If this project is not using the CLI migration history, open each migration file
 - Existing and newly invited shop members are assigned to the primary branch by default. Owners can adjust assignments in Staff Management.
 - Old offline sales tickets without a branch identifier are recovered into the primary branch.
 - New POS sales require the selected branch to have an open cash session.
-- The old unscoped RPC entry points are revoked from authenticated clients. The updated app must use the new branch-aware RPCs.\n- Stock counts set the branch balance to the physically counted quantity. Damage/loss remove the supplied quantity; corrections accept a signed delta. Every change records the before/after quantity, actor, reason, timestamp and matching stock movement. The global compatibility stock total is adjusted by the same delta.
+- The old unscoped RPC entry points are revoked from authenticated clients. The updated app must use the new branch-aware RPCs.
+- Stock counts set the branch balance to the physically counted quantity. Damage/loss remove the supplied quantity; corrections accept a signed delta. Every change records the before/after quantity, actor, reason, timestamp and matching stock movement. The global compatibility stock total is adjusted by the same delta.
 
 ## Staging verification queries
 
@@ -91,4 +94,30 @@ Each query should return no rows. If a query returns rows, stop and investigate 
 - The repository CI validates TypeScript and Expo web export; it does not execute PostgreSQL migrations or prove RLS behavior.
 - Android device tests, concurrent POS/closing tests, and staging RLS tests are still required.
 - Consolidated multi-company/group reporting is not included in this branch rollout.
-\n\n## Stock count and adjustment verification\n\nAfter applying `0031`, test each operation in staging with a dedicated stockkeeper account and verify that unauthorized users cannot call the RPC or read another branch's adjustment history. Confirm that the following audit query returns one row per successful adjustment and that `quantity_after - quantity_before = quantity_change`:\n\n```sql\nselect id, shop_id, branch_id, product_id, adjustment_type,\n       quantity_before, quantity_after, quantity_change, reason, created_by, created_at\nfrom public.branch_stock_adjustments\norder by created_at desc\nlimit 50;\n```\n\nAlso test duplicate idempotency keys (same payload returns the original adjustment; changed payload is rejected), insufficient stock for damage/loss, decimal quantities to three places, and reconciliation of `products.stock_quantity` against the sum of branch balances.\n\n\n## Mobile-money provider verification\n\nAfter applying `0032`, make a staging sale, debt repayment, refund and expense using each provider. Confirm the generic method remains `mobile_money` and the provider field contains the exact selection. Cash and bank transactions must keep provider fields null. Test idempotent POS retries with the same provider and verify a retry with a different provider is rejected when the original provider was recorded.\n\n```sql\nselect method, provider, count(*) from public.payments group by method, provider order by method, provider;\nselect method, provider, count(*) from public.debt_payments group by method, provider order by method, provider;\nselect refund_method, refund_provider, count(*) from public.sale_refunds group by refund_method, refund_provider order by refund_method, refund_provider;\nselect payment_method, payment_provider, count(*) from public.expenses group by payment_method, payment_provider order by payment_method, payment_provider;\n```\n
+
+
+## Stock count and adjustment verification
+
+After applying `0031`, test each operation in staging with a dedicated stockkeeper account and verify that unauthorized users cannot call the RPC or read another branch's adjustment history. Confirm that the following audit query returns one row per successful adjustment and that `quantity_after - quantity_before = quantity_change`:
+
+```sql
+select id, shop_id, branch_id, product_id, adjustment_type,
+       quantity_before, quantity_after, quantity_change, reason, created_by, created_at
+from public.branch_stock_adjustments
+order by created_at desc
+limit 50;
+```
+
+Also test duplicate idempotency keys (same payload returns the original adjustment; changed payload is rejected), insufficient stock for damage/loss, decimal quantities to three places, and reconciliation of `products.stock_quantity` against the sum of branch balances.
+
+
+## Mobile-money provider verification
+
+After applying `0032`, make a staging sale, debt repayment, refund and expense using each provider. Confirm the generic method remains `mobile_money` and the provider field contains the exact selection. Cash and bank transactions must keep provider fields null. Test idempotent POS retries with the same provider and verify a retry with a different provider is rejected when the original provider was recorded.
+
+```sql
+select method, provider, count(*) from public.payments group by method, provider order by method, provider;
+select method, provider, count(*) from public.debt_payments group by method, provider order by method, provider;
+select refund_method, refund_provider, count(*) from public.sale_refunds group by refund_method, refund_provider order by refund_method, refund_provider;
+select payment_method, payment_provider, count(*) from public.expenses group by payment_method, payment_provider order by payment_method, payment_provider;
+```
