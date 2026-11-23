@@ -103,8 +103,8 @@ begin
        or v_existing.product_id is distinct from p_product_id
        or v_existing.adjustment_type is distinct from p_adjustment_type
        or (p_adjustment_type <> 'count' and v_existing.quantity_change is distinct from
-            case when p_adjustment_type in ('damage','loss') then -p_quantity else p_quantity end)
-       or (p_adjustment_type = 'count' and v_existing.quantity_after is distinct from p_quantity)
+            case when p_adjustment_type in ('damage','loss') then -round(p_quantity, 3) else round(p_quantity, 3) end)
+       or (p_adjustment_type = 'count' and v_existing.quantity_after is distinct from round(p_quantity, 3))
        or v_existing.reason is distinct from v_reason then
       raise exception 'STOCK_ADJUSTMENT_IDEMPOTENCY_MISMATCH: Key belongs to a different adjustment';
     end if;
