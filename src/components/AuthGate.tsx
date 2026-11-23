@@ -25,6 +25,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [branches, setBranches] = useState<BranchOption[]>([]);
   const [branchId, setBranchId] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [platformAdminCheckComplete, setPlatformAdminCheckComplete] = useState(false);
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState("");
+  const [announcementMessage, setAnnouncementMessage] = useState("");
+  const [supportPhone, setSupportPhone] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [hasSuspendedShop, setHasSuspendedShop] = useState(false);
   const [shopLoading, setShopLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
@@ -51,6 +58,21 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       if (!next) { setNeedsShop(false); setShopId(null); setShopRole(null); setShopOptions([]); setGroupOnly(false); setBranches([]); setBranchId(null); setIsPlatformAdmin(false); }
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
+  }, []);
+
+
+  useEffect(() => {
+    if (!supabase) return;
+    let active = true;
+    supabase.rpc("get_public_platform_settings").then(({ data, error }) => {
+      if (!active || error || !data) return;
+      setMaintenanceMode(data.maintenance_mode === true);
+      setMaintenanceMessage(typeof data.maintenance_message === "string" ? data.maintenance_message : "");
+      setAnnouncementMessage(typeof data.announcement_message === "string" ? data.announcement_message : "");
+      setSupportPhone(typeof data.support_phone === "string" ? data.support_phone : "");
+      setSupportEmail(typeof data.support_email === "string" ? data.support_email : "");
+    });
+    return () => { active = false; };
   }, []);
 
   // Do not leave the opening spinner running forever if local session storage is slow.
@@ -83,12 +105,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     // Clear the previous account's UI privilege immediately while the server
     // checks the newly signed-in account. The dashboard RPC remains authoritative.
     setIsPlatformAdmin(false);
-    if (!session || !supabase) return;
+    setPlatformAdminCheckComplete(false);
+    if (!session || !supabase) { setPlatformAdminCheckComplete(true); return; }
     let active = true;
     void registerAppInstallation();
     void recordSignedInActivity();
     supabase.rpc("is_platform_admin").then(({ data, error }) => {
-      if (active) setIsPlatformAdmin(!error && data === true);
+      if (active) {
+        setIsPlatformAdmin(!error && data === true);
+        setPlatformAdminCheckComplete(true);
+      }
     });
     return () => { active = false; };
   }, [session]);
@@ -121,18 +147,21 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           setShopOptions([]);
           setNeedsShop(false);
         } else {
-          const options = (data ?? []).map((row: any) => ({
+          const rows = data ?? [];
+          const suspended = rows.some((row: any) => !row.shops?.id);
+          const options = rows.filter((row: any) => !!row.shops?.id).map((row: any) => ({
             id: row.shop_id,
-            name: row.shops?.name ?? "Biashara",
+            name: row.shops.name,
             role: row.role as ShopRole
           }));
+          setHasSuspendedShop(suspended);
           setShopOptions(options);
           if (options.length === 0) {
             const { data: groupRows, error: groupError } = await client.from("company_group_members").select("group_id").eq("user_id", session.user.id).limit(1);
             if (!active) return;
             const hasGroupAccess = !groupError && (groupRows?.length ?? 0) > 0;
             setGroupOnly(hasGroupAccess);
-            setNeedsShop(!hasGroupAccess && !groupError);
+            setNeedsShop(!hasGroupAccess && !groupError && !suspended);
           } else {
             setGroupOnly(false);
             setNeedsShop(false);
@@ -228,11 +257,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (loading && !sessionCheckTimedOut) return <SafeAreaView style={a.safe}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inafungua akaunti yako...</Text></SafeAreaView>;
   if (loading && sessionCheckTimedOut) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.title}>Kufungua app kunachukua muda</Text><Text style={a.copy}>{message || "Imeshindikana kusoma taarifa za akaunti kwa wakati. Hakikisha simu ina intaneti kisha jaribu tena."}</Text><Pressable onPress={retrySessionCheck} style={a.button}><Text style={a.buttonText}>Jaribu tena</Text></Pressable></View></SafeAreaView>;
   if (!session) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "login" ? "Karibu tena" : "Fungua akaunti"}</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={authenticate} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "login" ? "Ingia" : "Jisajili"}</Text></Pressable><Pressable onPress={()=>{setMode(mode === "login" ? "signup" : "login");setMessage("");}}><Text style={a.link}>{mode === "login" ? "Huna akaunti? Jisajili" : "Tayari una akaunti? Ingia"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}</View></SafeAreaView>;
+  if (session && platformAdminCheckComplete && maintenanceMode && !isPlatformAdmin) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Matengenezo ya mfumo</Text><Text style={a.copy}>{maintenanceMessage || "Mfumo unafanyiwa maboresho. Tafadhali jaribu tena baadaye."}</Text><Pressable onPress={()=>supabase?.auth.signOut()} style={a.button}><Text style={a.buttonText}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
+  if (session && hasSuspendedShop && shopOptions.length === 0 && !groupOnly) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Biashara imesitishwa</Text><Text style={a.copy}>Ufikiaji wa biashara hii umesimamishwa na msimamizi wa mfumo. Wasiliana na GUNX Support ili kupata maelezo zaidi.</Text>{!!supportPhone && <Text style={a.copy}>Simu ya msaada: {supportPhone}</Text>}{!!supportEmail && <Text style={a.copy}>Email: {supportEmail}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()} style={a.button}><Text style={a.buttonText}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha duka lako...</Text></SafeAreaView>;
   if (session && !shopId && shopOptions.length > 1) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Chagua biashara</Text><Text style={a.copy}>Akaunti hii ina biashara zaidi ya moja. Chagua biashara unayotaka kusimamia sasa.</Text>{shopOptions.map(option=><Pressable key={option.id} onPress={()=>{setShopId(option.id);setShopRole(option.role);setMessage("");}} style={a.shopChoice}><Text style={a.shopName}>{option.name}</Text><Text style={a.copy}>Nafasi: {option.role}</Text></Pressable>)}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   if (session && !shopId && !needsShop && !groupOnly) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Duka halijathibitishwa</Text><Text style={a.copy}>{message || "Imeshindikana kuthibitisha uanachama wa duka. Hakuna taarifa za demo zitakazoonyeshwa kama data halisi."}</Text><Pressable onPress={()=>supabase?.auth.signOut()} style={a.button}><Text style={a.buttonText}>Toka kisha ujaribu tena</Text></Pressable></View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
-  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole, groupOnly, branchId, branches, setBranchId }}>{children}</ShopContext.Provider>;
+  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole, groupOnly, branchId, branches, setBranchId }}><View style={{flex:1}}>{!!announcementMessage && !maintenanceMode && <View style={a.announcement}><Text style={a.announcementText}>{announcementMessage}</Text></View>}{children}</View></ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
@@ -249,5 +280,7 @@ const a = StyleSheet.create({
   message:{color:"#F2D99F",fontSize:12,lineHeight:18,marginTop:13},
   warning:{color:"#F2D99F",fontSize:12,marginTop:14},
   shopChoice:{backgroundColor:"#0B1B2A",borderWidth:1,borderColor:"#2B4B61",borderRadius:11,padding:14,marginTop:10},
-  shopName:{color:"#F4F7FA",fontSize:15,fontWeight:"800"}
+  shopName:{color:"#F4F7FA",fontSize:15,fontWeight:"800"},
+  announcement:{backgroundColor:"#153A36",borderBottomWidth:1,borderBottomColor:"#28735C",padding:10},
+  announcementText:{color:"#B7F0D8",fontSize:12,fontWeight:"700",textAlign:"center"}
 });
