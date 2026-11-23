@@ -280,3 +280,8 @@ drop policy if exists expenses_member_delete on public.expenses;
 create policy expenses_branch_delete on public.expenses
 for delete to authenticated
 using (public.has_branch_access(shop_id, branch_id) and public.has_shop_role(shop_id, array['owner','manager']));
+
+-- Debt RPCs without branch arguments must not remain callable by clients.
+-- The branch-aware wrappers above invoke them as the function owner.
+revoke all on function public.create_manual_debt(uuid,text,numeric,text) from public, authenticated;
+revoke all on function public.record_debt_payment(uuid,numeric,text,text) from public, authenticated;
