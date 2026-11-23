@@ -8,6 +8,7 @@ export interface CheckoutLineInput {
 
 export interface CheckoutInput {
   shopId: string;
+  branchId: string;
   idempotencyKey: string;
   items: CheckoutLineInput[];
   paymentMethod: PaymentMethod;
@@ -29,7 +30,7 @@ export interface CheckoutResult {
  */
 export async function submitCheckout(input: CheckoutInput): Promise<CheckoutResult> {
   if (!supabase) throw new Error("Supabase haijaunganishwa. Weka environment variables kwanza.");
-  if (!input.shopId || !input.idempotencyKey) throw new Error("Shop ID na idempotency key vinahitajika.");
+  if (!input.shopId || !input.branchId || !input.idempotencyKey) throw new Error("Shop ID na idempotency key vinahitajika.");
   if (!input.items.length) throw new Error("Weka angalau bidhaa moja.");
   for (const item of input.items) {
     if (!item.product_id || !Number.isFinite(item.quantity) || item.quantity <= 0) {
@@ -37,8 +38,9 @@ export async function submitCheckout(input: CheckoutInput): Promise<CheckoutResu
     }
   }
 
-  const { data, error } = await supabase.rpc("checkout_sale", {
+  const { data, error } = await supabase.rpc("checkout_sale_in_branch", {
     p_shop_id: input.shopId,
+    p_branch_id: input.branchId,
     p_idempotency_key: input.idempotencyKey,
     p_items: input.items,
     p_payment_method: input.paymentMethod,
