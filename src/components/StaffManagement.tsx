@@ -5,6 +5,7 @@ import { supabase } from "../lib/supabase";
 
 type Role = "manager" | "cashier" | "stockkeeper";
 type Member = { user_id: string; role: string };
+type Branch = { id: string; name: string; code: string };
 const roles: { id: Role; label: string; detail: string }[] = [
   { id: "manager", label: "Meneja", detail: "Usimamizi wa shughuli za duka" },
   { id: "cashier", label: "Cashier", detail: "Mauzo na malipo" },
@@ -14,6 +15,10 @@ const roles: { id: Role; label: string; detail: string }[] = [
 export default function StaffManagement() {
   const { shopId } = useShopContext();
   const [members, setMembers] = useState<Member[]>([]);
+  const [branches, setBranches] = useState<Branch[]>([]);
+  const [assignments, setAssignments] = useState<Record<string,string[]>>({});
+  const [branchName, setBranchName] = useState("");
+  const [branchCode, setBranchCode] = useState("");
   const [email, setEmail] = useState("");
   const [role, setRole] = useState<Role>("cashier");
   const [owner, setOwner] = useState(false);
@@ -30,12 +35,51 @@ export default function StaffManagement() {
     if (error) { setNotice("Imeshindikana kupakia wafanyakazi: " + error.message); setLoading(false); return; }
     const rows = (data ?? []) as Member[];
     setMembers(rows);
+    const [{ data: branchRows, error: branchError }, { data: assignmentRows, error: assignmentError }] = await Promise.all([
+      supabase.from("branches").select("id,name,code").eq("shop_id",shopId).eq("active",true).order("name"),
+      supabase.from("shop_member_branches").select("user_id,branch_id").eq("shop_id",shopId)
+    ]);
+    if (branchError) setNotice("Matawi hayajapakiwa: " + branchError.message);
+    else setBranches((branchRows ?? []) as Branch[]);
+    if (assignmentError) setNotice("Assignments hazijapakiwa: " + assignmentError.message);
+    else {
+      const next: Record<string,string[]> = {};
+      (assignmentRows ?? []).forEach((row: {user_id:string;branch_id:string}) => { next[row.user_id] = [...(next[row.user_id] ?? []),row.branch_id]; });
+      setAssignments(next);
+    }
     setOwner(Boolean(rows.find(row => row.user_id === currentId && row.role === "owner")));
     setNotice(rows.length + " wanachama kwenye duka hili.");
     setLoading(false);
   }, [shopId]);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function createBranch() {
+    const name = branchName.trim();
+    const code = branchCode.trim().toUpperCase();
+    if (!name || name.length < 2 || !code || code.length < 2) { setNotice("Weka jina na code ya tawi (angalau herufi 2)."); return; }
+    if (!supabase || !shopId || !owner) return;
+    setBusy(true);
+    const { error } = await supabase.from("branches").insert({ shop_id: shopId, name, code, is_primary: false });
+    setBusy(false);
+    if (error) { setNotice("Tawi halikuundwa: " + error.message); return; }
+    setBranchName(""); setBranchCode("");
+    setNotice("Tawi limeundwa. Wape wafanyakazi ruhusa ya tawi hilo.");
+    await load();
+  }
+
+  async function toggleBranch(member: Member, branch: Branch) {
+    if (!supabase || !shopId || !owner || member.role === "owner") return;
+    const assigned = (assignments[member.user_id] ?? []).includes(branch.id);
+    setBusy(true);
+    const result = assigned
+      ? await supabase.from("shop_member_branches").delete().eq("shop_id",shopId).eq("user_id",member.user_id).eq("branch_id",branch.id)
+      : await supabase.from("shop_member_branches").insert({shop_id:shopId,user_id:member.user_id,branch_id:branch.id});
+    setBusy(false);
+    if (result.error) setNotice("Ruhusa ya tawi haijabadilishwa: " + result.error.message);
+    else setNotice(assigned ? "Ruhusa ya tawi imeondolewa." : "Mfanyakazi amepewa ruhusa ya tawi.");
+    await load();
+  }
 
   async function addMember() {
     const target = email.trim().toLowerCase();
@@ -86,10 +130,24 @@ export default function StaffManagement() {
       </Pressable>)}
       <Pressable disabled={busy} onPress={addMember} style={s.button}><Text style={s.buttonText}>{busy ? "Inachakata..." : "＋ Ongeza mfanyakazi"}</Text></Pressable>
     </View>}
+    {owner && <View style={s.panel}>
+      <Text style={s.heading}>Matawi ya biashara</Text>
+      <Text style={s.copy}>Tengeneza tawi jipya kisha mpe kila mfanyakazi ruhusa ya matawi anayopaswa kuhudumia.</Text>
+      <TextInput value={branchName} onChangeText={setBranchName} placeholder="Jina la tawi" placeholderTextColor="#8194A5" style={s.input}/>
+      <TextInput value={branchCode} onChangeText={setBranchCode} autoCapitalize="characters" placeholder="Code ya tawi, mfano MWZ01" placeholderTextColor="#8194A5" style={s.input}/>
+      <Pressable disabled={busy} onPress={createBranch} style={s.button}><Text style={s.buttonText}>＋ Unda tawi</Text></Pressable>
+      {branches.map(branch=><View key={branch.id} style={s.branchRow}><Text style={s.roleTitle}>{branch.name} · {branch.code}</Text><Text style={s.copy}>Primary branch selection is handled by the business setup.</Text></View>)}
+    </View>}
     <Text style={s.heading}>Orodha ya wanachama ({members.length})</Text>
     {members.map(member => <View key={member.user_id} style={s.member}>
       <Text style={s.roleTitle}>{member.role === "owner" ? "Mmiliki" : roles.find(r => r.id === member.role)?.label ?? member.role}</Text>
       <Text style={s.copy}>ID: {member.user_id}</Text>
+      {owner && member.role !== "owner" && branches.length>0 && <View style={s.assignmentBox}>
+        <Text style={s.copy}>Matawi anazoruhusiwa:</Text>
+        {branches.map(branch=><Pressable key={branch.id} disabled={busy} onPress={()=>toggleBranch(member,branch)} style={[s.assignment,(assignments[member.user_id]??[]).includes(branch.id)&&s.selected]}>
+          <Text style={s.smallText}>{(assignments[member.user_id]??[]).includes(branch.id)?"✓ ":"＋ "}{branch.name}</Text>
+        </Pressable>)}
+      </View>}
       {owner && member.role !== "owner" && <View style={s.actions}>
         {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={s.smallText}>{r.label}</Text></Pressable>)}
         <Pressable disabled={busy} onPress={() => remove(member)} style={[s.small, s.remove]}><Text style={s.smallText}>Ondoa</Text></Pressable>
@@ -113,6 +171,9 @@ const s = StyleSheet.create({
   roleTitle:{color:"#F4F7FA",fontWeight:"800",fontSize:13},
   button:{backgroundColor:"#16785C",padding:13,borderRadius:10,alignItems:"center",marginTop:12},
   buttonText:{color:"#F5FFFA",fontWeight:"900"},
+  branchRow:{padding:10,backgroundColor:"#0B1B2A",borderRadius:9,marginTop:7},
+  assignmentBox:{marginTop:10,padding:10,backgroundColor:"#0B1B2A",borderRadius:9},
+  assignment:{padding:8,borderWidth:1,borderColor:"#2B4B61",borderRadius:8,marginTop:6},
   member:{backgroundColor:"#102438",borderWidth:1,borderColor:"#1D3A50",padding:13,borderRadius:12,marginTop:8},
   actions:{flexDirection:"row",flexWrap:"wrap",gap:7,marginTop:10},
   small:{backgroundColor:"#173D36",paddingHorizontal:10,paddingVertical:8,borderRadius:8},

@@ -3,6 +3,7 @@ import type { DebtEntry, Expense, Product, Sale } from "../domain/types";
 
 export interface PendingSale {
   shopId: string;
+  branchId: string;
   idempotencyKey: string;
   items: { product_id: string; quantity: number }[];
   sale: Sale;
@@ -30,12 +31,12 @@ export async function writePendingSales(shopId: string, userId: string | null, r
   await AsyncStorage.setItem(keyFor(shopId,userId,role), JSON.stringify(items));
 }
 
-const productsKeyFor = (shopId: string) => `gunx:product-cache:v1:${shopId}`;
+const productsKeyFor = (shopId: string, branchId: string) => `gunx:product-cache:v2:${shopId}:${branchId}`;
 
-export async function readCachedProducts(shopId: string): Promise<Product[]> {
-  if (!shopId) return [];
+export async function readCachedProducts(shopId: string, branchId: string): Promise<Product[]> {
+  if (!shopId || !branchId) return [];
   try {
-    const raw = await AsyncStorage.getItem(productsKeyFor(shopId));
+    const raw = await AsyncStorage.getItem(productsKeyFor(shopId,branchId));
     if (!raw) return [];
     const parsed: unknown = JSON.parse(raw);
     return Array.isArray(parsed) ? parsed as Product[] : [];
@@ -44,9 +45,9 @@ export async function readCachedProducts(shopId: string): Promise<Product[]> {
   }
 }
 
-export async function writeCachedProducts(shopId: string, products: Product[]): Promise<void> {
-  if (!shopId) return;
-  await AsyncStorage.setItem(productsKeyFor(shopId), JSON.stringify(products));
+export async function writeCachedProducts(shopId: string, branchId: string, products: Product[]): Promise<void> {
+  if (!shopId || !branchId) return;
+  await AsyncStorage.setItem(productsKeyFor(shopId,branchId), JSON.stringify(products));
 }
 
 export interface CachedBusinessSnapshot {
@@ -57,12 +58,12 @@ export interface CachedBusinessSnapshot {
   cachedAt: string;
 }
 
-const snapshotKeyFor = (shopId: string, userId: string | null) => `gunx:business-cache:v2:${shopId}:${userId ?? "unknown"}`;
+const snapshotKeyFor = (shopId: string, userId: string | null, branchId: string) => `gunx:business-cache:v3:${shopId}:${branchId}:${userId ?? "unknown"}`;
 
-export async function readCachedBusinessSnapshot(shopId: string, userId: string | null): Promise<CachedBusinessSnapshot | null> {
-  if (!shopId || !userId) return null;
+export async function readCachedBusinessSnapshot(shopId: string, userId: string | null, branchId: string): Promise<CachedBusinessSnapshot | null> {
+  if (!shopId || !userId || !branchId) return null;
   try {
-    const raw = await AsyncStorage.getItem(snapshotKeyFor(shopId,userId));
+    const raw = await AsyncStorage.getItem(snapshotKeyFor(shopId,userId,branchId));
     if (!raw) return null;
     const parsed = JSON.parse(raw) as CachedBusinessSnapshot;
     if (!Array.isArray(parsed.sales) || !Array.isArray(parsed.expenses) || !Array.isArray(parsed.debts) || !Number.isFinite(parsed.refundTotal)) return null;
@@ -72,7 +73,7 @@ export async function readCachedBusinessSnapshot(shopId: string, userId: string 
   }
 }
 
-export async function writeCachedBusinessSnapshot(shopId: string, userId: string | null, snapshot: CachedBusinessSnapshot): Promise<void> {
-  if (!shopId || !userId) return;
-  await AsyncStorage.setItem(snapshotKeyFor(shopId,userId), JSON.stringify(snapshot));
+export async function writeCachedBusinessSnapshot(shopId: string, userId: string | null, branchId: string, snapshot: CachedBusinessSnapshot): Promise<void> {
+  if (!shopId || !userId || !branchId) return;
+  await AsyncStorage.setItem(snapshotKeyFor(shopId,userId,branchId), JSON.stringify(snapshot));
 }

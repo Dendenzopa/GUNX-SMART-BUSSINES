@@ -5,7 +5,8 @@ import { supabase, supabaseConfigured } from "../lib/supabase";
 import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
 
 type ShopRole = "owner" | "manager" | "cashier" | "stockkeeper";
-const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null });
+type BranchOption = { id: string; name: string; code: string; is_primary: boolean };
+const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null; branchId: string | null; branches: BranchOption[]; setBranchId: (id: string) => void }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null, branchId: null, branches: [], setBranchId: () => undefined });
 export function useShopContext() { return useContext(ShopContext); }
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
@@ -18,6 +19,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
   const [shopRole, setShopRole] = useState<ShopRole | null>(null);
+  const [branches, setBranches] = useState<BranchOption[]>([]);
+  const [branchId, setBranchId] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [shopLoading, setShopLoading] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -42,7 +45,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      if (!next) { setNeedsShop(false); setShopId(null); setShopRole(null); setIsPlatformAdmin(false); }
+      if (!next) { setNeedsShop(false); setShopId(null); setShopRole(null); setBranches([]); setBranchId(null); setIsPlatformAdmin(false); }
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
@@ -118,6 +121,54 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [session]);
 
+  // Load only branches the signed-in member may use. Owners can access every
+  // active branch; other roles must have an explicit shop_member_branches assignment.
+  useEffect(() => {
+    if (!session || !supabase || !shopId || !shopRole) {
+      setBranches([]);
+      setBranchId(null);
+      return;
+    }
+    let active = true;
+    const loadBranches = async () => {
+      const client = supabase;
+      if (!client) return;
+      let allowedIds: string[] | null = null;
+      if (shopRole !== "owner") {
+        const { data: assignments, error: assignmentError } = await client
+          .from("shop_member_branches").select("branch_id")
+          .eq("shop_id", shopId).eq("user_id", session.user.id);
+        if (assignmentError) {
+          if (active) setMessage("Imeshindikana kusoma matawi uliyopewa: " + assignmentError.message);
+          return;
+        }
+        allowedIds = (assignments ?? []).map((row: { branch_id: string }) => row.branch_id);
+      }
+      let query = client.from("branches").select("id,name,code,is_primary")
+        .eq("shop_id", shopId).eq("active", true).order("is_primary", { ascending: false }).order("name");
+      if (allowedIds) {
+        if (!allowedIds.length) {
+          if (active) { setBranches([]); setBranchId(null); }
+          return;
+        }
+        query = query.in("id", allowedIds);
+      }
+      const { data, error } = await query;
+      if (!active) return;
+      if (error) {
+        setMessage("Imeshindikana kupakia matawi: " + error.message);
+        setBranches([]);
+        setBranchId(null);
+        return;
+      }
+      const options = (data ?? []) as BranchOption[];
+      setBranches(options);
+      setBranchId(current => current && options.some(branch => branch.id === current) ? current : options[0]?.id ?? null);
+    };
+    void loadBranches();
+    return () => { active = false; };
+  }, [session?.user.id, shopId, shopRole]);
+
   async function authenticate() {
     if (!supabase) return;
     if (!email.trim() || password.length < 8) { setMessage("Weka email na password yenye angalau herufi 8."); return; }
@@ -146,7 +197,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha duka lako...</Text></SafeAreaView>;
   if (session && !shopId && !needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Duka halijathibitishwa</Text><Text style={a.copy}>{message || "Imeshindikana kuthibitisha uanachama wa duka. Hakuna taarifa za demo zitakazoonyeshwa kama data halisi."}</Text><Pressable onPress={()=>supabase?.auth.signOut()} style={a.button}><Text style={a.buttonText}>Toka kisha ujaribu tena</Text></Pressable></View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
-  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole }}>{children}</ShopContext.Provider>;
+  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole, branchId, branches, setBranchId }}>{children}</ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
