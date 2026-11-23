@@ -98,7 +98,7 @@ begin
      or length(v_phone) > 40 or length(v_email) > 254 then
     raise exception 'One or more settings exceed the allowed length';
   end if;
-  if v_email <> '' and v_email !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}$' then
+  if v_email <> '' and v_email !~* '^[A-Z0-9._%+-]+@[A-Z0-9.-]+[.][A-Z]{2,}$' then
     raise exception 'Invalid support email address';
   end if;
 
