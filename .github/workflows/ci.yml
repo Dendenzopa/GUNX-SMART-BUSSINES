@@ -2,9 +2,12 @@ name: GUNX SMART BUSINESS CI
 
 on:
   push:
-    branches: [main, master]
+    branches: [main, master, feature/email-auth-recovery]
   pull_request:
     branches: [main, master]
+
+permissions:
+  contents: write
 
 jobs:
   typecheck:
@@ -12,12 +15,25 @@ jobs:
     steps:
       - name: Checkout
         uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref_name }}
+          persist-credentials: true
       - name: Setup Node
         uses: actions/setup-node@v4
         with:
           node-version: 22
+      - name: Generate npm lockfile
+        run: npm install --package-lock-only --ignore-scripts --no-audit --no-fund
+      - name: Save generated lockfile
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feature/email-auth-recovery'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add package-lock.json
+          git commit -m "chore: generate npm package lockfile" || echo "Lockfile is already up to date"
+          git push origin HEAD:feature/email-auth-recovery
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: TypeScript check
         run: npm run typecheck
       - name: Prepare splash logo as PNG
