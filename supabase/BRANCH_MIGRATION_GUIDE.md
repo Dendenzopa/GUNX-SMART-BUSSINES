@@ -161,3 +161,16 @@ The RPC allows group viewers to see only these aggregates. It does not grant dir
 Migration `0036_product_photo_uploads.sql` adds `products.image_url` and the public-read `product-images` Storage bucket. The Product Management screen supports taking a square photo with the camera or choosing an existing photo from Gallery/Photos. Images are compressed by the picker, restricted to JPEG/PNG/WEBP and uploaded at a maximum of 5 MB. Object paths are scoped as `shop_id/product_id/timestamp.ext`; Storage write policies require the authenticated user to be an owner or manager of the shop identified by the first path segment. Public read is enabled so POS/product catalogue images can render without exposing upload credentials. Do not store private/customer images in this bucket.
 
 Apply migration `0036` before using photo upload. Test camera permission denied/granted, gallery permission denied/granted, upload failure, duplicate product edits, cross-shop upload attempts, and image display on Android and web. The current implementation updates the product image URL only after the Storage upload succeeds; if upload fails, the product details remain saved and the UI reports that the image needs retrying.
+
+
+## Platform-owner payment review and enterprise report exports
+
+Migration `0037_platform_payment_review.sql` adds two authenticated, platform-admin-only RPCs:
+
+- `get_platform_payment_requests(p_status, p_limit)` returns a bounded queue (maximum 100 rows) with shop name, amount, provider, transaction reference, payer phone and submission/review timestamps. It does not grant direct table access.
+- `review_platform_pro_payment(p_payment_request_id, p_approve, p_admin_note)` locks a pending request, verifies the caller through `is_platform_admin()`, and either rejects it or activates 30 days of GUNX PRO. Repeated reviews are rejected; a request cannot be approved twice.
+- The mobile client never receives or uses a Supabase service-role key. Existing service-role-only `admin_activate_pro` remains restricted.
+
+The Platform Owner dashboard displays system metrics and pending Pro payment requests. Verify payment references with the relevant mobile-money provider before approving. This RPC is an administrative manual-review workflow, not an automatic payment-provider integration. Test an ordinary authenticated user (must be denied), a platform admin (must list/review), duplicate review attempts (must fail), rejection, approval, expired subscription renewal, and concurrent review attempts. Migration `0037` has not been executed against a live PostgreSQL/Supabase database.
+
+The Enterprise Company Group dashboard can export the currently loaded report as CSV or PDF using the selected date range. CSV includes UTF-8 BOM for spreadsheet compatibility. PDF/CSV share and file behavior must be checked on Android; no device test has yet been run.
