@@ -91,7 +91,7 @@ function Dashboard() {
  },[shopId,userId,effectiveRole,branchId]);
  useEffect(() => {
   const client=supabase;
-  if(!supabaseConfigured||!client||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
+  if(!supabaseConfigured||!client||!shopId||!branchId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
   syncingOutboxRef.current=true;
   const sync=async()=>{
    let remaining=[...pendingOutbox];
@@ -122,11 +122,11 @@ function Dashboard() {
     }
    }
    const {data:latestProducts,error:productsError}=await client.rpc("get_shop_products",{p_shop_id:shopId});
-   if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,branchId??"",mapped);}
+   if(!productsError&&latestProducts){const mapped=await mapProductsForBranch(latestProducts);setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,branchId??"",mapped);}
    syncingOutboxRef.current=false;
   };
   void sync();
- },[shopId,userId,effectiveRole,isConnected,pendingOutbox]);
+ },[shopId,branchId,userId,effectiveRole,isConnected,pendingOutbox]);
  useEffect(() => {
   if (!supabaseConfigured || !supabase || !shopId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
   let active = true;
@@ -173,9 +173,9 @@ function Dashboard() {
   return () => { active = false; };
  },[shopId,userId,effectiveRole,branchId]);
  async function refreshProductsFromCloud() {
-  if(!supabase||!shopId)return;
+  if(!supabase||!shopId||!branchId)return;
   const {data,error}=await supabase.rpc("get_shop_products",{p_shop_id:shopId});
-  if(!error&&data){const mapped=data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,mapped);}
+  if(!error&&data){const mapped=await mapProductsForBranch(data);setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,branchId,mapped);}
  }
  function add(p:Product) { if(pendingCheckoutKey){setNotice("Malizia au thibitisha mauzo yaliyosubiri kabla ya kubadilisha cart.");return;} setCart(current=>{const q=(current.find(x=>x.productId===p.id)?.quantity||0)+1;if(q>p.stockQuantity){setNotice("Stock limit reached.");return current;}return current.some(x=>x.productId===p.id)?current.map(x=>x.productId===p.id?{...x,quantity:q}:x):[...current,{productId:p.id,quantity:1}];});setNotice(p.name+" added to cart."); }
  async function exportReport(kind:"pdf"|"csv") {
@@ -207,7 +207,7 @@ function Dashboard() {
   if(!expenseName.trim()||!Number.isFinite(amount)||amount<=0){setNotice("Weka jina la gharama na kiasi sahihi.");return;}
   if(supabaseConfigured&&isConnected===false){setNotice("Gharama haijahifadhiwa. Unganisha mtandao ili iandikwe kwenye database.");return;}
   if(supabaseConfigured){
-   if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
+   if(!supabase||!shopId||!branchId){setNotice("Hakuna duka au tawi lililochaguliwa.");return;}
    setCloudLoading(true);
    const {data,error}=await supabase.from("expenses").insert({shop_id:shopId,branch_id:branchId,description:expenseName.trim(),category:"General",amount}).select("id,description,category,amount,created_at").single();
    setCloudLoading(false);
@@ -223,9 +223,9 @@ function Dashboard() {
   if(!debtorName.trim()||!Number.isFinite(amount)||amount<=0){setNotice("Weka jina la mteja na deni sahihi.");return;}
   if(supabaseConfigured&&isConnected===false){setNotice("Deni halijahifadhiwa. Unganisha mtandao ili kuepuka deni kurudiwa.");return;}
   if(supabaseConfigured){
-   if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
+   if(!supabase||!shopId||!branchId){setNotice("Hakuna duka au tawi lililochaguliwa.");return;}
    setCloudLoading(true);
-   const {data,error}=await supabase.rpc("create_manual_debt",{p_shop_id:shopId,p_customer_name:debtorName.trim(),p_amount:amount,p_description:null});
+   const {data,error}=await supabase.rpc("create_manual_debt_in_branch",{p_shop_id:shopId,p_branch_id:branchId,p_customer_name:debtorName.trim(),p_amount:amount,p_description:null});
    setCloudLoading(false);
    if(error){setNotice("Deni halijahifadhiwa: "+error.message);return;}
    const {data:rows,error:loadError}=await supabase.from("debts").select("id,customer_id,description,original_amount,balance,created_at,customers(name)").eq("id",data).single();
@@ -262,7 +262,7 @@ function Dashboard() {
   if(supabaseConfigured&&isConnected===false){setNotice("Refund haijafanyika. Unganisha mtandao ili kuthibitisha marejesho na kurejesha stock kwa usalama.");return;}
   if(supabaseConfigured){
    if(sale.lines.some(line=>!line.id)){setNotice("Taarifa za bidhaa za risiti hazijakamilika; haiwezekani kufanya refund salama.");return;}
-   if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
+   if(!supabase||!shopId||!branchId){setNotice("Hakuna duka au tawi lililochaguliwa.");return;}
    const key=refundKeys[sale.id]??makeIdempotencyKey();
    if(!refundKeys[sale.id])setRefundKeys(v=>({...v,[sale.id]:key}));
    setCloudLoading(true);setNotice("Inathibitisha marejesho kwenye database...");
