@@ -243,9 +243,9 @@ function Dashboard() {
   if(!debt||amount>debt.balance){setNotice("Marejesho hayawezi kuzidi deni lililobaki.");return;}
   if(supabaseConfigured&&isConnected===false){setNotice("Marejesho hayajahifadhiwa. Unganisha mtandao kabla ya kurekodi malipo ya deni.");return;}
   if(supabaseConfigured){
-   if(!supabase){setNotice("Database haijaunganishwa.");return;}
+   if(!supabase||!branchId){setNotice("Database au tawi halijaunganishwa.");return;}
    setCloudLoading(true);
-   const {data,error}=await supabase.rpc("record_debt_payment",{p_debt_id:id,p_amount:amount,p_method:"cash",p_note:null});
+   const {data,error}=await supabase.rpc("record_debt_payment_in_branch",{p_branch_id:branchId,p_debt_id:id,p_amount:amount,p_method:"cash",p_note:null});
    setCloudLoading(false);
    if(error){setNotice("Marejesho hayajahifadhiwa: "+error.message);return;}
    setDebts(v=>v.map(d=>d.id===id?{...d,amountPaid:d.originalAmount-Number(data),balance:Number(data)}:d));
