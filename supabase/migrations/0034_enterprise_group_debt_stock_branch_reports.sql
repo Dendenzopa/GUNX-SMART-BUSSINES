@@ -63,8 +63,8 @@ begin
            count(*) as sales_count,
            sum(s.total) as sales_total
     from public.sales s
-    where s.created_at >= p_from::timestamptz
-      and s.created_at < (p_to + 1)::timestamptz
+    where s.created_at >= (p_from::timestamp at time zone 'Africa/Dar_es_Salaam')
+      and s.created_at < ((p_to + 1)::timestamp at time zone 'Africa/Dar_es_Salaam')
       and s.status in ('completed','partially_paid')
     group by s.shop_id, s.branch_id
   ) sr on sr.shop_id = sh.id and sr.branch_id = br.id
