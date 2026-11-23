@@ -53,6 +53,7 @@ declare
   v_existing_method text;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if p_idempotency_key is null then raise exception 'Checkout idempotency key required'; end if;
   if not public.has_shop_role(p_shop_id,array['owner','manager','cashier'])
      or not public.has_branch_access(p_shop_id,p_branch_id) then
     raise exception 'Not permitted to checkout in this branch';
@@ -180,6 +181,7 @@ declare
   v_sale_branch uuid;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if p_idempotency_key is null then raise exception 'Refund idempotency key required'; end if;
   if not public.has_shop_role(p_shop_id,array['owner','manager'])
      or not public.has_branch_access(p_shop_id,p_branch_id) then
     raise exception 'Not permitted to refund in this branch';
