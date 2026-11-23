@@ -78,7 +78,12 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
   }, []);
 
   useEffect(() => { void loadGroups(); }, [loadGroups]);
-  useEffect(() => { void loadOverview(selectedGroupId); void loadMembers(selectedGroupId); }, [selectedGroupId, loadOverview, loadMembers]);
+  useEffect(() => {
+    void loadOverview(selectedGroupId);
+    const role = groups.find(group => group.id === selectedGroupId)?.role;
+    if (role === "group_owner" || role === "group_admin") void loadMembers(selectedGroupId);
+    else setMembers([]);
+  }, [selectedGroupId, groups, loadOverview, loadMembers]);
 
   async function createGroup() {
     if (!supabase || groupName.trim().length < 2) { setNotice("Jina la kundi liwe na angalau herufi 2."); return; }
@@ -137,6 +142,20 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
         <Text style={s.muted}>Gharama {formatTZS(Number(row.expenses_total))}</Text>
       </View>)}
       {rows.length === 0 && <Text style={s.muted}>Hakuna biashara iliyounganishwa kwenye kundi hili au hakuna data ya ripoti kwa kipindi hiki.</Text>}
+      {canManage && <View style={s.panel}>
+        <Text style={s.section}>Usimamizi wa wanachama</Text>
+        <Text style={s.muted}>Ongeza akaunti kwa kutumia User ID yake. Admin anaweza kuongeza viewer pekee; group owner ndiye anayeweza kuteua admin.</Text>
+        <TextInput value={memberUserId} onChangeText={setMemberUserId} autoCapitalize="none" placeholder="User ID (UUID) ya mwanachama" placeholderTextColor="#8194A5" style={s.input}/>
+        <View style={s.roleChoices}>
+          <Pressable onPress={() => setMemberRole("group_viewer")} style={[s.roleChoice, memberRole === "group_viewer" && s.roleSelected]}><Text style={s.roleText}>Viewer</Text></Pressable>
+          {groups.some(group => group.id === selectedGroupId && group.role === "group_owner") && <Pressable onPress={() => setMemberRole("group_admin")} style={[s.roleChoice, memberRole === "group_admin" && s.roleSelected]}><Text style={s.roleText}>Admin</Text></Pressable>}
+        </View>
+        <Pressable disabled={busy} onPress={addMember} style={s.button}><Text style={s.buttonText}>{busy ? "Subiri..." : "Ongeza mwanachama"}</Text></Pressable>
+        {members.map(member => <View key={member.user_id} style={s.memberRow}>
+          <View style={{flex:1}}><Text style={s.choiceTitle}>{member.user_id}</Text><Text style={s.muted}>Nafasi: {member.role.replace("group_", "")}</Text></View>
+          {member.role !== "group_owner" && (groups.some(group => group.id === selectedGroupId && group.role === "group_owner") || member.role === "group_viewer") && <Pressable disabled={busy} onPress={() => void removeMember(member.user_id)}><Text style={s.removeText}>Ondoa</Text></Pressable>}
+        </View>)}
+      </View>}
     </>}
     <Text style={s.notice}>{notice}</Text>
   </View>;
@@ -159,5 +178,9 @@ const s = StyleSheet.create({
   metricValue:{color:"#F4F7FA",fontSize:16,fontWeight:"900",marginTop:8},
   notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,marginTop:14},
   memberRow:{flexDirection:"row",alignItems:"center",paddingVertical:10,borderBottomWidth:1,borderBottomColor:"#1D3A50"},
+  roleChoices:{flexDirection:"row",gap:8,marginTop:10},
+  roleChoice:{paddingHorizontal:14,paddingVertical:9,borderRadius:9,backgroundColor:"#0B1B2A",borderWidth:1,borderColor:"#2B4B61"},
+  roleSelected:{borderColor:"#43C99A",backgroundColor:"#174A40"},
+  roleText:{color:"#F4F7FA",fontSize:12,fontWeight:"700"},
   removeText:{color:"#F2A39A",fontSize:12,fontWeight:"800",padding:8}
 });
