@@ -46,6 +46,7 @@ function Dashboard() {
  const [transferTargetBranchId,setTransferTargetBranchId]=useState("");
  const [transferProductId,setTransferProductId]=useState("");
  const [transferQuantity,setTransferQuantity]=useState("1");
+ const [transferIdempotencyKey,setTransferIdempotencyKey]=useState<string|null>(null);
  const [refundReason,setRefundReason]=useState("");
  const [refundKeys,setRefundKeys]=useState<Record<string,string>>({});
  const [cart,setCart]=useState<CartLine[]>([]);
@@ -253,18 +254,22 @@ function Dashboard() {
   }catch(error){setNotice("Imeshindikana kutoa ripoti: "+(error instanceof Error?error.message:"Hitilafu isiyojulikana"));}
  }
  async function transferStock(){
+  if(cloudLoading)return;
   const quantity=Number(transferQuantity);
   if(!supabase||!shopId||!branchId){setNotice("Chagua tawi la chanzo kabla ya kuhamisha stock.");return;}
   if(!transferTargetBranchId||transferTargetBranchId===branchId){setNotice("Chagua tawi tofauti la kupokea stock.");return;}
   if(!transferProductId){setNotice("Chagua bidhaa ya kuhamisha.");return;}
   if(!Number.isFinite(quantity)||quantity<=0){setNotice("Weka kiasi sahihi cha kuhamisha.");return;}
   if(isConnected===false){setNotice("Uhamisho wa stock unahitaji mtandao ili uthibitishwe salama.");return;}
+  const key=transferIdempotencyKey??makeIdempotencyKey();
+  if(!transferIdempotencyKey)setTransferIdempotencyKey(key);
   setCloudLoading(true);
-  const {data,error}=await supabase.rpc("transfer_branch_stock",{p_shop_id:shopId,p_from_branch_id:branchId,p_to_branch_id:transferTargetBranchId,p_product_id:transferProductId,p_quantity:quantity,p_note:"Branch transfer from app"});
+  const {data,error}=await supabase.rpc("transfer_branch_stock",{p_shop_id:shopId,p_idempotency_key:key,p_from_branch_id:branchId,p_to_branch_id:transferTargetBranchId,p_product_id:transferProductId,p_quantity:quantity,p_note:"Branch transfer from app"});
   setCloudLoading(false);
   if(error){setNotice("Uhamisho haujakamilika: "+error.message);return;}
   await refreshProductsFromCloud();
   const target=branches.find(item=>item.id===transferTargetBranchId);
+  setTransferIdempotencyKey(null);
   setNotice("Stock imehamishwa kwenda "+(target?.name??"tawi jingine")+". Rejea: "+data);
   setTransferQuantity("1");
  }
