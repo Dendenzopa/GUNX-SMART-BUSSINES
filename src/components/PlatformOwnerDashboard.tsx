@@ -20,6 +20,7 @@ type PaymentRequest = {
 type ShopAccount = {
   shop_id: string; shop_name: string; owner_user_id: string; shop_created_at: string;
   plan_code: string; subscription_status: string; expires_at: string | null; pending_payment_count: number;
+  is_suspended: boolean; suspension_reason: string | null;
 };
 
 type Metrics = {
