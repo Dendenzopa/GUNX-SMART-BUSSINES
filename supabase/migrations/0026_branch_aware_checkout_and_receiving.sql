@@ -86,6 +86,15 @@ begin
   join public.sales s on s.id = c.sale_id;
 
   if v_sale_id is null then raise exception 'Checkout did not return a sale'; end if;
+  -- A concurrent retry may have completed through another branch wrapper while
+  -- this request waited on the underlying shop-wide idempotency lock.
+  if v_existing_branch is not null then
+    if v_existing_branch is distinct from p_branch_id then
+      raise exception 'IDEMPOTENCY_BRANCH_MISMATCH: This checkout key belongs to another branch';
+    end if;
+    return query select v_sale_id, v_receipt, v_total;
+    return;
+  end if;
 
   -- The legacy checkout has already reduced the shop-wide compatibility balance.
   -- Allocate the same quantity from this branch. Any shortfall aborts/rolls back
