@@ -178,9 +178,28 @@ begin
     raise exception 'Only the group owner may appoint group administrators';
   end if;
 
+  -- Never allow an administrator to demote or overwrite the group owner.
+  -- Administrators may add viewers, but only the owner may appoint/change admins.
+  if exists (
+    select 1 from public.company_group_members
+    where group_id = p_group_id and user_id = p_user_id and role = 'group_owner'
+  ) then
+    raise exception 'The group owner role cannot be changed';
+  end if;
+  if p_role = 'group_viewer'
+     and not public.has_company_group_role(p_group_id,array['group_owner']) then
+    if exists (
+      select 1 from public.company_group_members
+      where group_id = p_group_id and user_id = p_user_id and role = 'group_admin'
+    ) then
+      raise exception 'Only the group owner may change a group administrator';
+    end if;
+  end if;
+
   insert into public.company_group_members(group_id,user_id,role)
   values (p_group_id,p_user_id,p_role)
-  on conflict (group_id,user_id) do update set role = excluded.role;
+  on conflict (group_id,user_id) do update set role = excluded.role
+  where public.company_group_members.role <> 'group_owner';
 end;
 $$;
 revoke all on function public.add_company_group_member(uuid,uuid,text) from public, anon;
