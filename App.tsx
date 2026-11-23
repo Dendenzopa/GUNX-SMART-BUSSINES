@@ -19,7 +19,7 @@ function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet
 function Metric({label,value}:{label:string;value:string}) { return <View style={s.metric}><Text style={s.label}>{label}</Text><Text style={s.value}>{value}</Text></View>; }
 function makeIdempotencyKey() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => { const r = Math.floor(Math.random()*16); return (ch==="x"?r:(r&3)|8).toString(16); }); }
 function Dashboard() {
- const { shopId, isPlatformAdmin, shopRole } = useShopContext();
+ const { shopId, isPlatformAdmin, shopRole, userId } = useShopContext();
  const effectiveRole = shopRole ?? (supabaseConfigured ? "cashier" : "owner");
  const allowedScreens: Record<"owner"|"manager"|"cashier"|"stockkeeper", Screen[]> = {
   owner: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"],
@@ -69,7 +69,7 @@ function Dashboard() {
  useEffect(() => {
   if(!shopId)return;
   let active=true;
-  Promise.all([readPendingSales(shopId),readCachedProducts(shopId)]).then(([items,cached])=>{
+  Promise.all([readPendingSales(shopId,userId,effectiveRole),readCachedProducts(shopId)]).then(([items,cached])=>{
    if(!active)return;
    setPendingOutbox(items);
    if(cached.length){
@@ -100,14 +100,14 @@ function Dashboard() {
      }:{...sale,id:result.saleId,receiptNumber:result.receiptNumber,total:result.total,subtotal:result.total,amountPaid:result.total,balance:0,status:"completed"}):sale));
      remaining=remaining.filter(entry=>entry.idempotencyKey!==item.idempotencyKey);
      setPendingOutbox([...remaining]);
-     await writePendingSales(shopId,remaining);
+     await writePendingSales(shopId,userId,effectiveRole,remaining);
      setNotice("Mauzo ya offline yamesawazishwa: "+result.receiptNumber);
     }catch(error){
      const message=error instanceof Error?error.message:"";
      const issue=message.includes("PRICE_CHANGED")?"PRICE_CHANGED":message.includes("Insufficient stock")?"STOCK_CHANGED":"SYNC_FAILED";
      remaining=remaining.map(entry=>entry.idempotencyKey===item.idempotencyKey?{...entry,syncIssue:issue}:entry);
      setPendingOutbox([...remaining]);
-     await writePendingSales(shopId,remaining);
+     await writePendingSales(shopId,userId,effectiveRole,remaining);
      setNotice(issue==="PRICE_CHANGED"?"Bei imebadilika. Mauzo yamesimamishwa kwa ukaguzi wa mmiliki; hakuna bei mpya iliyokubaliwa.":issue==="STOCK_CHANGED"?"Stock ya server haitoshi. Mauzo yamesimamishwa kwa ukaguzi wa mmiliki.":"Mauzo "+item.sale.receiptNumber+" bado yanasubiri mtandao/server. Hayajatumwa mara mbili.");
      break;
     }
@@ -119,10 +119,10 @@ function Dashboard() {
   void sync();
  },[shopId,isConnected,pendingOutbox]);
  useEffect(() => {
-  if (!supabaseConfigured || !supabase || !shopId) return;
+  if (!supabaseConfigured || !supabase || !shopId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
   let active = true;
   setCloudLoading(true);
-  Promise.all([readCachedBusinessSnapshot(shopId),readPendingSales(shopId)]).then(([snapshot,pending])=>{
+  Promise.all([readCachedBusinessSnapshot(shopId,userId),readPendingSales(shopId,userId,effectiveRole)]).then(([snapshot,pending])=>{
    if(!active||!snapshot)return;
    setSales([...pending.map(item=>({...item.sale})),...snapshot.sales.filter(sale=>!pending.some(item=>item.sale.id===sale.id))]);
    setExpenses(snapshot.expenses);
@@ -148,14 +148,14 @@ function Dashboard() {
    const mappedExpenses=!expensesResult.error&&expensesResult.data?expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),createdAt:e.created_at})):null;
    const mappedDebts=!debtsResult.error&&debtsResult.data?debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.[0]?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})):null;
    const mappedRefunds=!refundsResult.error&&refundsResult.data?refundsResult.data.reduce((sum:number,row:any)=>sum+Number(row.refund_total),0):null;
-   const [pending]=await Promise.all([readPendingSales(shopId)]);
+   const [pending]=await Promise.all([readPendingSales(shopId,userId,effectiveRole)]);
    if(!active)return;
    if(mappedSales)setSales([...pending.map(item=>({...item.sale})),...mappedSales.filter(sale=>!pending.some(item=>item.sale.id===sale.id))]);
    if(mappedExpenses)setExpenses(mappedExpenses);
    if(mappedDebts)setDebts(mappedDebts);
    if(mappedRefunds!==null)setRefundTotal(mappedRefunds);
    if(mappedSales&&mappedExpenses&&mappedDebts&&mappedRefunds!==null){
-    await writeCachedBusinessSnapshot(shopId,{sales:mappedSales,expenses:mappedExpenses,debts:mappedDebts,refundTotal:mappedRefunds,cachedAt:new Date().toISOString()});
+    await writeCachedBusinessSnapshot(shopId,userId,{sales:mappedSales,expenses:mappedExpenses,debts:mappedDebts,refundTotal:mappedRefunds,cachedAt:new Date().toISOString()});
    }
   });
   return () => { active = false; };
@@ -277,7 +277,7 @@ function Dashboard() {
   const item=pendingOutbox.find(entry=>entry.idempotencyKey===key);
   if(!item||item.syncIssue==="PRICE_CHANGED"||item.syncIssue==="STOCK_CHANGED"){setNotice("Mauzo haya yanahitaji ukaguzi wa mmiliki; retry ya moja kwa moja imezuiwa.");return;}
   const next=pendingOutbox.map(entry=>entry.idempotencyKey===key?{...entry,syncIssue:undefined}:entry);
-  await writePendingSales(shopId,next);
+  await writePendingSales(shopId,userId,effectiveRole,next);
   setPendingOutbox(next);
   setNotice("Jaribio la kusawazisha limeanzishwa.");
  }
@@ -289,7 +289,7 @@ function Dashboard() {
   const sale:Sale={id:"pending-"+key,receiptNumber:"PENDING-"+key.slice(0,8).toUpperCase(),createdAt:new Date().toISOString(),lines,subtotal:total,discount:0,total,amountPaid:total,balance:0,paymentMethod:"cash",status:"pending_sync"};
   const item:PendingSale={shopId,idempotencyKey:key,items:cart.map(line=>({product_id:line.productId,quantity:line.quantity})),sale,queuedAt:new Date().toISOString()};
   const next=[...pendingOutbox.filter(entry=>entry.idempotencyKey!==key),item];
-  await writePendingSales(shopId,next);
+  await writePendingSales(shopId,userId,effectiveRole,next);
   setPendingOutbox(next);setSales(current=>[sale,...current]);
   setProducts(current=>current.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:Math.max(0,p.stockQuantity-line.quantity)}:p;}));
   setCart([]);setPendingCheckoutKey(null);
