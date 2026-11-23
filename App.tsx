@@ -131,7 +131,7 @@ function Dashboard() {
   if (!supabaseConfigured || !supabase || !shopId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
   let active = true;
   setCloudLoading(true);
-  Promise.all([readCachedBusinessSnapshot(shopId,userId),readPendingSales(shopId,userId,effectiveRole)]).then(([snapshot,pending])=>{
+  Promise.all([readCachedBusinessSnapshot(shopId,userId,branchId??""),readPendingSales(shopId,userId,effectiveRole)]).then(([snapshot,pending])=>{
    if(!active||!snapshot)return;
    setSales([...pending.map(item=>({...item.sale})),...snapshot.sales.filter(sale=>!pending.some(item=>item.sale.id===sale.id))]);
    setExpenses(snapshot.expenses);
@@ -167,7 +167,7 @@ function Dashboard() {
    if(mappedDebts)setDebts(mappedDebts);
    if(mappedRefunds!==null)setRefundTotal(mappedRefunds);
    if(mappedSales&&mappedExpenses&&mappedDebts&&mappedRefunds!==null){
-    await writeCachedBusinessSnapshot(shopId,userId,{sales:mappedSales,expenses:mappedExpenses,debts:mappedDebts,refundTotal:mappedRefunds,cachedAt:new Date().toISOString()});
+    await writeCachedBusinessSnapshot(shopId,userId,branchId??"",{sales:mappedSales,expenses:mappedExpenses,debts:mappedDebts,refundTotal:mappedRefunds,cachedAt:new Date().toISOString()});
    }
   });
   return () => { active = false; };
