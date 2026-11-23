@@ -111,7 +111,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     let active = true;
     setShopLoading(true);
     supabase.from("shop_members").select("shop_id,role,shops(id,name)").eq("user_id", session.user.id).order("created_at", { ascending: true })
-      .then(({ data, error }) => {
+      .then(async ({ data, error }) => {
         if (!active) return;
         if (error) {
           setMessage("Imeshindikana kusoma maduka: " + error.message);
@@ -124,7 +124,16 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
             role: row.role as ShopRole
           }));
           setShopOptions(options);
-          setNeedsShop(options.length === 0);
+          if (options.length === 0) {
+            const { data: groupRows, error: groupError } = await supabase.from("company_group_members").select("group_id").eq("user_id", session.user.id).limit(1);
+            if (!active) return;
+            const hasGroupAccess = !groupError && (groupRows?.length ?? 0) > 0;
+            setGroupOnly(hasGroupAccess);
+            setNeedsShop(!hasGroupAccess && !groupError);
+          } else {
+            setGroupOnly(false);
+            setNeedsShop(false);
+          }
           if (options.length === 1) {
             setShopId(options[0].id);
             setShopRole(options[0].role);
