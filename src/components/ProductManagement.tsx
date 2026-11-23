@@ -23,9 +23,7 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
     if (!supabase || !shopId) return;
     setBusy(true);
     const [{ data, error }, roleResult] = await Promise.all([
-      supabase.from("products")
-        .select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active")
-        .eq("shop_id", shopId).order("name"),
+      supabase.rpc("get_shop_products", { p_shop_id: shopId }),
       supabase.rpc("has_shop_role", { p_shop_id: shopId, p_roles: ["owner", "manager"] }),
     ]);
     setCanManage(!roleResult.error && roleResult.data === true);
@@ -112,7 +110,7 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
       <View style={{flex:1}}>
         <Text style={s.name}>{p.name} {!p.active ? "(Imefichwa)" : ""}</Text>
         <Text style={s.copy}>{p.sku || "Hakuna SKU"} · {p.unit} · Stock {p.stockQuantity}</Text>
-        <Text style={s.price}>Gharama {formatTZS(p.costPrice)} · Bei {formatTZS(p.sellingPrice)}</Text>
+        <Text style={s.price}>{canManage ? "Gharama " + formatTZS(p.costPrice) + " · " : ""}Bei {formatTZS(p.sellingPrice)}</Text>
       </View>
       {canManage && <View style={s.actions}>
         {p.active ? <>
