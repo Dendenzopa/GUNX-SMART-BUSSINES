@@ -1,3 +1,4 @@
+# Validate stacked feature-branch pull requests as well as the default branch.
 name: GUNX SMART BUSINESS CI
 
 on:
