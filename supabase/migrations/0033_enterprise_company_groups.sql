@@ -170,7 +170,7 @@ begin
   if not public.has_company_group_role(p_group_id,array['group_owner','group_admin']) then
     raise exception 'Not permitted to manage group members';
   end if;
-  if p_user_id is null or p_role not in ('group_admin','group_viewer') then
+  if p_user_id is null or p_role is null or p_role not in ('group_admin','group_viewer') then
     raise exception 'Invalid group member or role';
   end if;
   if p_role = 'group_admin'
