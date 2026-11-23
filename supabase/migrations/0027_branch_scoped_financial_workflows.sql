@@ -100,6 +100,7 @@ declare
   v_refund_id uuid;
   v_refund_total numeric;
   v_existing_branch uuid;
+  v_existing_sale_id uuid;
   v_item record;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
@@ -115,9 +116,13 @@ begin
   for share;
   if not found then raise exception 'BRANCH_SESSION_CLOSED: Open this branch before processing refunds'; end if;
 
-  select r.id, r.refund_total, r.branch_id into v_refund_id, v_refund_total, v_existing_branch
+  select r.id, r.refund_total, r.branch_id, r.sale_id
+  into v_refund_id, v_refund_total, v_existing_branch, v_existing_sale_id
   from public.sale_refunds r
   where r.shop_id = p_shop_id and r.idempotency_key = p_idempotency_key;
+  if v_refund_id is not null and v_existing_sale_id is distinct from p_sale_id then
+    raise exception 'REFUND_IDEMPOTENCY_SALE_MISMATCH: This key is already bound to another sale';
+  end if;
   if v_refund_id is null then
     select x.refund_id, x.refund_total into v_refund_id, v_refund_total
     from public.refund_sale(p_shop_id, p_sale_id, p_idempotency_key, p_items, p_reason, p_refund_method) x;
