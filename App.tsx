@@ -81,7 +81,7 @@ function Dashboard() {
    if(items.length)setSales(current=>[...items.map(item=>({...item.sale})),...current.filter(sale=>!items.some(item=>item.sale.id===sale.id))]);
   });
   return ()=>{active=false;};
- },[shopId]);
+ },[shopId,userId,effectiveRole]);
  useEffect(() => {
   const client=supabase;
   if(!supabaseConfigured||!client||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
@@ -117,7 +117,7 @@ function Dashboard() {
    syncingOutboxRef.current=false;
   };
   void sync();
- },[shopId,isConnected,pendingOutbox]);
+ },[shopId,userId,effectiveRole,isConnected,pendingOutbox]);
  useEffect(() => {
   if (!supabaseConfigured || !supabase || !shopId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
   let active = true;
@@ -159,7 +159,7 @@ function Dashboard() {
    }
   });
   return () => { active = false; };
- },[shopId]);
+ },[shopId,userId,effectiveRole]);
  async function refreshProductsFromCloud() {
   if(!supabase||!shopId)return;
   const {data,error}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
