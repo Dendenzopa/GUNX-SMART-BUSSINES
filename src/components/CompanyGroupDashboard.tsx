@@ -4,13 +4,17 @@ import { supabase } from "../lib/supabase";
 import { formatTZS } from "../domain/money";
 
 type GroupOption = { id: string; name: string; role: "group_owner" | "group_admin" | "group_viewer" };
-type ShopMetric = { shop_id: string; shop_name: string; sales_count: number; sales_total: number; expenses_total: number };\ntype MemberOption = { user_id: string; role: "group_owner" | "group_admin" | "group_viewer" };
+type ShopMetric = { shop_id: string; shop_name: string; sales_count: number; sales_total: number; expenses_total: number };
+type MemberOption = { user_id: string; role: "group_owner" | "group_admin" | "group_viewer" };
 
 export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: string | null; shopRole: string | null }) {
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
   const [rows, setRows] = useState<ShopMetric[]>([]);
-  const [groupName, setGroupName] = useState("");\n  const [members, setMembers] = useState<MemberOption[]>([]);\n  const [memberUserId, setMemberUserId] = useState("");\n  const [memberRole, setMemberRole] = useState<"group_admin" | "group_viewer">("group_viewer");
+  const [groupName, setGroupName] = useState("");
+  const [members, setMembers] = useState<MemberOption[]>([]);
+  const [memberUserId, setMemberUserId] = useState("");
+  const [memberRole, setMemberRole] = useState<"group_admin" | "group_viewer">("group_viewer");
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("Ripoti za kundi zinaonyesha jumla za biashara zilizounganishwa tu.");
 
@@ -153,5 +157,7 @@ const s = StyleSheet.create({
   metric:{flex:1,backgroundColor:"#102438",borderColor:"#1D3A50",borderWidth:1,borderRadius:12,padding:13,marginTop:10},
   metricLabel:{color:"#91A4B5",fontSize:9,fontWeight:"800"},
   metricValue:{color:"#F4F7FA",fontSize:16,fontWeight:"900",marginTop:8},
-  notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,marginTop:14},\n  memberRow:{flexDirection:"row",alignItems:"center",paddingVertical:10,borderBottomWidth:1,borderBottomColor:"#1D3A50"},\n  removeText:{color:"#F2A39A",fontSize:12,fontWeight:"800",padding:8}
+  notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,marginTop:14},
+  memberRow:{flexDirection:"row",alignItems:"center",paddingVertical:10,borderBottomWidth:1,borderBottomColor:"#1D3A50"},
+  removeText:{color:"#F2A39A",fontSize:12,fontWeight:"800",padding:8}
 });
