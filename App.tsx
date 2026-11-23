@@ -47,7 +47,13 @@ function Dashboard() {
  const [transferTargetBranchId,setTransferTargetBranchId]=useState("");
  const [transferProductId,setTransferProductId]=useState("");
  const [transferQuantity,setTransferQuantity]=useState("1");
- const [transferIdempotencyKey,setTransferIdempotencyKey]=useState<string|null>(null);\n const [adjustmentProductId,setAdjustmentProductId]=useState("");\n const [adjustmentType,setAdjustmentType]=useState<"count"|"damage"|"loss"|"correction">("count");\n const [adjustmentQuantity,setAdjustmentQuantity]=useState("");\n const [adjustmentReason,setAdjustmentReason]=useState("");\n const [adjustmentIdempotencyKey,setAdjustmentIdempotencyKey]=useState<string|null>(null);\n const [stockAdjustments,setStockAdjustments]=useState<any[]>([]);
+ const [transferIdempotencyKey,setTransferIdempotencyKey]=useState<string|null>(null);
+ const [adjustmentProductId,setAdjustmentProductId]=useState("");
+ const [adjustmentType,setAdjustmentType]=useState<"count"|"damage"|"loss"|"correction">("count");
+ const [adjustmentQuantity,setAdjustmentQuantity]=useState("");
+ const [adjustmentReason,setAdjustmentReason]=useState("");
+ const [adjustmentIdempotencyKey,setAdjustmentIdempotencyKey]=useState<string|null>(null);
+ const [stockAdjustments,setStockAdjustments]=useState<any[]>([]);
  const [refundReason,setRefundReason]=useState("");
  const [refundPaymentMethod,setRefundPaymentMethod]=useState<"cash"|"mobile_money"|"bank">("cash");
  const [refundKeys,setRefundKeys]=useState<Record<string,string>>({});
@@ -99,7 +105,14 @@ function Dashboard() {
    .then(({data,error})=>{if(!active)return;if(error){setNotice("Ripoti za kufunga siku hazijapakiwa: "+error.message);return;}setDailyClosings(data??[]);});
   return ()=>{active=false;};
  },[shopId,branchId,effectiveRole]);
- useEffect(()=>{\n  if(!supabase||!shopId||!branchId){setStockAdjustments([]);return;}\n  let active=true;\n  supabase.from("branch_stock_adjustments").select("id,product_id,adjustment_type,quantity_before,quantity_after,quantity_change,reason,created_at,created_by").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}).limit(30)\n   .then(({data,error})=>{if(!active)return;if(error){setNotice("Historia ya marekebisho haijapakiwa: "+error.message);return;}setStockAdjustments(data??[]);});\n  return ()=>{active=false;};\n },[shopId,branchId]);\n async function reviewDailyClosing(id:string,status:"approved"|"needs_review"){
+ useEffect(()=>{
+  if(!supabase||!shopId||!branchId){setStockAdjustments([]);return;}
+  let active=true;
+  supabase.from("branch_stock_adjustments").select("id,product_id,adjustment_type,quantity_before,quantity_after,quantity_change,reason,created_at,created_by").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}).limit(30)
+   .then(({data,error})=>{if(!active)return;if(error){setNotice("Historia ya marekebisho haijapakiwa: "+error.message);return;}setStockAdjustments(data??[]);});
+  return ()=>{active=false;};
+ },[shopId,branchId]);
+ async function reviewDailyClosing(id:string,status:"approved"|"needs_review"){
   if(!supabase){setNotice("Database haijaunganishwa.");return;}
   const {error}=await supabase.rpc("review_branch_daily_closing",{p_closing_id:id,p_review_status:status,p_note:null});
   if(error){setNotice("Mapitio ya ripoti hayajahifadhiwa: "+error.message);return;}
@@ -263,7 +276,34 @@ function Dashboard() {
    setNotice(kind==="pdf"?"Ripoti ya PDF imeandaliwa kwa kushirikishwa.":"Ripoti ya CSV inayofunguka kwenye Excel imeandaliwa.");
   }catch(error){setNotice("Imeshindikana kutoa ripoti: "+(error instanceof Error?error.message:"Hitilafu isiyojulikana"));}
  }
- async function adjustBranchStock(){\n  const product=products.find(item=>item.id===adjustmentProductId);\n  const quantity=Number(adjustmentQuantity);\n  const reason=adjustmentReason.trim();\n  if(!product){setNotice("Chagua bidhaa ya kuhesabu au kurekebisha stock.");return;}\n  if(!Number.isFinite(quantity)||(adjustmentType==="correction"?quantity===0:quantity<0)||(adjustmentType!=="correction"&&quantity===0)){setNotice("Weka kiasi sahihi kulingana na aina ya marekebisho.");return;}\n  if(reason.length<3){setNotice("Andika sababu ya marekebisho (angalau herufi 3).");return;}\n  if(supabaseConfigured&&isConnected===false){setNotice("Hesabu/marekebisho ya stock yanahitaji mtandao.");return;}\n  if(supabaseConfigured){\n   if(!supabase||!shopId||!branchId){setNotice("Chagua duka na tawi kwanza.");return;}\n   const key=adjustmentIdempotencyKey??makeIdempotencyKey();\n   if(!adjustmentIdempotencyKey)setAdjustmentIdempotencyKey(key);\n   setCloudLoading(true);\n   const {data,error}=await supabase.rpc("adjust_branch_stock",{p_shop_id:shopId,p_branch_id:branchId,p_product_id:product.id,p_adjustment_type:adjustmentType,p_quantity:quantity,p_reason:reason,p_idempotency_key:key});\n   setCloudLoading(false);\n   if(error){setNotice("Marekebisho hayajahifadhiwa: "+error.message);return;}\n   const row=Array.isArray(data)?data[0]:data;\n   await refreshProductsFromCloud();\n   const {data:history}=await supabase.from("branch_stock_adjustments").select("id,product_id,adjustment_type,quantity_before,quantity_after,quantity_change,reason,created_at,created_by").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}).limit(30);\n   if(history)setStockAdjustments(history);\n   setAdjustmentIdempotencyKey(null);setAdjustmentQuantity("");setAdjustmentReason("");\n   setNotice("Marekebisho yamehifadhiwa. Stock: "+Number(row?.quantity_before??0)+" → "+Number(row?.quantity_after??0)+". Rejea: "+(row?.adjustment_id??""));\n   return;\n  }\n  setProducts(rows=>rows.map(item=>{if(item.id!==product.id)return item;const next=adjustmentType==="count"?quantity:adjustmentType==="damage"||adjustmentType==="loss"?item.stockQuantity-quantity:item.stockQuantity+quantity;return {...item,stockQuantity:Math.max(0,next)};}));\n  setAdjustmentQuantity("");setAdjustmentReason("");setNotice("Marekebisho yamefanyika kwenye demo pekee.");\n }\n async function transferStock(){
+ async function adjustBranchStock(){
+  const product=products.find(item=>item.id===adjustmentProductId);
+  const quantity=Number(adjustmentQuantity);
+  const reason=adjustmentReason.trim();
+  if(!product){setNotice("Chagua bidhaa ya kuhesabu au kurekebisha stock.");return;}
+  if(!Number.isFinite(quantity)||(adjustmentType==="correction"?quantity===0:quantity<0)||(adjustmentType!=="correction"&&quantity===0)){setNotice("Weka kiasi sahihi kulingana na aina ya marekebisho.");return;}
+  if(reason.length<3){setNotice("Andika sababu ya marekebisho (angalau herufi 3).");return;}
+  if(supabaseConfigured&&isConnected===false){setNotice("Hesabu/marekebisho ya stock yanahitaji mtandao.");return;}
+  if(supabaseConfigured){
+   if(!supabase||!shopId||!branchId){setNotice("Chagua duka na tawi kwanza.");return;}
+   const key=adjustmentIdempotencyKey??makeIdempotencyKey();
+   if(!adjustmentIdempotencyKey)setAdjustmentIdempotencyKey(key);
+   setCloudLoading(true);
+   const {data,error}=await supabase.rpc("adjust_branch_stock",{p_shop_id:shopId,p_branch_id:branchId,p_product_id:product.id,p_adjustment_type:adjustmentType,p_quantity:quantity,p_reason:reason,p_idempotency_key:key});
+   setCloudLoading(false);
+   if(error){setNotice("Marekebisho hayajahifadhiwa: "+error.message);return;}
+   const row=Array.isArray(data)?data[0]:data;
+   await refreshProductsFromCloud();
+   const {data:history}=await supabase.from("branch_stock_adjustments").select("id,product_id,adjustment_type,quantity_before,quantity_after,quantity_change,reason,created_at,created_by").eq("shop_id",shopId).eq("branch_id",branchId).order("created_at",{ascending:false}).limit(30);
+   if(history)setStockAdjustments(history);
+   setAdjustmentIdempotencyKey(null);setAdjustmentQuantity("");setAdjustmentReason("");
+   setNotice("Marekebisho yamehifadhiwa. Stock: "+Number(row?.quantity_before??0)+" → "+Number(row?.quantity_after??0)+". Rejea: "+(row?.adjustment_id??""));
+   return;
+  }
+  setProducts(rows=>rows.map(item=>{if(item.id!==product.id)return item;const next=adjustmentType==="count"?quantity:adjustmentType==="damage"||adjustmentType==="loss"?item.stockQuantity-quantity:item.stockQuantity+quantity;return {...item,stockQuantity:Math.max(0,next)};}));
+  setAdjustmentQuantity("");setAdjustmentReason("");setNotice("Marekebisho yamefanyika kwenye demo pekee.");
+ }
+ async function transferStock(){
   if(cloudLoading)return;
   const quantity=Number(transferQuantity);
   if(!supabase||!shopId||!branchId){setNotice("Chagua tawi la chanzo kabla ya kuhamisha stock.");return;}
