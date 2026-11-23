@@ -266,8 +266,8 @@ function Dashboard() {
    const key=refundKeys[sale.id]??makeIdempotencyKey();
    if(!refundKeys[sale.id])setRefundKeys(v=>({...v,[sale.id]:key}));
    setCloudLoading(true);setNotice("Inathibitisha marejesho kwenye database...");
-   const {data,error}=await supabase.rpc("refund_sale",{
-    p_shop_id:shopId,p_sale_id:sale.id,p_idempotency_key:key,p_reason:reason,p_refund_method:"cash",
+   const {data,error}=await supabase.rpc("refund_sale_in_branch",{
+    p_shop_id:shopId,p_branch_id:branchId,p_sale_id:sale.id,p_idempotency_key:key,p_reason:reason,p_refund_method:"cash",
     p_items:sale.lines.map(line=>({sale_item_id:line.id,quantity:line.quantity}))
    });
    setCloudLoading(false);
@@ -320,7 +320,7 @@ function Dashboard() {
     const result=await submitCheckout({shopId,branchId:branchId??"",idempotencyKey:key,items:cart.map(x=>({product_id:x.productId,quantity:x.quantity})),paymentMethod:"cash"});
     setCart([]);setPendingCheckoutKey(null);
     const {data,error}=await supabase.rpc("get_shop_products",{p_shop_id:shopId});
-    if(!error&&data){const mapped=data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped);}
+    if(!error&&data){const mapped=await mapProductsForBranch(data);setProducts(mapped);void writeCachedProducts(shopId,branchId??"",mapped);}
     setNotice("Mauzo yamehifadhiwa: "+result.receiptNumber+" · "+formatTZS(result.total));
     setScreen("Home");
    } catch(e) { const network=await NetInfo.fetch();if(!network.isConnected){try{await queueOfflineCheckout(key);}catch(queueError){setNotice("Mtandao umekatika na mauzo hayajahifadhiwa offline: "+(queueError instanceof Error?queueError.message:"hitilafu"));}}else{setNotice("Mauzo hayajakamilika: "+(e instanceof Error?e.message:"Hitilafu isiyojulikana")+". Hakikisha muamala haujakamilika kabla ya kujaribu tena.");} }
