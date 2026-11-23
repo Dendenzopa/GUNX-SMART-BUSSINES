@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
 import NetInfo from "@react-native-community/netinfo";
-import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View, Pressable, TextInput, Image } from "react-native";
+import { Alert, BackHandler, SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View, Pressable, TextInput, Image } from "react-native";
 import { demoProducts, demoSales, demoExpenses } from "./src/data/demoData";
 import { formatTZS, netProfit, totalSales } from "./src/domain/money";
 import type { Product, Sale, Expense, DebtEntry } from "./src/domain/types";
@@ -19,6 +19,24 @@ function makeIdempotencyKey() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".re
 function Dashboard() {
  const { shopId } = useShopContext();
  const [screen,setScreen]=useState<Screen>("Home");
+ const [screenHistory,setScreenHistory]=useState<Screen[]>([]);
+ const navigate=(next:Screen)=>{if(next===screen)return;setScreenHistory(history=>[...history,screen]);setScreen(next);};
+ useEffect(()=>{
+  const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{
+   if(screenHistory.length>0){
+    const previous=screenHistory[screenHistory.length-1];
+    setScreenHistory(history=>history.slice(0,-1));
+    setScreen(previous);
+    return true;
+   }
+   Alert.alert("Toka kwenye GUNX SMART BUSINESS","Unataka kutoka kwenye programu?",[
+    {text:"Endelea kutumia",style:"cancel"},
+    {text:"Toka",style:"destructive",onPress:()=>BackHandler.exitApp()}
+   ]);
+   return true;
+  });
+  return ()=>subscription.remove();
+ },[screenHistory]);
  const [products,setProducts]=useState<Product[]>(demoProducts);
  const [sales,setSales]=useState<Sale[]>(demoSales);
  const [refundTotal,setRefundTotal]=useState(0);
@@ -278,7 +296,7 @@ function Dashboard() {
   setProducts(current=>current.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:Math.max(0,p.stockQuantity-line.quantity)}:p;}));
   setCart([]);setPendingCheckoutKey(null);
   setNotice("Mauzo yamehifadhiwa kwenye simu bila mtandao. Yatasawazishwa mtandao utakaporudi; bado hayajathibitishwa na server.");
-  setScreen("Home");
+  navigate("Home");
  }
  async function checkout() {
   if(!cart.length){setNotice("Add a product before checkout.");return;}
@@ -294,7 +312,7 @@ function Dashboard() {
     const {data,error}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
     if(!error&&data){const mapped=data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped);}
     setNotice("Mauzo yamehifadhiwa: "+result.receiptNumber+" · "+formatTZS(result.total));
-    setScreen("Home");
+    navigate("Home");
    } catch(e) { const network=await NetInfo.fetch();if(!network.isConnected){try{await queueOfflineCheckout(key);}catch(queueError){setNotice("Mtandao umekatika na mauzo hayajahifadhiwa offline: "+(queueError instanceof Error?queueError.message:"hitilafu"));}}else{setNotice("Mauzo hayajakamilika: "+(e instanceof Error?e.message:"Hitilafu isiyojulikana")+". Hakikisha muamala haujakamilika kabla ya kujaribu tena.");} }
    finally { setCloudLoading(false); }
    return;
@@ -303,13 +321,13 @@ function Dashboard() {
   const lines=cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return {productId:p.id,productName:p.name,quantity:x.quantity,unitPrice:p.sellingPrice,unitCost:p.costPrice,lineTotal:p.sellingPrice*x.quantity};});
   const total=lines.reduce((a,x)=>a+x.lineTotal,0);
   const sale:Sale={id:"local-"+Date.now(),receiptNumber:"DEMO-"+String(sales.length+1).padStart(4,"0"),createdAt:new Date().toISOString(),lines,subtotal:total,discount:0,total,amountPaid:total,balance:0,paymentMethod:"cash",status:"completed"};
-  setSales(v=>[sale,...v]);setProducts(v=>v.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:p.stockQuantity-line.quantity}:p;}));setCart([]);setNotice("Demo checkout completed: "+sale.receiptNumber);setScreen("Home");
+  setSales(v=>[sale,...v]);setProducts(v=>v.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:p.stockQuantity-line.quantity}:p;}));setCart([]);setNotice("Demo checkout completed: "+sale.receiptNumber);navigate("Home");
  }
  return <SafeAreaView style={s.safe}><StatusBar barStyle="light-content" backgroundColor="#081522"/>
   <View style={s.header}><View><Text style={s.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={s.brand}>GUNX <Text style={s.gold}>SMART</Text> BUSINESS</Text><Text style={s.muted}>Sales · Stock · Finance</Text></View><Image source={require("./assets/GUNX20Smart20Business20Logo-1.jpg")} style={s.logoImage} resizeMode="contain"/></View>
-  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.navScroll}><View style={s.nav}>{(["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"] as Screen[]).map(x=><Pressable key={x} onPress={()=>setScreen(x)} style={[s.navItem,screen===x&&s.navOn]}><Text style={[s.navText,screen===x&&s.navTextOn]}>{x}</Text></Pressable>)}</View></ScrollView>
+  <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.navScroll}><View style={s.nav}>{(["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"] as Screen[]).map(x=><Pressable key={x} onPress={()=>navigate(x)} style={[s.navItem,screen===x&&s.navOn]}><Text style={[s.navText,screen===x&&s.navTextOn]}>{x}</Text></Pressable>)}</View></ScrollView>
   <ScrollView contentContainerStyle={s.content}>
-   {screen==="Home"&&<><View style={s.hero}><Text style={s.eyebrow}>BUSINESS OVERVIEW</Text><Text style={s.heroTitle}>Welcome back</Text><Text style={s.muted}>Your business, all in one place.</Text></View><View style={s.row}><Metric label="TOTAL SALES" value={formatTZS(totalSales(sales))}/><Metric label="EST. NET PROFIT*" value={formatTZS(netProfit(sales,expenses))}/></View><View style={s.row}><Metric label="LOW STOCK" value={lowStock+" items"}/><Metric label="SALES COUNT" value={String(sales.length)}/></View><View style={s.row}><Metric label="MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/><Metric label="GHARAMA" value={formatTZS(expenses.reduce((a,x)=>a+x.amount,0))}/></View><Text style={s.heading}>Quick actions</Text><View style={s.row}><View style={s.flex}><Button label="＋ New sale" onPress={()=>setScreen("POS")}/></View><View style={s.flex}><Button label="View stock" quiet onPress={()=>setScreen("Stock")}/></View></View><Text style={s.notice}>{isConnected===false?"OFFLINE · ":isConnected===true?"ONLINE · ":""}{pendingOutbox.length>0?pendingOutbox.length+" mauzo yanasubiri kusawazishwa. ":""}{notice}</Text><Text style={s.foot}>{supabaseConfigured ? "*Makadirio ya faida kutokana na mauzo, gharama na refunds zilizopakiwa; hakiki hesabu kabla ya maamuzi ya fedha." : "*Demo estimate only. Not connected to a live business database."}</Text></>}
+   {screen==="Home"&&<><View style={s.hero}><Text style={s.eyebrow}>BUSINESS OVERVIEW</Text><Text style={s.heroTitle}>Welcome back</Text><Text style={s.muted}>Your business, all in one place.</Text></View><View style={s.row}><Metric label="TOTAL SALES" value={formatTZS(totalSales(sales))}/><Metric label="EST. NET PROFIT*" value={formatTZS(netProfit(sales,expenses))}/></View><View style={s.row}><Metric label="LOW STOCK" value={lowStock+" items"}/><Metric label="SALES COUNT" value={String(sales.length)}/></View><View style={s.row}><Metric label="MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/><Metric label="GHARAMA" value={formatTZS(expenses.reduce((a,x)=>a+x.amount,0))}/></View><Text style={s.heading}>Quick actions</Text><View style={s.row}><View style={s.flex}><Button label="＋ New sale" onPress={()=>navigate("POS")}/></View><View style={s.flex}><Button label="View stock" quiet onPress={()=>navigate("Stock")}/></View></View><Text style={s.notice}>{isConnected===false?"OFFLINE · ":isConnected===true?"ONLINE · ":""}{pendingOutbox.length>0?pendingOutbox.length+" mauzo yanasubiri kusawazishwa. ":""}{notice}</Text><Text style={s.foot}>{supabaseConfigured ? "*Makadirio ya faida kutokana na mauzo, gharama na refunds zilizopakiwa; hakiki hesabu kabla ya maamuzi ya fedha." : "*Demo estimate only. Not connected to a live business database."}</Text></>}
    {screen==="POS"&&<><Text style={s.pageTitle}>Point of Sale</Text><Text style={s.muted}>{supabaseConfigured ? (cloudLoading ? "Inapakia bidhaa..." : "Bidhaa za duka lako kutoka database.") : "Tap a product to add it to the cart."}</Text>{products.filter(p=>p.active).map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>{formatTZS(p.sellingPrice)} · Stock {p.stockQuantity}</Text></View><Button label="Add" quiet onPress={()=>add(p)}/></View>)}<View style={s.panel}><Text style={s.heading}>Cart ({cart.reduce((a,x)=>a+x.quantity,0)} items)</Text>{cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return <Text key={x.productId} style={s.muted}>{p.name} × {x.quantity} — {formatTZS(p.sellingPrice*x.quantity)}</Text>;})}<Text style={s.total}>Total: {formatTZS(cartTotal)}</Text><Button label={supabaseConfigured ? "Complete cash sale" : "Complete demo cash sale"} onPress={checkout}/><Button label="Clear cart" quiet onPress={()=>setCart([])}/></View><Text style={s.notice}>{notice}</Text></>}
    {screen==="Stock"&&<><Text style={s.pageTitle}>Products & Stock</Text><Text style={s.muted}>{supabaseConfigured ? "Stock ya duka lako. Ingiza kiasi kisha chagua bidhaa kuongeza stock." : "Sample inventory and reorder levels."}</Text><View style={s.panel}><Text style={s.heading}>Pokea stock</Text><TextInput value={stockInAmount} onChangeText={setStockInAmount} placeholder="Kiasi kinachoingia" placeholderTextColor="#8194A5" keyboardType="decimal-pad" style={s.field}/></View>{products.map(p=><View key={p.id} style={s.list}><View style={s.flex}><Text style={s.item}>{p.name}</Text><Text style={s.muted}>SKU {p.sku} · Cost {formatTZS(p.costPrice)} · Sell {formatTZS(p.sellingPrice)}</Text></View><View><Text style={s.stock}>{p.stockQuantity} {p.unit}</Text><Button label="＋ Stock in" quiet onPress={()=>receiveStock(p.id)}/></View></View>)}<Text style={s.foot}>Low stock means quantity is at or below the reorder level. Stock-in actions are recorded in stock movement history.</Text></>}
    {screen==="Debts"&&<><Text style={s.pageTitle}>Kitabu cha Madeni</Text><Text style={s.muted}>Rekodi madeni ya wateja na malipo wanayorejesha.</Text><View style={s.panel}><Text style={s.heading}>Ongeza deni jipya</Text><TextInput value={debtorName} onChangeText={setDebtorName} placeholder="Jina la mteja" placeholderTextColor="#8194A5" style={s.field}/><TextInput value={debtAmount} onChangeText={setDebtAmount} placeholder="Kiasi cha deni (TZS)" placeholderTextColor="#8194A5" keyboardType="numeric" style={s.field}/><Button label={supabaseConfigured ? "Hifadhi deni" : "Hifadhi deni (demo)"} onPress={addDebt}/></View><Metric label="JUMLA YA MADENI YALIYOBAKI" value={formatTZS(outstandingDebt)}/>{debts.map(d=><View key={d.id} style={s.panel}><Text style={s.item}>{d.customerName}</Text><Text style={s.muted}>Deni la awali: {formatTZS(d.originalAmount)} · Amelipa: {formatTZS(d.amountPaid)}</Text><Text style={s.total}>Baki: {formatTZS(d.balance)}</Text>{d.balance>0&&<><TextInput value={repaymentAmount} onChangeText={setRepaymentAmount} placeholder="Kiasi cha kurejesha (TZS)" placeholderTextColor="#8194A5" keyboardType="numeric" style={s.field}/><Button label="Rekodi marejesho" quiet onPress={()=>repayDebt(d.id)}/></>}</View>)}<Text style={s.foot}>{supabaseConfigured ? "Madeni na marejesho huhifadhiwa kwenye database ya duka." : "Data hii ni ya majaribio kwenye kumbukumbu ya muda ya app; bado haisawazishwi na database."}</Text></>}
