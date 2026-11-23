@@ -136,7 +136,7 @@ function Dashboard() {
  },[]);
  useEffect(() => {
   if(!shopId||!branchId)return;
-  setProducts([]);setCart([]);setHasShopProductCache(false);
+  setProducts([]);setCart([]);setSales([]);setExpenses([]);setDebts([]);setRefundTotal(0);setHasShopProductCache(false);
   let active=true;
   Promise.all([readPendingSales(shopId,userId,effectiveRole),readCachedProducts(shopId,branchId??"")]).then(([items,cached])=>{
    if(!active)return;
