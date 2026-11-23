@@ -6,7 +6,7 @@ This guide covers migrations `0024` through `0032` on top of the existing `0023_
 
 1. Confirm migrations `0001` through `0023` have already been applied in this Supabase project.
 2. Take a database backup and test the rollout on a staging project first.
-3. Deploy the matching application update before allowing staff to use the new branch workflows. Migration `0027` revokes client execution of the old shop-wide checkout, receiving, refund, and debt RPCs.
+3. Deploy the matching application update before allowing staff to use the new branch workflows. Migration `0027` revokes client execution of the old shop-wide checkout, receiving, refund, and debt RPCs; migration `0032` also requires provider-aware branch RPCs for checkout, debt collections and refunds.
 4. Do not apply these migrations to production until the SQL has been reviewed and exercised against a staging copy.
 
 ## Migration order
