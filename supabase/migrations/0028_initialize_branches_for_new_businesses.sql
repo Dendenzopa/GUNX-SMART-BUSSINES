@@ -28,7 +28,7 @@ set search_path = public, pg_temp
 as $$
 begin
   insert into public.branch_stock(shop_id, branch_id, product_id, quantity, reorder_level)
-  select new.shop_id, new.id, p.id, 0, p.reorder_level
+  select new.shop_id, new.id, p.id, case when new.is_primary then p.stock_quantity else 0 end, p.reorder_level
   from public.products p
   where p.shop_id = new.shop_id
   on conflict (branch_id, product_id) do nothing;
@@ -49,7 +49,7 @@ where not exists (select 1 from public.branches b where b.shop_id = s.id and b.i
 on conflict (shop_id, code) do nothing;
 
 insert into public.branch_stock(shop_id, branch_id, product_id, quantity, reorder_level)
-select p.shop_id, b.id, p.id, 0, p.reorder_level
+select p.shop_id, b.id, p.id, case when b.is_primary then p.stock_quantity else 0 end, p.reorder_level
 from public.products p
 join public.branches b on b.shop_id = p.shop_id
 on conflict (branch_id, product_id) do nothing;
