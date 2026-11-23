@@ -124,7 +124,7 @@ with check (
   public.has_shop_role(shop_id, array['owner'])
   and exists (
     select 1 from public.branches b
-    where b.id = branch_id and b.shop_id = shop_id and b.active
+    where b.id = public.shop_member_branches.branch_id and b.shop_id = public.shop_member_branches.shop_id and b.active
   )
 );
 
