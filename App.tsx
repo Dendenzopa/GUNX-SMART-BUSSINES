@@ -144,7 +144,14 @@ function Dashboard() {
   let active=true;
   Promise.all([readPendingSales(shopId,userId,effectiveRole),readCachedProducts(shopId,branchId??"")]).then(([items,cached])=>{
    if(!active)return;
-   setPendingOutbox(items);
+   // Older offline tickets predate branch IDs. They were created against the
+   // former shop-wide stock ledger, so recover them into the primary branch.
+   const fallbackBranchId=branches.find(item=>item.is_primary)?.id??branchId??"";
+   const normalizedItems=items.map(item=>({...item,branchId:item.branchId||fallbackBranchId}));
+   setPendingOutbox(normalizedItems);
+   if(normalizedItems.some((item,index)=>item.branchId!==items[index]?.branchId)){
+    void writePendingSales(shopId,userId,effectiveRole,normalizedItems);
+   }
    if(cached.length){
     const reserved=new Map<string,number>();
     items.forEach(item=>item.items.forEach(line=>reserved.set(line.product_id,(reserved.get(line.product_id)??0)+line.quantity)));
@@ -154,7 +161,7 @@ function Dashboard() {
    if(items.length)setSales(current=>[...items.map(item=>({...item.sale})),...current.filter(sale=>!items.some(item=>item.sale.id===sale.id))]);
   });
   return ()=>{active=false;};
- },[shopId,userId,effectiveRole,branchId]);
+ },[shopId,userId,effectiveRole,branchId,branches]);
  useEffect(() => {
   const client=supabase;
   if(!supabaseConfigured||!client||!shopId||!branchId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
