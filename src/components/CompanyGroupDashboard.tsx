@@ -4,13 +4,13 @@ import { supabase } from "../lib/supabase";
 import { formatTZS } from "../domain/money";
 
 type GroupOption = { id: string; name: string; role: "group_owner" | "group_admin" | "group_viewer" };
-type ShopMetric = { shop_id: string; shop_name: string; sales_count: number; sales_total: number; expenses_total: number };
+type BranchMetric = { shop_id: string; shop_name: string; branch_id: string; branch_name: string; sales_count: number; sales_total: number; expenses_total: number; net_after_expenses: number; debt_outstanding: number; stock_units: number; stock_value: number; low_stock_products: number };
 type MemberOption = { user_id: string; role: "group_owner" | "group_admin" | "group_viewer" };
 
 export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: string | null; shopRole: string | null }) {
   const [groups, setGroups] = useState<GroupOption[]>([]);
   const [selectedGroupId, setSelectedGroupId] = useState("");
-  const [rows, setRows] = useState<ShopMetric[]>([]);
+  const [rows, setRows] = useState<BranchMetric[]>([]);
   const [groupName, setGroupName] = useState("");
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [memberUserId, setMemberUserId] = useState("");
@@ -67,14 +67,14 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
 
   const loadOverview = useCallback(async (groupId: string) => {
     if (!supabase || !groupId) { setRows([]); return; }
-    const { data, error } = await supabase.rpc("get_company_group_overview", {
+    const { data, error } = await supabase.rpc("get_company_group_enterprise_overview", {
       p_group_id: groupId,
       p_from: new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10),
       p_to: new Date().toISOString().slice(0, 10)
     });
     if (error) { setRows([]); setNotice("Ripoti haijapakiwa: " + error.message); return; }
-    setRows((data ?? []) as ShopMetric[]);
-    setNotice("Ripoti ya siku 30 imepakiwa kwa kundi uliloruhusiwa kuona.");
+    setRows((data ?? []) as BranchMetric[]);
+    setNotice("Ripoti ya siku 30 imepakiwa. Madeni na thamani ya stock ni salio la sasa.");
   }, []);
 
   useEffect(() => { void loadGroups(); }, [loadGroups]);
@@ -111,6 +111,10 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
   const totalSales = rows.reduce((sum, row) => sum + Number(row.sales_total || 0), 0);
   const totalExpenses = rows.reduce((sum, row) => sum + Number(row.expenses_total || 0), 0);
   const salesCount = rows.reduce((sum, row) => sum + Number(row.sales_count || 0), 0);
+  const totalDebt = rows.reduce((sum, row) => sum + Number(row.debt_outstanding || 0), 0);
+  const totalStockValue = rows.reduce((sum, row) => sum + Number(row.stock_value || 0), 0);
+  const totalStockUnits = rows.reduce((sum, row) => sum + Number(row.stock_units || 0), 0);
+  const lowStockCount = rows.reduce((sum, row) => sum + Number(row.low_stock_products || 0), 0);
 
   return <View>
     <Text style={s.title}>Enterprise · Makundi ya Biashara</Text>
@@ -132,14 +136,26 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
     {!!selectedGroupId && <>
       <Text style={s.section}>Muhtasari wa siku 30</Text>
       <View style={s.metrics}>
-        <View style={s.metric}><Text style={s.metricLabel}>MAUZO</Text><Text style={s.metricValue}>{formatTZS(totalSales)}</Text></View>
-        <View style={s.metric}><Text style={s.metricLabel}>GHARAMA</Text><Text style={s.metricValue}>{formatTZS(totalExpenses)}</Text></View>
+        <View style={s.metric}><Text style={s.metricLabel}>MAUZO · SIKU 30</Text><Text style={s.metricValue}>{formatTZS(totalSales)}</Text></View>
+        <View style={s.metric}><Text style={s.metricLabel}>GHARAMA · SIKU 30</Text><Text style={s.metricValue}>{formatTZS(totalExpenses)}</Text></View>
       </View>
-      <View style={s.metric}><Text style={s.metricLabel}>IDADI YA MAUZO</Text><Text style={s.metricValue}>{salesCount}</Text></View>
-      {rows.map(row => <View key={row.shop_id} style={s.panel}>
-        <Text style={s.choiceTitle}>{row.shop_name}</Text>
-        <Text style={s.muted}>{row.sales_count} mauzo · Mauzo {formatTZS(Number(row.sales_total))}</Text>
-        <Text style={s.muted}>Gharama {formatTZS(Number(row.expenses_total))}</Text>
+      <View style={s.metrics}>
+        <View style={s.metric}><Text style={s.metricLabel}>MADENI YANAYODAIWA SASA</Text><Text style={s.metricValue}>{formatTZS(totalDebt)}</Text></View>
+        <View style={s.metric}><Text style={s.metricLabel}>THAMANI YA STOCK (KWA COST)</Text><Text style={s.metricValue}>{formatTZS(totalStockValue)}</Text></View>
+      </View>
+      <View style={s.metrics}>
+        <View style={s.metric}><Text style={s.metricLabel}>IDADI YA MAUZO</Text><Text style={s.metricValue}>{salesCount.toLocaleString("en-US")}</Text></View>
+        <View style={s.metric}><Text style={s.metricLabel}>UNITS ZA STOCK</Text><Text style={s.metricValue}>{totalStockUnits.toLocaleString("en-US")}</Text></View>
+      </View>
+      <Text style={s.muted}>Bidhaa zilizo chini ya kiwango cha reorder: {lowStockCount}. Mauzo na gharama ni za siku 30; madeni na stock ni hali ya sasa.</Text>
+      <Text style={s.section}>Utendaji wa kila tawi</Text>
+      {rows.map(row => <View key={row.branch_id} style={s.panel}>
+        <Text style={s.choiceTitle}>{row.shop_name} · {row.branch_name}</Text>
+        <Text style={s.muted}>{Number(row.sales_count).toLocaleString("en-US")} mauzo · Mauzo {formatTZS(Number(row.sales_total))}</Text>
+        <Text style={s.muted}>Gharama {formatTZS(Number(row.expenses_total))} · Mauzo pungufu gharama {formatTZS(Number(row.net_after_expenses))}</Text>
+        <Text style={s.muted}>Madeni yaliyobaki {formatTZS(Number(row.debt_outstanding))}</Text>
+        <Text style={s.muted}>Stock {Number(row.stock_units).toLocaleString("en-US")} units · Thamani {formatTZS(Number(row.stock_value))}</Text>
+        <Text style={s.muted}>Bidhaa chini ya reorder: {Number(row.low_stock_products).toLocaleString("en-US")}</Text>
       </View>)}
       {rows.length === 0 && <Text style={s.muted}>Hakuna biashara iliyounganishwa kwenye kundi hili au hakuna data ya ripoti kwa kipindi hiki.</Text>}
       {canManage && <View style={s.panel}>
