@@ -71,10 +71,10 @@ begin
 
   -- A branch must be opened before new sales can be accepted. Existing idempotent
   -- retries return above, so syncing a previously accepted sale is safe.
-  if not exists (
-    select 1 from public.branch_cash_sessions cs
-    where cs.shop_id = p_shop_id and cs.branch_id = p_branch_id and cs.status = 'open'
-  ) then
+  perform 1 from public.branch_cash_sessions cs
+  where cs.shop_id = p_shop_id and cs.branch_id = p_branch_id and cs.status = 'open'
+  for share;
+  if not found then
     raise exception 'BRANCH_SESSION_CLOSED: Open this branch before starting sales';
   end if;
 
