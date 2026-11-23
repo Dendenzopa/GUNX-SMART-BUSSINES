@@ -5,7 +5,7 @@ import { supabase, supabaseConfigured } from "../lib/supabase";
 import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
 
 type ShopRole = "owner" | "manager" | "cashier" | "stockkeeper";
-type BranchOption = { id: string; name: string; code: string };
+type BranchOption = { id: string; name: string; code: string; is_primary: boolean };
 const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null; branchId: string | null; branches: BranchOption[]; setBranchId: (id: string) => void }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null, branchId: null, branches: [], setBranchId: () => undefined });
 export function useShopContext() { return useContext(ShopContext); }
 
@@ -144,7 +144,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         }
         allowedIds = (assignments ?? []).map((row: { branch_id: string }) => row.branch_id);
       }
-      let query = client.from("branches").select("id,name,code")
+      let query = client.from("branches").select("id,name,code,is_primary")
         .eq("shop_id", shopId).eq("active", true).order("is_primary", { ascending: false }).order("name");
       if (allowedIds) {
         if (!allowedIds.length) {
