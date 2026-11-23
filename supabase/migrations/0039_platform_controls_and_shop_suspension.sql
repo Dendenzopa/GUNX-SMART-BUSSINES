@@ -72,6 +72,25 @@ $$;
 revoke all on function public.get_platform_control_settings() from public, anon;
 grant execute on function public.get_platform_control_settings() to authenticated;
 
+create or replace function public.get_public_platform_settings()
+returns jsonb
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $
+  select jsonb_build_object(
+    'maintenance_mode', coalesce((select (setting_value #>> '{}')::boolean from public.platform_app_settings where setting_key = 'maintenance_mode'), false),
+    'maintenance_message', coalesce((select setting_value #>> '{}' from public.platform_app_settings where setting_key = 'maintenance_message'), ''),
+    'announcement_message', coalesce((select setting_value #>> '{}' from public.platform_app_settings where setting_key = 'announcement_message'), ''),
+    'support_phone', coalesce((select setting_value #>> '{}' from public.platform_app_settings where setting_key = 'support_phone'), ''),
+    'support_email', coalesce((select setting_value #>> '{}' from public.platform_app_settings where setting_key = 'support_email'), '')
+  );
+$;
+revoke all on function public.get_public_platform_settings() from public;
+grant execute on function public.get_public_platform_settings() to anon, authenticated;
+
+
 create or replace function public.update_platform_control_settings(
   p_maintenance_mode boolean,
   p_maintenance_message text,
@@ -206,3 +225,22 @@ grant execute on function public.get_platform_shop_directory(text, integer) to a
 
 comment on table public.platform_app_settings is 'Allowlisted platform configuration, readable and writable only through platform-admin RPCs.';
 comment on table public.platform_shop_controls is 'Platform-enforced shop suspension state. Membership access is denied centrally while suspended.';
+
+
+-- Role-checking SECURITY DEFINER RPCs must honor platform suspension too.
+create or replace function public.has_shop_role(p_shop_id uuid, p_roles text[])
+returns boolean
+language sql
+stable
+security definer
+set search_path = public, pg_temp
+as $$
+  select public.is_shop_member(p_shop_id) and exists (
+    select 1 from public.shop_members sm
+    where sm.shop_id = p_shop_id
+      and sm.user_id = (select auth.uid())
+      and sm.role = any(p_roles)
+  );
+$$;
+revoke all on function public.has_shop_role(uuid, text[]) from public;
+grant execute on function public.has_shop_role(uuid, text[]) to authenticated;
