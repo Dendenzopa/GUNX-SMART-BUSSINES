@@ -41,6 +41,7 @@ create table if not exists public.branch_daily_closings (
   closed_at timestamptz not null default now(),
   opening_cash numeric(14,2) not null,
   cash_sales numeric(14,2) not null default 0,
+  cash_debt_collections numeric(14,2) not null default 0,
   mobile_sales numeric(14,2) not null default 0,
   bank_sales numeric(14,2) not null default 0,
   cash_refunds numeric(14,2) not null default 0,
@@ -140,6 +141,7 @@ declare
   v_session public.branch_cash_sessions%rowtype;
   v_now timestamptz := clock_timestamp();
   v_cash_sales numeric(14,2);
+  v_cash_debt_collections numeric(14,2);
   v_mobile_sales numeric(14,2);
   v_bank_sales numeric(14,2);
   v_cash_refunds numeric(14,2);
@@ -170,6 +172,11 @@ begin
   where p.shop_id=v_session.shop_id and p.branch_id=v_session.branch_id
     and p.received_at >= v_session.opened_at and p.received_at <= v_now;
 
+  select coalesce(sum(dp.amount),0) into v_cash_debt_collections
+  from public.debt_payments dp
+  where dp.shop_id=v_session.shop_id and dp.branch_id=v_session.branch_id
+    and dp.method='cash' and dp.received_at >= v_session.opened_at and dp.received_at <= v_now;
+
   select coalesce(sum(r.refund_total),0) into v_cash_refunds
   from public.sale_refunds r
   where r.shop_id=v_session.shop_id and r.branch_id=v_session.branch_id
@@ -187,15 +194,15 @@ begin
     and s.created_at >= v_session.opened_at and s.created_at <= v_now
     and s.status <> 'voided';
 
-  v_expected := round(v_session.opening_cash + v_cash_sales - v_cash_refunds - v_cash_expenses,2);
+  v_expected := round(v_session.opening_cash + v_cash_sales + v_cash_debt_collections - v_cash_refunds - v_cash_expenses,2);
 
   insert into public.branch_daily_closings(
     shop_id,branch_id,session_id,opened_by,closed_by,opened_at,closed_at,opening_cash,
-    cash_sales,mobile_sales,bank_sales,cash_refunds,cash_expenses,expected_cash,
+    cash_sales,cash_debt_collections,mobile_sales,bank_sales,cash_refunds,cash_expenses,expected_cash,
     counted_cash,cash_difference,total_sales,sales_count,note
   ) values (
     v_session.shop_id,v_session.branch_id,v_session.id,v_session.opened_by,auth.uid(),
-    v_session.opened_at,v_now,v_session.opening_cash,v_cash_sales,v_mobile_sales,v_bank_sales,
+    v_session.opened_at,v_now,v_session.opening_cash,v_cash_sales,v_cash_debt_collections,v_mobile_sales,v_bank_sales,
     v_cash_refunds,v_cash_expenses,v_expected,round(p_counted_cash,2),
     round(p_counted_cash-v_expected,2),v_total_sales,v_sales_count,
     nullif(trim(coalesce(p_note,'')),'')
