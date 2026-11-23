@@ -55,7 +55,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      if (!next) { setNeedsShop(false); setShopId(null); setShopRole(null); setShopOptions([]); setGroupOnly(false); setBranches([]); setBranchId(null); setIsPlatformAdmin(false); }
+      if (!next) { setNeedsShop(false); setShopId(null); setShopRole(null); setShopOptions([]); setGroupOnly(false); setBranches([]); setBranchId(null); setIsPlatformAdmin(false); setHasSuspendedShop(false); }
     });
     return () => { active = false; listener.subscription.unsubscribe(); };
   }, []);
