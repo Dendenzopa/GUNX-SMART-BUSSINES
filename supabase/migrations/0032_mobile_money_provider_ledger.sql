@@ -74,7 +74,13 @@ begin
     into v_sale_id, v_receipt, v_total, v_existing_provider, v_existing_method
   from public.checkout_requests cr
   join public.sales s on s.id = cr.sale_id
-  left join public.payments pay on pay.sale_id = s.id
+  left join lateral (
+    select payment.method, payment.provider
+    from public.payments payment
+    where payment.sale_id = s.id
+    order by payment.received_at desc, payment.id desc
+    limit 1
+  ) pay on true
   where cr.shop_id = p_shop_id and cr.idempotency_key = p_idempotency_key;
 
   if v_sale_id is not null then
