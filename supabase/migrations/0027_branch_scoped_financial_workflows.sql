@@ -71,6 +71,10 @@ begin
      or not public.has_branch_access(v_shop_id, p_branch_id) then
     raise exception 'Debt does not belong to the selected branch or access is denied';
   end if;
+  perform 1 from public.branch_cash_sessions cs
+  where cs.shop_id=v_shop_id and cs.branch_id=p_branch_id and cs.status='open'
+  for share;
+  if not found then raise exception 'BRANCH_SESSION_CLOSED: Open this branch before collecting debt payments'; end if;
   return public.record_debt_payment(p_debt_id, p_amount, p_method, p_note);
 end;
 $$;
@@ -106,6 +110,10 @@ begin
      or not public.has_branch_access(p_shop_id, p_branch_id) then
     raise exception 'Sale does not belong to the selected branch or access is denied';
   end if;
+  perform 1 from public.branch_cash_sessions cs
+  where cs.shop_id=p_shop_id and cs.branch_id=p_branch_id and cs.status='open'
+  for share;
+  if not found then raise exception 'BRANCH_SESSION_CLOSED: Open this branch before processing refunds'; end if;
 
   select r.id, r.refund_total, r.branch_id into v_refund_id, v_refund_total, v_existing_branch
   from public.sale_refunds r
