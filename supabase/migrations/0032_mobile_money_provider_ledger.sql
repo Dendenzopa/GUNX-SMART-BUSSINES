@@ -71,20 +71,19 @@ begin
   where cr.shop_id = p_shop_id and cr.idempotency_key = p_idempotency_key;
 
   if v_sale_id is not null then
-    if v_existing_provider is distinct from p_payment_provider then
+    if v_existing_provider is not null and v_existing_provider is distinct from p_payment_provider then
       raise exception 'PAYMENT_PROVIDER_IDEMPOTENCY_MISMATCH: Retry must use the original provider';
     end if;
     return query select v_sale_id, v_receipt, v_total;
     return;
   end if;
 
-  return query
   select result.sale_id, result.receipt_number, result.sale_total
+    into v_sale_id, v_receipt, v_total
   from public.checkout_sale_in_branch(
     p_shop_id,p_branch_id,p_idempotency_key,p_items,p_payment_method,
     p_amount_paid,p_customer_id,p_expected_total
-  ) result
-  into v_sale_id, v_receipt, v_total;
+  ) result;
 
   if v_sale_id is null then raise exception 'Branch checkout did not return a sale'; end if;
   if p_payment_method = 'mobile_money' then
@@ -185,7 +184,7 @@ begin
   from public.sale_refunds r
   where r.shop_id=p_shop_id and r.idempotency_key=p_idempotency_key;
   if v_refund_id is not null then
-    if v_existing_provider is distinct from p_refund_provider then
+    if v_existing_provider is not null and v_existing_provider is distinct from p_refund_provider then
       raise exception 'REFUND_PROVIDER_IDEMPOTENCY_MISMATCH: Retry must use the original provider';
     end if;
     return query select v_refund_id,v_total;
