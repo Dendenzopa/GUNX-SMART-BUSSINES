@@ -109,10 +109,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, [session?.user.id]);
 
   useEffect(() => {
-    if (!session || !supabase) return;
+    const client = supabase;
+    if (!session || !client) return;
     let active = true;
     setShopLoading(true);
-    supabase.from("shop_members").select("shop_id,role,shops(id,name)").eq("user_id", session.user.id).order("created_at", { ascending: true })
+    client.from("shop_members").select("shop_id,role,shops(id,name)").eq("user_id", session.user.id).order("created_at", { ascending: true })
       .then(async ({ data, error }) => {
         if (!active) return;
         if (error) {
@@ -127,7 +128,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
           }));
           setShopOptions(options);
           if (options.length === 0) {
-            const { data: groupRows, error: groupError } = await supabase.from("company_group_members").select("group_id").eq("user_id", session.user.id).limit(1);
+            const { data: groupRows, error: groupError } = await client.from("company_group_members").select("group_id").eq("user_id", session.user.id).limit(1);
             if (!active) return;
             const hasGroupAccess = !groupError && (groupRows?.length ?? 0) > 0;
             setGroupOnly(hasGroupAccess);
