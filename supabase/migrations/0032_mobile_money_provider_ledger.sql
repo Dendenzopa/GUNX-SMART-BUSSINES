@@ -207,6 +207,16 @@ $$;
 revoke all on function public.refund_sale_in_branch_with_provider(uuid,uuid,uuid,uuid,jsonb,text,text,text) from public, anon;
 grant execute on function public.refund_sale_in_branch_with_provider(uuid,uuid,uuid,uuid,jsonb,text,text,text) to authenticated;
 
+
+-- Require updated clients to use provider-aware entry points. The SECURITY
+-- DEFINER wrappers above can still call these legacy branch functions internally.
+revoke all on function public.checkout_sale_in_branch(uuid,uuid,uuid,jsonb,text,numeric,uuid,numeric)
+  from public, anon, authenticated;
+revoke all on function public.record_debt_payment_in_branch(uuid,uuid,numeric,text,text)
+  from public, anon, authenticated;
+revoke all on function public.refund_sale_in_branch(uuid,uuid,uuid,uuid,jsonb,text,text)
+  from public, anon, authenticated;
+
 comment on column public.payments.provider is 'Exact mobile-money provider when method is mobile_money.';
 comment on column public.debt_payments.provider is 'Exact mobile-money provider when method is mobile_money.';
 comment on column public.sale_refunds.refund_provider is 'Exact mobile-money provider used for the refund.';
