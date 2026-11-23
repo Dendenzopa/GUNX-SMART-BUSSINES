@@ -1,6 +1,6 @@
 # GUNX SMART BUSINESS — Branch rollout guide
 
-This guide covers migrations `0024` through `0030` on top of the existing `0023_branch_schema_foundation.sql`.
+This guide covers migrations `0024` through `0031` on top of the existing `0023_branch_schema_foundation.sql`.
 
 ## Before applying
 
@@ -19,7 +19,7 @@ Apply exactly in this order:
 4. `0027_branch_scoped_financial_workflows.sql` — adds branch-scoped debt/refund workflows and branch-aware RLS.
 5. `0028_initialize_branches_for_new_businesses.sql` — creates primary branches for new shops, seeds stock rows and assigns members to the primary branch by default.
 6. `0029_branch_opening_and_daily_closing.sql` — adds branch cash sessions and daily close reports.
-7. `0030_require_open_branch_session_for_sales.sql` — requires an open branch session for new POS sales.
+7. `0030_require_open_branch_session_for_sales.sql` — requires an open branch session for new POS sales.\n8. `0031_branch_stock_counts_and_adjustments.sql` — adds auditable branch stock counts, damage/loss write-offs and signed corrections with idempotent RPC writes.
 
 ## Applying with Supabase CLI
 
@@ -43,7 +43,7 @@ If this project is not using the CLI migration history, open each migration file
 - Existing and newly invited shop members are assigned to the primary branch by default. Owners can adjust assignments in Staff Management.
 - Old offline sales tickets without a branch identifier are recovered into the primary branch.
 - New POS sales require the selected branch to have an open cash session.
-- The old unscoped RPC entry points are revoked from authenticated clients. The updated app must use the new branch-aware RPCs.
+- The old unscoped RPC entry points are revoked from authenticated clients. The updated app must use the new branch-aware RPCs.\n- Stock counts set the branch balance to the physically counted quantity. Damage/loss remove the supplied quantity; corrections accept a signed delta. Every change records the before/after quantity, actor, reason, timestamp and matching stock movement. The global compatibility stock total is adjusted by the same delta.
 
 ## Staging verification queries
 
@@ -91,3 +91,4 @@ Each query should return no rows. If a query returns rows, stop and investigate 
 - The repository CI validates TypeScript and Expo web export; it does not execute PostgreSQL migrations or prove RLS behavior.
 - Android device tests, concurrent POS/closing tests, and staging RLS tests are still required.
 - Consolidated multi-company/group reporting is not included in this branch rollout.
+\n\n## Stock count and adjustment verification\n\nAfter applying `0031`, test each operation in staging with a dedicated stockkeeper account and verify that unauthorized users cannot call the RPC or read another branch's adjustment history. Confirm that the following audit query returns one row per successful adjustment and that `quantity_after - quantity_before = quantity_change`:\n\n```sql\nselect id, shop_id, branch_id, product_id, adjustment_type,\n       quantity_before, quantity_after, quantity_change, reason, created_by, created_at\nfrom public.branch_stock_adjustments\norder by created_at desc\nlimit 50;\n```\n\nAlso test duplicate idempotency keys (same payload returns the original adjustment; changed payload is rejected), insufficient stock for damage/loss, decimal quantities to three places, and reconciliation of `products.stock_quantity` against the sum of branch balances.\n
