@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
 import { formatTZS } from "../domain/money";
 import * as Print from "expo-print";
@@ -150,6 +150,7 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
   }));
   const csvCell = (value: string | number) => '"' + String(value).replace(/"/g, '""') + '"';
   async function exportCsv() {
+    if (Platform.OS === "web") { setNotice("CSV export na kushiriki faili vinapatikana kwenye app ya Android/iOS kwa sasa."); return; }
     if (!rows.length) { setNotice("Hakuna data ya kundi hili ya ku-export."); return; }
     setExportBusy(true);
     try {
@@ -172,9 +173,14 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
       const safe = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
       const body = exportRows.map(row => `<tr><td>${safe(row.shop)}</td><td>${safe(row.branch)}</td><td>${row.salesCount}</td><td>${formatTZS(row.sales)}</td><td>${formatTZS(row.expenses)}</td><td>${formatTZS(row.debt)}</td><td>${row.stockUnits}</td><td>${formatTZS(row.stockValue)}</td><td>${row.lowStock}</td></tr>`).join("");
       const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;color:#102438;padding:24px}h1{color:#0B2940;font-size:22px}p{color:#456}table{width:100%;border-collapse:collapse;font-size:9px;margin-top:20px}th{background:#0B2940;color:white}th,td{padding:8px;border:1px solid #ccd5dc;text-align:left}tr:nth-child(even){background:#f2f6f8}.note{margin-top:18px;font-size:10px;color:#456}</style></head><body><h1>GUNX SMART BUSINESS</h1><h2>${safe(selectedGroupName)} — Ripoti ya matawi</h2><p>Kipindi: ${safe(appliedFromDate)} hadi ${safe(appliedToDate)} · Sarafu: TZS</p><table><thead><tr><th>Biashara</th><th>Tawi</th><th>Mauzo</th><th>Mauzo TZS</th><th>Gharama TZS</th><th>Deni sasa TZS</th><th>Stock units</th><th>Thamani stock TZS</th><th>Low stock</th></tr></thead><tbody>${body}</tbody></table><p class="note">Mauzo na gharama ni za kipindi kilichochaguliwa. Madeni na stock ni salio la sasa. “Mauzo pungufu gharama” si faida ya kihasibu.</p></body></html>`;
-      const file = await Print.printToFileAsync({ html, width: 842, height: 595 });
-      await Sharing.shareAsync(file.uri, { mimeType: "application/pdf", dialogTitle: "Shiriki ripoti ya GUNX PDF" });
-      setNotice("PDF ya ripoti imetengenezwa na kufunguliwa kwa ajili ya kushiriki.");
+      if (Platform.OS === "web") {
+        await Print.printAsync({ html });
+        setNotice("Ripoti imefunguliwa kwenye dirisha la uchapishaji la kivinjari.");
+      } else {
+        const file = await Print.printToFileAsync({ html, width: 842, height: 595 });
+        await Sharing.shareAsync(file.uri, { mimeType: "application/pdf", dialogTitle: "Shiriki ripoti ya GUNX PDF" });
+        setNotice("PDF ya ripoti imetengenezwa na kufunguliwa kwa ajili ya kushiriki.");
+      }
     } catch (error) {
       setNotice("PDF haikutengenezwa: " + (error instanceof Error ? error.message : String(error)));
     } finally { setExportBusy(false); }
