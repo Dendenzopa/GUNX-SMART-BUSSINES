@@ -26,7 +26,7 @@ function Dashboard() {
    if(screenHistory.length>0){
     const previous=screenHistory[screenHistory.length-1];
     setScreenHistory(history=>history.slice(0,-1));
-    navigate(previous);
+    setScreen(previous);
     return true;
    }
    Alert.alert("Toka kwenye GUNX SMART BUSINESS","Unataka kutoka kwenye programu?",[
