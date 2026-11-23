@@ -58,3 +58,35 @@ comment on function public.create_primary_branch_for_new_shop() is
 'Creates a primary Makao Makuu branch whenever a new GUNX shop is registered.';
 comment on function public.seed_branch_stock_for_new_branch() is
 'Creates zero-balance inventory rows for all existing products when a new branch is created.';
+
+-- Preserve access for existing employees by assigning them to the primary branch.
+-- New members also start on the primary branch; owners may add/remove assignments.
+insert into public.shop_member_branches(shop_id,branch_id,user_id,assigned_by)
+select sm.shop_id,b.id,sm.user_id,sm.user_id
+from public.shop_members sm
+join public.branches b on b.shop_id=sm.shop_id and b.is_primary and b.active
+on conflict (shop_id,branch_id,user_id) do nothing;
+
+create or replace function public.assign_new_shop_member_to_primary_branch()
+returns trigger
+language plpgsql
+security definer
+set search_path = public, pg_temp
+as $$
+begin
+  insert into public.shop_member_branches(shop_id,branch_id,user_id,assigned_by)
+  select new.shop_id,b.id,new.user_id,new.user_id
+  from public.branches b
+  where b.shop_id=new.shop_id and b.is_primary and b.active
+  on conflict (shop_id,branch_id,user_id) do nothing;
+  return new;
+end;
+$$;
+
+drop trigger if exists shop_members_assign_primary_branch on public.shop_members;
+create trigger shop_members_assign_primary_branch
+after insert on public.shop_members
+for each row execute function public.assign_new_shop_member_to_primary_branch();
+
+comment on function public.assign_new_shop_member_to_primary_branch() is
+'Assigns each newly added shop member to the primary branch by default; owners can adjust access in Staff Management.';
