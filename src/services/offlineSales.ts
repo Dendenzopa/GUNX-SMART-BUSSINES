@@ -46,8 +46,8 @@ export async function readCachedProducts(shopId: string, branchId: string): Prom
 }
 
 export async function writeCachedProducts(shopId: string, branchId: string, products: Product[]): Promise<void> {
-  if (!shopId) return;
-  await AsyncStorage.setItem(productsKeyFor(shopId), JSON.stringify(products));
+  if (!shopId || !branchId) return;
+  await AsyncStorage.setItem(productsKeyFor(shopId,branchId), JSON.stringify(products));
 }
 
 export interface CachedBusinessSnapshot {
