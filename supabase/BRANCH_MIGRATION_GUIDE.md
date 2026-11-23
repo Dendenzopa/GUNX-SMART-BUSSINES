@@ -25,6 +25,7 @@ Apply exactly in this order:
 10. `0033_enterprise_company_groups.sql` — adds company groups, group-level roles, owner-authorized shop linking/unlinking and secure consolidated shop-level sales/expense reporting.
 11. `0034_enterprise_group_debt_stock_branch_reports.sql` — adds group-authorized, branch-level sales/expense performance, outstanding debt balances and cost-based stock valuation.
 12. `0035_guard_company_group_shop_link_consent.sql` — enforces shop-owner and group-owner/admin consent for company-group link/unlink changes, including direct table updates.
+13. `0036_product_photo_uploads.sql` — adds product image URLs and a `product-images` Storage bucket; only shop owners/managers can upload, update or delete images in their shop folder.
 
 ## Applying with Supabase CLI
 
@@ -153,3 +154,10 @@ Migration `0034_enterprise_group_debt_stock_branch_reports.sql` adds the read-on
 - `net_after_expenses` is sales total less expenses only. It is not gross profit or net profit because it does not subtract cost of goods, taxes, payroll or other accounting adjustments.
 
 The RPC allows group viewers to see only these aggregates. It does not grant direct access to debts, products, stock rows, sales or expenses. Test two isolated groups, a viewer, an admin, a group owner, a linked shop owner and a non-member. Verify a group member cannot pass another group's ID to obtain results. Also verify inactive branches are omitted, date limits are enforced, and stock valuation reconciles to branch quantity multiplied by product cost price. Migration `0034` has not been executed against PostgreSQL; these checks remain staging requirements. Migration `0035` adds a database trigger because the existing shop-owner update policy would otherwise permit direct updates to `shops.company_group_id` outside the group-link RPC. Test direct linking/unlinking as a shop owner who is not a group admin (must fail), as a group admin who is not the shop owner (must fail), and as a user who is both (must succeed); direct cross-group moves must fail until unlink and relink are performed separately.
+
+
+## Product photo capture and upload
+
+Migration `0036_product_photo_uploads.sql` adds `products.image_url` and the public-read `product-images` Storage bucket. The Product Management screen supports taking a square photo with the camera or choosing an existing photo from Gallery/Photos. Images are compressed by the picker, restricted to JPEG/PNG/WEBP and uploaded at a maximum of 5 MB. Object paths are scoped as `shop_id/product_id/timestamp.ext`; Storage write policies require the authenticated user to be an owner or manager of the shop identified by the first path segment. Public read is enabled so POS/product catalogue images can render without exposing upload credentials. Do not store private/customer images in this bucket.
+
+Apply migration `0036` before using photo upload. Test camera permission denied/granted, gallery permission denied/granted, upload failure, duplicate product edits, cross-shop upload attempts, and image display on Android and web. The current implementation updates the product image URL only after the Storage upload succeeds; if upload fails, the product details remain saved and the UI reports that the image needs retrying.
