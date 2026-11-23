@@ -76,6 +76,7 @@ function Dashboard() {
  }
  useEffect(() => {
   if(!supabaseConfigured||!supabase||!shopId||!branchId){setActiveSession(null);return;}
+  setActiveSession(null);
   let active=true;
   supabase.from("branch_cash_sessions").select("id,opened_at,opening_cash,opened_by")
    .eq("shop_id",shopId).eq("branch_id",branchId).eq("status","open").maybeSingle()
@@ -84,6 +85,7 @@ function Dashboard() {
  },[shopId,branchId]);
  useEffect(() => {
   if(!supabase||!shopId||!branchId||(effectiveRole!=="owner"&&effectiveRole!=="manager")){setDailyClosings([]);return;}
+  setDailyClosings([]);
   let active=true;
   supabase.from("branch_daily_closings").select("id,closed_at,expected_cash,counted_cash,cash_difference,total_sales,sales_count,review_status,closed_by")
    .eq("shop_id",shopId).eq("branch_id",branchId).order("closed_at",{ascending:false}).limit(10)
@@ -134,6 +136,7 @@ function Dashboard() {
  },[]);
  useEffect(() => {
   if(!shopId||!branchId)return;
+  setProducts([]);setCart([]);setHasShopProductCache(false);
   let active=true;
   Promise.all([readPendingSales(shopId,userId,effectiveRole),readCachedProducts(shopId,branchId??"")]).then(([items,cached])=>{
    if(!active)return;
@@ -188,6 +191,7 @@ function Dashboard() {
  },[shopId,branchId,userId,effectiveRole,isConnected,pendingOutbox]);
  useEffect(() => {
   if (!supabaseConfigured || !supabase || !shopId || !branchId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
+  setSales([]);setExpenses([]);setDebts([]);setRefundTotal(0);
   let active = true;
   setCloudLoading(true);
   Promise.all([readCachedBusinessSnapshot(shopId,userId,branchId??""),readPendingSales(shopId,userId,effectiveRole)]).then(([snapshot,pending])=>{
