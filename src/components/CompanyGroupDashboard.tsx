@@ -179,8 +179,8 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
       </Pressable>
       <Text style={s.section}>Muhtasari wa mauzo na gharama</Text>
       <View style={s.metrics}>
-        <View style={s.metric}><Text style={s.metricLabel}>MAUZO · SIKU 30</Text><Text style={s.metricValue}>{formatTZS(totalSales)}</Text></View>
-        <View style={s.metric}><Text style={s.metricLabel}>GHARAMA · SIKU 30</Text><Text style={s.metricValue}>{formatTZS(totalExpenses)}</Text></View>
+        <View style={s.metric}><Text style={s.metricLabel}>MAUZO · {appliedFromDate} → {appliedToDate}</Text><Text style={s.metricValue}>{formatTZS(totalSales)}</Text></View>
+        <View style={s.metric}><Text style={s.metricLabel}>GHARAMA · {appliedFromDate} → {appliedToDate}</Text><Text style={s.metricValue}>{formatTZS(totalExpenses)}</Text></View>
       </View>
       <View style={s.metrics}>
         <View style={s.metric}><Text style={s.metricLabel}>MADENI YANAYODAIWA SASA</Text><Text style={s.metricValue}>{formatTZS(totalDebt)}</Text></View>
