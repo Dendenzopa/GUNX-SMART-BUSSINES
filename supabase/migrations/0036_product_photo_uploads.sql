@@ -1,6 +1,10 @@
 -- Product photo storage: public read URLs, shop-owner/manager uploads and deletion.
 alter table public.products add column if not exists image_url text;
 
+-- Migration 0015 revoked broad product UPDATE and granted only named catalogue columns.
+-- Explicitly grant image_url so the authenticated owner/manager upload flow can persist the URL.
+grant update (image_url) on table public.products to authenticated;
+
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)
 values ('product-images','product-images',true,5242880,array['image/jpeg','image/png','image/webp'])
 on conflict (id) do update set
