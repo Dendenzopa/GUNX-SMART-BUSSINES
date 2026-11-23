@@ -139,14 +139,14 @@ Migration `0033_enterprise_company_groups.sql` adds a separate group-membership 
 
 Before production rollout, test group isolation with two groups, a user who belongs to both groups, a group viewer, a shop owner who is not a group member, and a non-member. Confirm group viewers can read aggregates but cannot mutate group membership or link shops. Confirm unlinking a shop removes it from subsequent reports.
 
-The mobile app now includes a multi-shop selector, consolidated group reporting, group-only sign-in routing, and group owner/admin member-management UI. The UI is not a substitute for server authorization: test all RPCs and RLS policies with owner, admin, viewer, shop owner and non-member accounts. Migration 0033 has not been executed against a live PostgreSQL/Supabase database, and the app flows have not yet been tested on Android devices.
+The mobile app now includes a multi-shop selector, consolidated group reporting with editable `YYYY-MM-DD` start/end dates (maximum 367 calendar days), group-only sign-in routing, and group owner/admin member-management UI. The UI is not a substitute for server authorization: test all RPCs and RLS policies with owner, admin, viewer, shop owner and non-member accounts. Migration 0033 has not been executed against a live PostgreSQL/Supabase database, and the app flows have not yet been tested on Android devices.
 
 
 ## Enterprise debt, stock and branch performance reporting
 
 Migration `0034_enterprise_group_debt_stock_branch_reports.sql` adds the read-only `get_company_group_enterprise_overview` RPC. It returns one row per active branch in shops linked to a group and verifies group membership before reading any shop data.
 
-- Sales count and sales total include completed and partially paid sales in the selected date range; voided and refunded sales are excluded.
+- Sales count and sales total include completed and partially paid sales in the selected date range; voided and refunded sales are excluded. Timestamp boundaries are interpreted in `Africa/Dar_es_Salaam`, so daily totals follow Tanzania business dates regardless of the database session timezone.
 - Expenses are summed by branch and `expense_date` in the selected date range.
 - Outstanding debt is the current sum of positive `debts.balance` values, not a historical balance as of the report end date.
 - Stock units and stock value are current snapshots from `branch_stock`; stock value uses each product's `cost_price`, not selling price.
