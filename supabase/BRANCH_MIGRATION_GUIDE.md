@@ -24,6 +24,7 @@ Apply exactly in this order:
 9. `0032_mobile_money_provider_ledger.sql` — records M-Pesa, Airtel Money, Tigo Pesa and HaloPesa separately for POS payments, debt collections, refunds and expenses.
 10. `0033_enterprise_company_groups.sql` — adds company groups, group-level roles, owner-authorized shop linking/unlinking and secure consolidated shop-level sales/expense reporting.
 11. `0034_enterprise_group_debt_stock_branch_reports.sql` — adds group-authorized, branch-level sales/expense performance, outstanding debt balances and cost-based stock valuation.
+12. `0035_guard_company_group_shop_link_consent.sql` — enforces shop-owner and group-owner/admin consent for company-group link/unlink changes, including direct table updates.
 
 ## Applying with Supabase CLI
 
@@ -151,4 +152,4 @@ Migration `0034_enterprise_group_debt_stock_branch_reports.sql` adds the read-on
 - Low-stock count counts branch product rows where quantity is at or below the branch reorder level.
 - `net_after_expenses` is sales total less expenses only. It is not gross profit or net profit because it does not subtract cost of goods, taxes, payroll or other accounting adjustments.
 
-The RPC allows group viewers to see only these aggregates. It does not grant direct access to debts, products, stock rows, sales or expenses. Test two isolated groups, a viewer, an admin, a group owner, a linked shop owner and a non-member. Verify a group member cannot pass another group's ID to obtain results. Also verify inactive branches are omitted, date limits are enforced, and stock valuation reconciles to branch quantity multiplied by product cost price. Migration `0034` has not been executed against PostgreSQL; these checks remain staging requirements.
+The RPC allows group viewers to see only these aggregates. It does not grant direct access to debts, products, stock rows, sales or expenses. Test two isolated groups, a viewer, an admin, a group owner, a linked shop owner and a non-member. Verify a group member cannot pass another group's ID to obtain results. Also verify inactive branches are omitted, date limits are enforced, and stock valuation reconciles to branch quantity multiplied by product cost price. Migration `0034` has not been executed against PostgreSQL; these checks remain staging requirements. Migration `0035` adds a database trigger because the existing shop-owner update policy would otherwise permit direct updates to `shops.company_group_id` outside the group-link RPC. Test direct linking/unlinking as a shop owner who is not a group admin (must fail), as a group admin who is not the shop owner (must fail), and as a user who is both (must succeed); direct cross-group moves must fail until unlink and relink are performed separately.
