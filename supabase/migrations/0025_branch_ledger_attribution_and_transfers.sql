@@ -83,12 +83,14 @@ create table if not exists public.branch_stock_transfers (
   from_branch_id uuid not null,
   to_branch_id uuid not null,
   product_id uuid not null,
+  idempotency_key uuid not null,
   quantity numeric(14,3) not null check (quantity > 0),
   note text,
   status text not null default 'completed' check (status = 'completed'),
   created_by uuid references auth.users(id),
   created_at timestamptz not null default now(),
   constraint branch_stock_transfer_distinct_branches check (from_branch_id <> to_branch_id),
+  constraint branch_stock_transfers_idempotency_unique unique (shop_id,idempotency_key),
   constraint branch_stock_transfer_from_fk foreign key (shop_id, from_branch_id)
     references public.branches(shop_id, id),
   constraint branch_stock_transfer_to_fk foreign key (shop_id, to_branch_id)
@@ -119,6 +121,7 @@ alter table public.stock_movements
 
 create or replace function public.transfer_branch_stock(
   p_shop_id uuid,
+  p_idempotency_key uuid,
   p_from_branch_id uuid,
   p_to_branch_id uuid,
   p_product_id uuid,
@@ -133,8 +136,22 @@ as $$
 declare
   v_transfer_id uuid;
   v_source_qty numeric(14,3);
+  v_existing public.branch_stock_transfers%rowtype;
 begin
   if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if p_idempotency_key is null then raise exception 'Transfer idempotency key required'; end if;
+  perform pg_advisory_xact_lock(hashtextextended(p_shop_id::text || ':branch-transfer:' || p_idempotency_key::text, 0));
+  select * into v_existing from public.branch_stock_transfers
+  where shop_id=p_shop_id and idempotency_key=p_idempotency_key;
+  if found then
+    if v_existing.from_branch_id is distinct from p_from_branch_id
+       or v_existing.to_branch_id is distinct from p_to_branch_id
+       or v_existing.product_id is distinct from p_product_id
+       or v_existing.quantity is distinct from p_quantity then
+      raise exception 'TRANSFER_IDEMPOTENCY_MISMATCH: Key already belongs to a different transfer';
+    end if;
+    return v_existing.id;
+  end if;
   if p_from_branch_id is null or p_to_branch_id is null or p_from_branch_id = p_to_branch_id then
     raise exception 'Choose two different branches';
   end if;
@@ -169,8 +186,8 @@ begin
   on conflict (branch_id, product_id)
   do update set quantity = public.branch_stock.quantity + excluded.quantity, updated_at = now();
 
-  insert into public.branch_stock_transfers(shop_id, from_branch_id, to_branch_id, product_id, quantity, note, created_by)
-  values (p_shop_id, p_from_branch_id, p_to_branch_id, p_product_id, p_quantity,
+  insert into public.branch_stock_transfers(shop_id, idempotency_key, from_branch_id, to_branch_id, product_id, quantity, note, created_by)
+  values (p_shop_id, p_idempotency_key, p_from_branch_id, p_to_branch_id, p_product_id, p_quantity,
     nullif(trim(coalesce(p_note,'')),''), auth.uid())
   returning id into v_transfer_id;
 
@@ -185,7 +202,7 @@ begin
 end;
 $$;
 
-revoke all on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,numeric,text) from public, anon;
+revoke all on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,uuid,numeric,text) from public, anon;
 grant execute on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,numeric,text) to authenticated;
 
 comment on function public.transfer_branch_stock(uuid,uuid,uuid,uuid,numeric,text) is
