@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Alert, Pressable, StyleSheet, Switch, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
 
 type PaymentRequest = {
@@ -41,6 +41,13 @@ export default function PlatformOwnerDashboard() {
   const [requests, setRequests] = useState<PaymentRequest[]>([]);
   const [shops, setShops] = useState<ShopAccount[]>([]);
   const [directorySearch, setDirectorySearch] = useState("");
+  const [suspensionReason, setSuspensionReason] = useState("");
+  const [maintenanceMode, setMaintenanceMode] = useState(false);
+  const [maintenanceMessage, setMaintenanceMessage] = useState("Mfumo unafanyiwa maboresho. Tafadhali jaribu tena baadaye.");
+  const [announcementMessage, setAnnouncementMessage] = useState("");
+  const [supportPhone, setSupportPhone] = useState("");
+  const [supportEmail, setSupportEmail] = useState("");
+  const [savingSettings, setSavingSettings] = useState(false);
   const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [paymentNote, setPaymentNote] = useState("");
@@ -74,6 +81,59 @@ export default function PlatformOwnerDashboard() {
     setShops((data ?? []) as ShopAccount[]);
   }, []);
 
+
+  const loadControlSettings = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase.rpc("get_platform_control_settings");
+    if (error) { setNotice("Mipangilio haijapatikana: " + error.message); return; }
+    const values = (data ?? {}) as Record<string, unknown>;
+    setMaintenanceMode(values.maintenance_mode === true);
+    setMaintenanceMessage(typeof values.maintenance_message === "string" ? values.maintenance_message : "");
+    setAnnouncementMessage(typeof values.announcement_message === "string" ? values.announcement_message : "");
+    setSupportPhone(typeof values.support_phone === "string" ? values.support_phone : "");
+    setSupportEmail(typeof values.support_email === "string" ? values.support_email : "");
+  }, []);
+
+  async function saveControlSettings() {
+    if (!supabase) return;
+    setSavingSettings(true);
+    const { error } = await supabase.rpc("update_platform_control_settings", {
+      p_maintenance_mode: maintenanceMode,
+      p_maintenance_message: maintenanceMessage,
+      p_announcement_message: announcementMessage,
+      p_support_phone: supportPhone,
+      p_support_email: supportEmail
+    });
+    setSavingSettings(false);
+    if (error) { setNotice("Mipangilio haijahifadhiwa: " + error.message); return; }
+    setNotice("Mipangilio ya mfumo imehifadhiwa.");
+  }
+
+  function confirmShopSuspension(shop: ShopAccount) {
+    const next = !shop.is_suspended;
+    Alert.alert(
+      next ? "Sitisha biashara?" : "Rejesha huduma ya biashara?",
+      next ? "Wanachama wa biashara hii hawataweza kutumia data na shughuli za duka hadi huduma irejeshwe." : "Wanachama wa biashara hii watapata tena ruhusa zao za kawaida.",
+      [
+        { text: "Ghairi", style: "cancel" },
+        { text: next ? "Sitisha" : "Rejesha", style: next ? "destructive" : "default", onPress: () => { void updateShopSuspension(shop, next); } }
+      ]
+    );
+  }
+
+  async function updateShopSuspension(shop: ShopAccount, suspend: boolean) {
+    if (!supabase) return;
+    const { error } = await supabase.rpc("set_platform_shop_suspension", {
+      p_shop_id: shop.shop_id,
+      p_suspend: suspend,
+      p_reason: suspensionReason.trim() || (suspend ? "Imesitishwa na Platform Admin" : null)
+    });
+    if (error) { setNotice("Hali ya biashara haijabadilishwa: " + error.message); return; }
+    setSuspensionReason("");
+    await loadDirectory(directorySearch);
+    setNotice(suspend ? "Biashara imesitishwa; ufikiaji wa shop umefungwa." : "Huduma ya biashara imerejeshwa.");
+  }
+
   const load = useCallback(async () => {
     if (!supabase) {
       setNotice("Supabase haijaunganishwa.");
@@ -88,11 +148,11 @@ export default function PlatformOwnerDashboard() {
       setNotice("Takwimu hazijapatikana: " + error.message + ". Hakikisha migration 0018 imetumika na akaunti yako imepewa Platform Admin.");
     } else {
       setMetrics(data as Metrics);
-      await Promise.all([loadRequests(), loadDirectory("")]);
+      await Promise.all([loadRequests(), loadDirectory(""), loadControlSettings()]);
       setNotice("Takwimu, maombi ya malipo na akaunti za biashara zimechukuliwa kutoka Supabase.");
     }
     setLoading(false);
-  }, [loadRequests, loadDirectory]);
+  }, [loadRequests, loadDirectory, loadControlSettings]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -161,6 +221,8 @@ export default function PlatformOwnerDashboard() {
         <Text style={s.queueTitle}>Akaunti na usajili wa biashara</Text>
         <Text style={s.copy}>Orodha inaonyesha maduka 100 ya karibuni zaidi. Tafuta kwa jina la biashara, Owner UUID au Shop UUID.</Text>
         <TextInput value={directorySearch} onChangeText={setDirectorySearch} autoCapitalize="none" placeholder="Tafuta biashara au UUID..." placeholderTextColor="#71869A" style={s.noteInput}/>
+        <Text style={s.formLabel}>Sababu ya kusitisha (hiari)</Text>
+        <TextInput value={suspensionReason} onChangeText={setSuspensionReason} placeholder="Mfano: ukiukaji wa masharti..." placeholderTextColor="#71869A" style={s.noteInput}/>
         <Pressable onPress={() => void loadDirectory(directorySearch)} style={s.searchButton}><Text style={s.buttonText}>Tafuta biashara</Text></Pressable>
         {shops.map(shop => <View key={shop.shop_id} style={s.requestCard}>
           <Text style={s.requestShop}>{shop.shop_name}</Text>
@@ -169,10 +231,38 @@ export default function PlatformOwnerDashboard() {
           <Text style={s.requestLine}>Maombi yanayosubiri: {Number(shop.pending_payment_count).toLocaleString("en-US")}</Text>
           <Text style={s.requestLine}>Owner UUID: {shop.owner_user_id}</Text>
           <Text style={s.requestLine}>Shop UUID: {shop.shop_id}</Text>
+          <Text style={s.requestLine}>Hali ya huduma: {shop.is_suspended ? "IMESITISHWA" : "INAENDELEA"}</Text>
+          {!!shop.suspension_reason && <Text style={s.requestLine}>Sababu: {shop.suspension_reason}</Text>}
+          <Pressable onPress={() => confirmShopSuspension(shop)} style={[s.searchButton, shop.is_suspended && s.restoreButton]}>
+            <Text style={s.buttonText}>{shop.is_suspended ? "Rejesha huduma" : "Sitisha biashara"}</Text>
+          </Pressable>
           <Text style={s.requestLine}>Ilifunguliwa: {new Date(shop.shop_created_at).toLocaleDateString("sw-TZ")}</Text>
         </View>)}
         {shops.length === 0 && <Text style={s.copy}>Hakuna biashara iliyopatikana kwa utafutaji huu.</Text>}
       </View>
+
+    <View style={s.directory}>
+      <Text style={s.queueTitle}>Mipangilio mikuu ya mfumo</Text>
+      <Text style={s.copy}>Dhibiti taarifa za matengenezo, tangazo la mfumo na mawasiliano ya msaada. Hifadhi mabadiliko baada ya kuyakagua.</Text>
+      <View style={s.switchRow}>
+        <View style={{flex:1}}>
+          <Text style={s.requestShop}>Maintenance mode</Text>
+          <Text style={s.requestLine}>{maintenanceMode ? "IMEWASHWA" : "IMEZIMWA"}</Text>
+        </View>
+        <Switch value={maintenanceMode} onValueChange={setMaintenanceMode} trackColor={{false:"#536779",true:"#16785C"}} thumbColor="#F4F7FA"/>
+      </View>
+      <Text style={s.formLabel}>Ujumbe wa matengenezo</Text>
+      <TextInput value={maintenanceMessage} onChangeText={setMaintenanceMessage} multiline placeholder="Ujumbe kwa watumiaji..." placeholderTextColor="#71869A" style={s.noteInput}/>
+      <Text style={s.formLabel}>Tangazo kwa watumiaji</Text>
+      <TextInput value={announcementMessage} onChangeText={setAnnouncementMessage} multiline placeholder="Tangazo la hiari..." placeholderTextColor="#71869A" style={s.noteInput}/>
+      <Text style={s.formLabel}>Namba ya msaada</Text>
+      <TextInput value={supportPhone} onChangeText={setSupportPhone} keyboardType="phone-pad" placeholder="+255..." placeholderTextColor="#71869A" style={s.noteInput}/>
+      <Text style={s.formLabel}>Email ya msaada</Text>
+      <TextInput value={supportEmail} onChangeText={setSupportEmail} autoCapitalize="none" keyboardType="email-address" placeholder="support@example.com" placeholderTextColor="#71869A" style={s.noteInput}/>
+      <Pressable disabled={savingSettings} onPress={() => void saveControlSettings()} style={s.searchButton}>
+        <Text style={s.buttonText}>{savingSettings ? "Inahifadhi..." : "Hifadhi mipangilio"}</Text>
+      </Pressable>
+    </View>
     <Pressable onPress={() => void load()} disabled={loading} style={s.button}><Text style={s.buttonText}>↻ Sasisha takwimu, malipo na biashara</Text></Pressable>
     <Text style={s.notice}>{notice}</Text>
   </View>;
@@ -191,6 +281,8 @@ const s = StyleSheet.create({
   buttonText: { color: "#F5FFFA", fontSize: 12, fontWeight: "800" },
   paymentQueue: { backgroundColor: "#102438", borderColor: "#1D3A50", borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 18 },
   directory: { backgroundColor: "#102438", borderColor: "#1D3A50", borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 18 },
+  switchRow: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, paddingVertical: 8 },
+  restoreButton: { backgroundColor: "#176247" },
   searchButton: { alignSelf: "flex-start", backgroundColor: "#176247", padding: 10, borderRadius: 9, marginTop: 9 },
   queueTitle: { color: "#F4F7FA", fontSize: 16, fontWeight: "900" },
   queueCount: { color: "#F2D99F", fontSize: 12, fontWeight: "900", marginTop: 12 },
