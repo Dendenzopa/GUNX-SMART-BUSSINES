@@ -45,3 +45,28 @@ using (
   bucket_id = 'product-images'
   and public.has_shop_role((storage.foldername(name))[1]::uuid,array['owner','manager'])
 );
+
+-- Product rows are updateable by stockkeepers for catalogue-adjacent workflows in
+-- earlier policies. Keep image URL changes strictly management-only as well.
+create or replace function public.guard_product_image_url_updates()
+returns trigger
+language plpgsql
+set search_path = public, pg_temp
+as $$
+begin
+  if auth.uid() is not null
+     and new.image_url is distinct from old.image_url
+     and not public.has_shop_role(old.shop_id, array['owner','manager']) then
+    raise exception 'PRODUCT_IMAGE_PERMISSION_DENIED: Only the shop owner or manager can change product photos.'
+      using errcode = '42501';
+  end if;
+  return new;
+end;
+$$;
+
+drop trigger if exists products_guard_image_url_updates on public.products;
+create trigger products_guard_image_url_updates
+before update of image_url on public.products
+for each row execute function public.guard_product_image_url_updates();
+
+revoke all on function public.guard_product_image_url_updates() from public, anon, authenticated;
