@@ -279,6 +279,7 @@ begin
     from public.sales s
     where s.created_at >= p_from::timestamptz
       and s.created_at < (p_to + 1)::timestamptz
+      and s.status in ('completed','partially_paid')
     group by s.shop_id
   ) sr on sr.shop_id = sh.id
   left join (
