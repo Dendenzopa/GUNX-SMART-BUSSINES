@@ -23,6 +23,7 @@ Apply exactly in this order:
 8. `0031_branch_stock_counts_and_adjustments.sql` — adds auditable branch stock counts, damage/loss write-offs and signed corrections with idempotent RPC writes.
 9. `0032_mobile_money_provider_ledger.sql` — records M-Pesa, Airtel Money, Tigo Pesa and HaloPesa separately for POS payments, debt collections, refunds and expenses.
 10. `0033_enterprise_company_groups.sql` — adds company groups, group-level roles, owner-authorized shop linking/unlinking and secure consolidated shop-level sales/expense reporting.
+11. `0034_enterprise_group_debt_stock_branch_reports.sql` — adds group-authorized, branch-level sales/expense performance, outstanding debt balances and cost-based stock valuation.
 
 ## Applying with Supabase CLI
 
@@ -137,3 +138,17 @@ Migration `0033_enterprise_company_groups.sql` adds a separate group-membership 
 Before production rollout, test group isolation with two groups, a user who belongs to both groups, a group viewer, a shop owner who is not a group member, and a non-member. Confirm group viewers can read aggregates but cannot mutate group membership or link shops. Confirm unlinking a shop removes it from subsequent reports.
 
 The mobile app now includes a multi-shop selector, consolidated group reporting, group-only sign-in routing, and group owner/admin member-management UI. The UI is not a substitute for server authorization: test all RPCs and RLS policies with owner, admin, viewer, shop owner and non-member accounts. Migration 0033 has not been executed against a live PostgreSQL/Supabase database, and the app flows have not yet been tested on Android devices.
+
+
+## Enterprise debt, stock and branch performance reporting
+
+Migration `0034_enterprise_group_debt_stock_branch_reports.sql` adds the read-only `get_company_group_enterprise_overview` RPC. It returns one row per active branch in shops linked to a group and verifies group membership before reading any shop data.
+
+- Sales count and sales total include completed and partially paid sales in the selected date range; voided and refunded sales are excluded.
+- Expenses are summed by branch and `expense_date` in the selected date range.
+- Outstanding debt is the current sum of positive `debts.balance` values, not a historical balance as of the report end date.
+- Stock units and stock value are current snapshots from `branch_stock`; stock value uses each product's `cost_price`, not selling price.
+- Low-stock count counts branch product rows where quantity is at or below the branch reorder level.
+- `net_after_expenses` is sales total less expenses only. It is not gross profit or net profit because it does not subtract cost of goods, taxes, payroll or other accounting adjustments.
+
+The RPC allows group viewers to see only these aggregates. It does not grant direct access to debts, products, stock rows, sales or expenses. Test two isolated groups, a viewer, an admin, a group owner, a linked shop owner and a non-member. Verify a group member cannot pass another group's ID to obtain results. Also verify inactive branches are omitted, date limits are enforced, and stock valuation reconciles to branch quantity multiplied by product cost price. Migration `0034` has not been executed against PostgreSQL; these checks remain staging requirements.
