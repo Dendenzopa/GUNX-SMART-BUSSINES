@@ -24,6 +24,12 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
     date.setDate(date.getDate() - 29);
     return dateInputValue(date);
   });
+  const [appliedToDate, setAppliedToDate] = useState(() => dateInputValue(new Date()));
+  const [appliedFromDate, setAppliedFromDate] = useState(() => {
+    const date = new Date();
+    date.setDate(date.getDate() - 29);
+    return dateInputValue(date);
+  });
   const [groupName, setGroupName] = useState("");
   const [members, setMembers] = useState<MemberOption[]>([]);
   const [memberUserId, setMemberUserId] = useState("");
@@ -81,24 +87,24 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
   const loadOverview = useCallback(async (groupId: string) => {
     if (!supabase || !groupId) { setRows([]); return; }
     const datePattern = /^\\d{4}-\\d{2}-\\d{2}$/;
-    const fromTime = Date.parse(fromDate + "T00:00:00Z");
-    const toTime = Date.parse(toDate + "T00:00:00Z");
+    const fromTime = Date.parse(appliedFromDate + "T00:00:00Z");
+    const toTime = Date.parse(appliedToDate + "T00:00:00Z");
     const dayCount = (toTime - fromTime) / 86400000;
-    if (!datePattern.test(fromDate) || !datePattern.test(toDate) ||
+    if (!datePattern.test(appliedFromDate) || !datePattern.test(appliedToDate) ||
         !Number.isFinite(dayCount) || dayCount < 0 || dayCount > 366 ||
-        new Date(fromTime).toISOString().slice(0, 10) !== fromDate ||
-        new Date(toTime).toISOString().slice(0, 10) !== toDate) {
+        new Date(fromTime).toISOString().slice(0, 10) !== appliedFromDate ||
+        new Date(toTime).toISOString().slice(0, 10) !== appliedToDate) {
       setRows([]);
       setNotice("Weka tarehe sahihi. Kipindi cha ripoti kisiwe zaidi ya siku 367.");
       return;
     }
     const { data, error } = await supabase.rpc("get_company_group_enterprise_overview", {
-      p_group_id: groupId, p_from: fromDate, p_to: toDate
+      p_group_id: groupId, p_from: appliedFromDate, p_to: appliedToDate
     });
     if (error) { setRows([]); setNotice("Ripoti haijapakiwa: " + error.message); return; }
     setRows((data ?? []) as BranchMetric[]);
-    setNotice("Ripoti ya " + fromDate + " hadi " + toDate + " imepakiwa. Madeni na stock ni salio la sasa.");
-  }, [fromDate, toDate]);
+    setNotice("Ripoti ya " + appliedFromDate + " hadi " + appliedToDate + " imepakiwa. Madeni na stock ni salio la sasa.");
+  }, [appliedFromDate, appliedToDate]);
 
   useEffect(() => { void loadGroups(); }, [loadGroups]);
   useEffect(() => {
@@ -168,7 +174,7 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
           <TextInput value={toDate} onChangeText={setToDate} placeholder="2026-11-24" placeholderTextColor="#8194A5" style={s.input}/>
         </View>
       </View>
-      <Pressable disabled={busy} onPress={() => void loadOverview(selectedGroupId)} style={s.button}>
+      <Pressable disabled={busy} onPress={() => { setAppliedFromDate(fromDate); setAppliedToDate(toDate); }} style={s.button}>
         <Text style={s.buttonText}>Tengeneza ripoti kwa tarehe hizi</Text>
       </Pressable>
       <Text style={s.section}>Muhtasari wa mauzo na gharama</Text>
