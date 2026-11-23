@@ -1,5 +1,5 @@
 import { supabase } from "../lib/supabase";
-import type { PaymentMethod } from "../domain/types";
+import type { PaymentMethod, PaymentProvider } from "../domain/types";
 
 export interface CheckoutLineInput {
   product_id: string;
@@ -12,6 +12,7 @@ export interface CheckoutInput {
   idempotencyKey: string;
   items: CheckoutLineInput[];
   paymentMethod: PaymentMethod;
+  paymentProvider?: PaymentProvider;
   amountPaid?: number;
   customerId?: string;
   expectedTotal?: number;
@@ -38,7 +39,8 @@ export async function submitCheckout(input: CheckoutInput): Promise<CheckoutResu
     }
   }
 
-  const { data, error } = await supabase.rpc("checkout_sale_in_branch", {
+  if (input.paymentMethod === "mobile_money" && !input.paymentProvider) throw new Error("Chagua mtandao wa malipo ya simu.");
+  const { data, error } = await supabase.rpc("checkout_sale_in_branch_with_provider", {
     p_shop_id: input.shopId,
     p_branch_id: input.branchId,
     p_idempotency_key: input.idempotencyKey,
@@ -47,6 +49,7 @@ export async function submitCheckout(input: CheckoutInput): Promise<CheckoutResu
     p_amount_paid: input.amountPaid ?? null,
     p_customer_id: input.customerId ?? null,
     p_expected_total: input.expectedTotal ?? null,
+    p_payment_provider: input.paymentProvider ?? null,
   });
 
   if (error) throw new Error(error.message);
