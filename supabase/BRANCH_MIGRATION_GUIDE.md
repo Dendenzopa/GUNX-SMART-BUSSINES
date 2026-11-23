@@ -1,6 +1,6 @@
 # GUNX SMART BUSINESS — Branch rollout guide
 
-This guide covers migrations `0024` through `0032` on top of the existing `0023_branch_schema_foundation.sql`.
+This guide covers migrations `0024` through `0039` on top of the existing `0023_branch_schema_foundation.sql`.
 
 ## Before applying
 
@@ -22,6 +22,13 @@ Apply exactly in this order:
 7. `0030_require_open_branch_session_for_sales.sql` — requires an open branch session for new POS sales.
 8. `0031_branch_stock_counts_and_adjustments.sql` — adds auditable branch stock counts, damage/loss write-offs and signed corrections with idempotent RPC writes.
 9. `0032_mobile_money_provider_ledger.sql` — records M-Pesa, Airtel Money, Tigo Pesa and HaloPesa separately for POS payments, debt collections, refunds and expenses.
+10. `0033_enterprise_company_groups.sql` — adds company groups, group-level roles, owner-authorized shop linking/unlinking and secure consolidated shop-level sales/expense reporting.
+11. `0034_enterprise_group_debt_stock_branch_reports.sql` — adds group-authorized, branch-level sales/expense performance, outstanding debt balances and cost-based stock valuation.
+12. `0035_guard_company_group_shop_link_consent.sql` — enforces shop-owner and group-owner/admin consent for company-group link/unlink changes, including direct table updates.
+13. `0036_product_photo_uploads.sql` — adds product image URLs and a `product-images` Storage bucket; only shop owners/managers can upload, update or delete images in their shop folder.
+14. `0037_platform_payment_review.sql` — adds Platform Admin-only Pro payment review queue and approval/rejection RPCs.
+15. `0038_platform_shop_directory.sql` — adds a bounded, searchable Platform Admin shop/subscription directory.
+16. `0039_platform_controls_and_shop_suspension.sql` — adds protected app settings, maintenance/announcement/support controls, platform shop suspension, and centrally enforces suspension through `is_shop_member` and `has_shop_role`. It also extends the shop directory with suspension status/reason.
 
 ## Applying with Supabase CLI
 
@@ -93,7 +100,7 @@ Each query should return no rows. If a query returns rows, stop and investigate 
 - These migrations have not yet been executed against the user's live Supabase database.
 - The repository CI validates TypeScript and Expo web export; it does not execute PostgreSQL migrations or prove RLS behavior.
 - Android device tests, concurrent POS/closing tests, and staging RLS tests are still required.
-- Consolidated multi-company/group reporting is not included in this branch rollout.
+- Enterprise group reporting is introduced by migration `0033`. The current app supports selecting among multiple shop memberships, a group dashboard, group-only accounts restricted to the Group screen, and group owner/admin member-management controls. These client flows still require staging and Android testing; the database RPCs and RLS remain authoritative.
 
 
 ## Stock count and adjustment verification
@@ -121,3 +128,77 @@ select method, provider, count(*) from public.debt_payments group by method, pro
 select refund_method, refund_provider, count(*) from public.sale_refunds group by refund_method, refund_provider order by refund_method, refund_provider;
 select payment_method, payment_provider, count(*) from public.expenses group by payment_method, payment_provider order by payment_method, payment_provider;
 ```
+
+
+## Enterprise company-group rollout
+
+Migration `0033_enterprise_company_groups.sql` adds a separate group-membership layer without replacing existing shop membership or branch access:
+
+- A user creates a company group and becomes its group owner.
+- Group roles are `group_owner`, `group_admin` and `group_viewer`; these roles do not grant POS, stock or employee access inside member shops.
+- A shop can be linked only when the caller is both a group owner/admin and the owner of that shop. This is an explicit shop-owner consent boundary.
+- The reporting RPC returns per-shop sales totals/counts and expense totals only for the authorized group and a date range of at most 367 days.
+- Group members do not receive direct access to shop tables through this migration.
+
+Before production rollout, test group isolation with two groups, a user who belongs to both groups, a group viewer, a shop owner who is not a group member, and a non-member. Confirm group viewers can read aggregates but cannot mutate group membership or link shops. Confirm unlinking a shop removes it from subsequent reports.
+
+The mobile app now includes a multi-shop selector, consolidated group reporting with editable `YYYY-MM-DD` start/end dates (maximum 367 calendar days), group-only sign-in routing, and group owner/admin member-management UI. The UI is not a substitute for server authorization: test all RPCs and RLS policies with owner, admin, viewer, shop owner and non-member accounts. Migration 0033 has not been executed against a live PostgreSQL/Supabase database, and the app flows have not yet been tested on Android devices.
+
+
+## Enterprise debt, stock and branch performance reporting
+
+Migration `0034_enterprise_group_debt_stock_branch_reports.sql` adds the read-only `get_company_group_enterprise_overview` RPC. It returns one row per active branch in shops linked to a group and verifies group membership before reading any shop data.
+
+- Sales count and sales total include completed and partially paid sales in the selected date range; voided and refunded sales are excluded. Timestamp boundaries are interpreted in `Africa/Dar_es_Salaam`, so daily totals follow Tanzania business dates regardless of the database session timezone.
+- Expenses are summed by branch and `expense_date` in the selected date range.
+- Outstanding debt is the current sum of positive `debts.balance` values, not a historical balance as of the report end date.
+- Stock units and stock value are current snapshots from `branch_stock`; stock value uses each product's `cost_price`, not selling price.
+- Low-stock count counts branch product rows where quantity is at or below the branch reorder level.
+- `net_after_expenses` is sales total less expenses only. It is not gross profit or net profit because it does not subtract cost of goods, taxes, payroll or other accounting adjustments.
+
+The RPC allows group viewers to see only these aggregates. It does not grant direct access to debts, products, stock rows, sales or expenses. Test two isolated groups, a viewer, an admin, a group owner, a linked shop owner and a non-member. Verify a group member cannot pass another group's ID to obtain results. Also verify inactive branches are omitted, date limits are enforced, and stock valuation reconciles to branch quantity multiplied by product cost price. Migration `0034` has not been executed against PostgreSQL; these checks remain staging requirements. Migration `0035` adds a database trigger because the existing shop-owner update policy would otherwise permit direct updates to `shops.company_group_id` outside the group-link RPC. Test direct linking/unlinking as a shop owner who is not a group admin (must fail), as a group admin who is not the shop owner (must fail), and as a user who is both (must succeed); direct cross-group moves must fail until unlink and relink are performed separately.
+
+
+## Product photo capture and upload
+
+Migration `0036_product_photo_uploads.sql` adds `products.image_url` and the public-read `product-images` Storage bucket. The Product Management screen supports taking a square photo with the camera or choosing an existing photo from Gallery/Photos. Images are compressed by the picker, restricted to JPEG/PNG/WEBP and uploaded at a maximum of 5 MB. Object paths are scoped as `shop_id/product_id/timestamp.ext`; Storage write policies require the authenticated user to be an owner or manager of the shop identified by the first path segment. Public read is enabled so POS/product catalogue images can render without exposing upload credentials. Do not store private/customer images in this bucket.
+
+Apply migration `0036` before using photo upload. Test camera permission denied/granted, gallery permission denied/granted, upload failure, duplicate product edits, cross-shop upload attempts, and image display on Android and web. The current implementation updates the product image URL only after the Storage upload succeeds; if upload fails, the product details remain saved and the UI reports that the image needs retrying.
+
+
+## Platform-owner payment review and enterprise report exports
+
+Migration `0037_platform_payment_review.sql` adds two authenticated, platform-admin-only RPCs:
+
+- `get_platform_payment_requests(p_status, p_limit)` returns a bounded queue (maximum 100 rows) with shop name, amount, provider, transaction reference, payer phone and submission/review timestamps. It does not grant direct table access.
+- `review_platform_pro_payment(p_payment_request_id, p_approve, p_admin_note)` locks a pending request, verifies the caller through `is_platform_admin()`, and either rejects it or activates 30 days of GUNX PRO. Repeated reviews are rejected; a request cannot be approved twice.
+- The mobile client never receives or uses a Supabase service-role key. Existing service-role-only `admin_activate_pro` remains restricted.
+
+The Platform Owner dashboard displays system metrics and pending Pro payment requests. Verify payment references with the relevant mobile-money provider before approving. This RPC is an administrative manual-review workflow, not an automatic payment-provider integration. Test an ordinary authenticated user (must be denied), a platform admin (must list/review), duplicate review attempts (must fail), rejection, approval, expired subscription renewal, and concurrent review attempts. Migration `0037` has not been executed against a live PostgreSQL/Supabase database.
+
+The Enterprise Company Group dashboard can export the currently loaded report as CSV or PDF using the selected date range. CSV includes UTF-8 BOM for spreadsheet compatibility and file sharing is enabled on Android/iOS; on web, PDF opens the browser print dialog while CSV export is not yet enabled. PDF/CSV share and print behavior must be checked on Android and web; no device test has yet been run.
+
+
+Migration `0038_platform_shop_directory.sql` adds the read-only `get_platform_shop_directory(p_search, p_limit)` RPC for the Platform Owner dashboard. It returns up to 200 shops with owner UUID, shop UUID, creation date, effective subscription status, expiry and pending payment count. Search supports shop name, owner UUID or shop UUID. It does not expose customer email/phone or grant direct table access. Test ordinary-user denial, platform-admin access, empty results, UUID/name search, pagination bounds and expired Pro status.
+
+
+## Platform settings and shop suspension
+
+Migration `0039_platform_controls_and_shop_suspension.sql` adds:
+
+- A protected `platform_app_settings` table. No direct client table access is granted; Platform Admin RPCs read and update an allowlisted set of settings (maintenance mode/message, user announcement, support phone and support email).
+- `get_public_platform_settings()` exposes only those safe display settings. The app displays the announcement and shows a maintenance screen to signed-in non-admin users while maintenance mode is enabled. Platform Admins can still sign in to turn maintenance mode off.
+- `set_platform_shop_suspension(shop_id, suspend, reason)` is restricted to Platform Admins and records the actor, reason and timestamp. The shop directory now includes suspension state.
+- Suspension is enforced in both `is_shop_member()` and `has_shop_role()`, so existing shop-scoped RLS policies and role-checked SECURITY DEFINER RPCs deny suspended shop access. The app shows a suspension notice and configured support contact details instead of asking a suspended owner to create another shop.
+
+Staging tests required before production:
+1. A normal authenticated user and anonymous user must be denied all Platform Admin settings and suspension RPCs.
+2. A Platform Admin can read/update settings; public settings expose only the allowlisted display values and never actor IDs or internal configuration.
+3. Enable maintenance mode: signed-in ordinary users see the maintenance screen, Platform Admin can still access the control dashboard and disable it.
+4. Suspend a test shop: owner, manager, cashier and stockkeeper must be denied shop reads and role-checked RPCs, including direct RPC calls. Other shops and company-group membership must remain unaffected.
+5. Restore the shop: original shop roles and access must work again. Confirm the reason, actor and timestamp are visible to Platform Admins.
+6. Test invalid email, oversized settings/reason, repeated suspend/restore, and concurrent admin changes.
+
+Important: shop suspension blocks the shop workspace and its operational role checks; it does not ban the user's Supabase Auth account globally. If a user owns other shops, those shops remain accessible. Maintenance mode is an app-level access gate in the client, not a database-wide kill switch for direct API clients; if strict API-wide maintenance enforcement is required, add a server-side gate to every mutating RPC in a separately reviewed migration.
+
+Migration `0039` has not been executed against PostgreSQL. Validate the full migration chain and the above RLS/RPC tests on staging before production.
