@@ -2,6 +2,9 @@ import React, { useCallback, useEffect, useState } from "react";
 import { Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
 import { formatTZS } from "../domain/money";
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
+import * as FileSystem from "expo-file-system/legacy";
 
 type GroupOption = { id: string; name: string; role: "group_owner" | "group_admin" | "group_viewer" };
 type BranchMetric = { shop_id: string; shop_name: string; branch_id: string; branch_name: string; sales_count: number; sales_total: number; expenses_total: number; net_after_expenses: number; debt_outstanding: number; stock_units: number; stock_value: number; low_stock_products: number };
@@ -35,6 +38,7 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
   const [memberUserId, setMemberUserId] = useState("");
   const [memberRole, setMemberRole] = useState<"group_admin" | "group_viewer">("group_viewer");
   const [busy, setBusy] = useState(false);
+  const [exportBusy, setExportBusy] = useState(false);
   const [notice, setNotice] = useState("Ripoti za kundi zinaonyesha jumla za biashara zilizounganishwa tu.");
 
   const loadGroups = useCallback(async () => {
@@ -86,7 +90,7 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
 
   const loadOverview = useCallback(async (groupId: string) => {
     if (!supabase || !groupId) { setRows([]); return; }
-    const datePattern = /^\\d{4}-\\d{2}-\\d{2}$/;
+    const datePattern = /^\d{4}-\d{2}-\d{2}$/;
     const fromTime = Date.parse(appliedFromDate + "T00:00:00Z");
     const toTime = Date.parse(appliedToDate + "T00:00:00Z");
     const dayCount = (toTime - fromTime) / 86400000;
@@ -136,6 +140,46 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
     setNotice("Biashara imeunganishwa kwenye kundi.");
   }
 
+  const selectedGroupName = groups.find(group => group.id === selectedGroupId)?.name ?? "GUNX Company Group";
+  const exportRows = rows.map(row => ({
+    shop: row.shop_name, branch: row.branch_name,
+    salesCount: Number(row.sales_count || 0), sales: Number(row.sales_total || 0),
+    expenses: Number(row.expenses_total || 0), net: Number(row.net_after_expenses || 0),
+    debt: Number(row.debt_outstanding || 0), stockUnits: Number(row.stock_units || 0),
+    stockValue: Number(row.stock_value || 0), lowStock: Number(row.low_stock_products || 0)
+  }));
+  const csvCell = (value: string | number) => '"' + String(value).replace(/"/g, '""') + '"';
+  async function exportCsv() {
+    if (!rows.length) { setNotice("Hakuna data ya kundi hili ya ku-export."); return; }
+    setExportBusy(true);
+    try {
+      const header = ["Biashara", "Tawi", "Idadi ya mauzo", "Mauzo TZS", "Gharama TZS", "Mauzo pungufu gharama TZS", "Deni linalobaki TZS", "Stock units", "Thamani ya stock TZS", "Bidhaa chini ya reorder"];
+      const lines = [header, ...exportRows.map(row => [row.shop,row.branch,row.salesCount,row.sales,row.expenses,row.net,row.debt,row.stockUnits,row.stockValue,row.lowStock])]
+        .map(line => line.map(csvCell).join(",")).join("\r\n");
+      const summary = ["KUNDI", selectedGroupName, "KUANZIA", appliedFromDate, "HADI", appliedToDate].map(csvCell).join(",");
+      const uri = FileSystem.cacheDirectory + "gunx-group-report-" + appliedFromDate + "-" + appliedToDate + ".csv";
+      await FileSystem.writeAsStringAsync(uri, "\uFEFF" + summary + "\r\n" + lines, { encoding: FileSystem.EncodingType.UTF8 });
+      await Sharing.shareAsync(uri, { mimeType: "text/csv", dialogTitle: "Shiriki ripoti ya GUNX" });
+      setNotice("Ripoti ya CSV imetengenezwa na kufunguliwa kwa ajili ya kushiriki.");
+    } catch (error) {
+      setNotice("CSV haikutengenezwa: " + (error instanceof Error ? error.message : String(error)));
+    } finally { setExportBusy(false); }
+  }
+  async function exportPdf() {
+    if (!rows.length) { setNotice("Hakuna data ya kundi hili ya ku-export."); return; }
+    setExportBusy(true);
+    try {
+      const safe = (value: string) => value.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+      const body = exportRows.map(row => `<tr><td>${safe(row.shop)}</td><td>${safe(row.branch)}</td><td>${row.salesCount}</td><td>${formatTZS(row.sales)}</td><td>${formatTZS(row.expenses)}</td><td>${formatTZS(row.debt)}</td><td>${row.stockUnits}</td><td>${formatTZS(row.stockValue)}</td><td>${row.lowStock}</td></tr>`).join("");
+      const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{font-family:Arial,sans-serif;color:#102438;padding:24px}h1{color:#0B2940;font-size:22px}p{color:#456}table{width:100%;border-collapse:collapse;font-size:9px;margin-top:20px}th{background:#0B2940;color:white}th,td{padding:8px;border:1px solid #ccd5dc;text-align:left}tr:nth-child(even){background:#f2f6f8}.note{margin-top:18px;font-size:10px;color:#456}</style></head><body><h1>GUNX SMART BUSINESS</h1><h2>${safe(selectedGroupName)} — Ripoti ya matawi</h2><p>Kipindi: ${safe(appliedFromDate)} hadi ${safe(appliedToDate)} · Sarafu: TZS</p><table><thead><tr><th>Biashara</th><th>Tawi</th><th>Mauzo</th><th>Mauzo TZS</th><th>Gharama TZS</th><th>Deni sasa TZS</th><th>Stock units</th><th>Thamani stock TZS</th><th>Low stock</th></tr></thead><tbody>${body}</tbody></table><p class="note">Mauzo na gharama ni za kipindi kilichochaguliwa. Madeni na stock ni salio la sasa. “Mauzo pungufu gharama” si faida ya kihasibu.</p></body></html>`;
+      const file = await Print.printToFileAsync({ html, width: 842, height: 595 });
+      await Sharing.shareAsync(file.uri, { mimeType: "application/pdf", dialogTitle: "Shiriki ripoti ya GUNX PDF" });
+      setNotice("PDF ya ripoti imetengenezwa na kufunguliwa kwa ajili ya kushiriki.");
+    } catch (error) {
+      setNotice("PDF haikutengenezwa: " + (error instanceof Error ? error.message : String(error)));
+    } finally { setExportBusy(false); }
+  }
+
   const canManage = groups.some(group => group.id === selectedGroupId && (group.role === "group_owner" || group.role === "group_admin"));
   const totalSales = rows.reduce((sum, row) => sum + Number(row.sales_total || 0), 0);
   const totalExpenses = rows.reduce((sum, row) => sum + Number(row.expenses_total || 0), 0);
@@ -177,6 +221,14 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
       <Pressable disabled={busy} onPress={() => { setAppliedFromDate(fromDate); setAppliedToDate(toDate); }} style={s.button}>
         <Text style={s.buttonText}>Tengeneza ripoti kwa tarehe hizi</Text>
       </Pressable>
+      <View style={s.metrics}>
+        <Pressable disabled={exportBusy || rows.length === 0} onPress={() => void exportCsv()} style={[s.button,{flex:1,opacity:exportBusy || rows.length===0?0.5:1}]}>
+          <Text style={s.buttonText}>{exportBusy ? "Inatengeneza..." : "Pakua / Shiriki CSV"}</Text>
+        </Pressable>
+        <Pressable disabled={exportBusy || rows.length === 0} onPress={() => void exportPdf()} style={[s.button,{flex:1,opacity:exportBusy || rows.length===0?0.5:1}]}>
+          <Text style={s.buttonText}>Pakua / Shiriki PDF</Text>
+        </Pressable>
+      </View>
       <Text style={s.section}>Muhtasari wa mauzo na gharama</Text>
       <View style={s.metrics}>
         <View style={s.metric}><Text style={s.metricLabel}>MAUZO · {appliedFromDate} → {appliedToDate}</Text><Text style={s.metricValue}>{formatTZS(totalSales)}</Text></View>
@@ -190,7 +242,7 @@ export default function CompanyGroupDashboard({ shopId, shopRole }: { shopId: st
         <View style={s.metric}><Text style={s.metricLabel}>IDADI YA MAUZO</Text><Text style={s.metricValue}>{salesCount.toLocaleString("en-US")}</Text></View>
         <View style={s.metric}><Text style={s.metricLabel}>UNITS ZA STOCK</Text><Text style={s.metricValue}>{totalStockUnits.toLocaleString("en-US")}</Text></View>
       </View>
-      <Text style={s.muted}>Bidhaa zilizo chini ya kiwango cha reorder: {lowStockCount}. Mauzo na gharama ni za siku 30; madeni na stock ni hali ya sasa.</Text>
+      <Text style={s.muted}>Bidhaa zilizo chini ya kiwango cha reorder: {lowStockCount}. Mauzo na gharama ni za kipindi kilichochaguliwa; madeni na stock ni hali ya sasa.</Text>
       <Text style={s.section}>Utendaji wa kila tawi</Text>
       {rows.map(row => <View key={row.branch_id} style={s.panel}>
         <Text style={s.choiceTitle}>{row.shop_name} · {row.branch_name}</Text>
