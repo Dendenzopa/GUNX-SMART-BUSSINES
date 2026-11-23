@@ -2,7 +2,7 @@ export type ID = string;
 export type PaymentMethod = "cash" | "mobile_money" | "bank" | "credit";
 export type PaymentProvider = "mpesa" | "airtel_money" | "tigo_pesa" | "halopesa";
 export type SaleStatus = "completed" | "partially_paid" | "refunded" | "pending_sync";
-export interface Product { id: ID; name: string; sku: string; unit: string; costPrice: number; sellingPrice: number; stockQuantity: number; reorderLevel: number; active: boolean; }
+export interface Product { id: ID; name: string; sku: string; unit: string; costPrice: number; sellingPrice: number; stockQuantity: number; reorderLevel: number; active: boolean; imageUrl?: string | null; }
 export interface SaleLine { id?: ID; productId: ID; productName: string; quantity: number; unitPrice: number; unitCost: number; lineTotal: number; }
 export interface Sale { id: ID; receiptNumber: string; createdAt: string; lines: SaleLine[]; subtotal: number; discount: number; total: number; amountPaid: number; balance: number; paymentMethod: PaymentMethod; paymentProvider?: PaymentProvider; status: SaleStatus; }
 export interface Expense { id: ID; description: string; category: string; amount: number; paymentMethod?: "cash" | "mobile_money" | "bank"; paymentProvider?: PaymentProvider; createdAt: string; }
