@@ -17,6 +17,11 @@ type PaymentRequest = {
   admin_note: string | null;
 };
 
+type ShopAccount = {
+  shop_id: string; shop_name: string; owner_user_id: string; shop_created_at: string;
+  plan_code: string; subscription_status: string; expires_at: string | null; pending_payment_count: number;
+};
+
 type Metrics = {
   total_installs: number;
   installs_7d: number;
@@ -34,6 +39,8 @@ function Metric({ label, value }: { label: string; value: number }) {
 export default function PlatformOwnerDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [requests, setRequests] = useState<PaymentRequest[]>([]);
+  const [shops, setShops] = useState<ShopAccount[]>([]);
+  const [directorySearch, setDirectorySearch] = useState("");
   const [loading, setLoading] = useState(true);
   const [reviewingId, setReviewingId] = useState<string | null>(null);
   const [paymentNote, setPaymentNote] = useState("");
@@ -53,6 +60,20 @@ export default function PlatformOwnerDashboard() {
     setRequests((data ?? []) as PaymentRequest[]);
   }, []);
 
+  const loadDirectory = useCallback(async (search: string) => {
+    if (!supabase) return;
+    const { data, error } = await supabase.rpc("get_platform_shop_directory", {
+      p_search: search.trim() || null,
+      p_limit: 100
+    });
+    if (error) {
+      setShops([]);
+      setNotice("Orodha ya biashara haijapatikana: " + error.message);
+      return;
+    }
+    setShops((data ?? []) as ShopAccount[]);
+  }, []);
+
   const load = useCallback(async () => {
     if (!supabase) {
       setNotice("Supabase haijaunganishwa.");
@@ -67,11 +88,11 @@ export default function PlatformOwnerDashboard() {
       setNotice("Takwimu hazijapatikana: " + error.message + ". Hakikisha migration 0018 imetumika na akaunti yako imepewa Platform Admin.");
     } else {
       setMetrics(data as Metrics);
-      await loadRequests();
-      setNotice("Takwimu zimechukuliwa moja kwa moja kutoka Supabase.");
+      await Promise.all([loadRequests(), loadDirectory("")]);
+      setNotice("Takwimu, maombi ya malipo na akaunti za biashara zimechukuliwa kutoka Supabase.");
     }
     setLoading(false);
-  }, [loadRequests]);
+  }, [loadRequests, loadDirectory]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -136,7 +157,23 @@ export default function PlatformOwnerDashboard() {
         {requests.length === 0 && <Text style={s.copy}>Hakuna maombi ya malipo yanayosubiri kwa sasa.</Text>}
       </View>
     </>}
-    <Pressable onPress={() => void load()} disabled={loading} style={s.button}><Text style={s.buttonText}>↻ Sasisha takwimu na maombi</Text></Pressable>
+      <View style={s.directory}>
+        <Text style={s.queueTitle}>Akaunti na usajili wa biashara</Text>
+        <Text style={s.copy}>Orodha inaonyesha maduka 100 ya karibuni zaidi. Tafuta kwa jina la biashara, Owner UUID au Shop UUID.</Text>
+        <TextInput value={directorySearch} onChangeText={setDirectorySearch} autoCapitalize="none" placeholder="Tafuta biashara au UUID..." placeholderTextColor="#71869A" style={s.noteInput}/>
+        <Pressable onPress={() => void loadDirectory(directorySearch)} style={s.searchButton}><Text style={s.buttonText}>Tafuta biashara</Text></Pressable>
+        {shops.map(shop => <View key={shop.shop_id} style={s.requestCard}>
+          <Text style={s.requestShop}>{shop.shop_name}</Text>
+          <Text style={s.requestLine}>Mpango: {shop.plan_code.toUpperCase()} · Hali: {shop.subscription_status}</Text>
+          <Text style={s.requestLine}>Mwisho wa Pro: {shop.expires_at ? new Date(shop.expires_at).toLocaleDateString("sw-TZ") : "Hakuna / Free"}</Text>
+          <Text style={s.requestLine}>Maombi yanayosubiri: {Number(shop.pending_payment_count).toLocaleString("en-US")}</Text>
+          <Text style={s.requestLine}>Owner UUID: {shop.owner_user_id}</Text>
+          <Text style={s.requestLine}>Shop UUID: {shop.shop_id}</Text>
+          <Text style={s.requestLine}>Ilifunguliwa: {new Date(shop.shop_created_at).toLocaleDateString("sw-TZ")}</Text>
+        </View>)}
+        {shops.length === 0 && <Text style={s.copy}>Hakuna biashara iliyopatikana kwa utafutaji huu.</Text>}
+      </View>
+    <Pressable onPress={() => void load()} disabled={loading} style={s.button}><Text style={s.buttonText}>↻ Sasisha takwimu, malipo na biashara</Text></Pressable>
     <Text style={s.notice}>{notice}</Text>
   </View>;
 }
@@ -153,6 +190,8 @@ const s = StyleSheet.create({
   button: { alignSelf: "flex-start", backgroundColor: "#16785C", padding: 12, borderRadius: 10, marginTop: 15 },
   buttonText: { color: "#F5FFFA", fontSize: 12, fontWeight: "800" },
   paymentQueue: { backgroundColor: "#102438", borderColor: "#1D3A50", borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 18 },
+  directory: { backgroundColor: "#102438", borderColor: "#1D3A50", borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 18 },
+  searchButton: { alignSelf: "flex-start", backgroundColor: "#176247", padding: 10, borderRadius: 9, marginTop: 9 },
   queueTitle: { color: "#F4F7FA", fontSize: 16, fontWeight: "900" },
   queueCount: { color: "#F2D99F", fontSize: 12, fontWeight: "900", marginTop: 12 },
   formLabel: { color: "#D8E3EC", fontSize: 11, fontWeight: "800", marginTop: 12, marginBottom: 6 },
