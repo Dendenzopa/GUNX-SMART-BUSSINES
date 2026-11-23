@@ -94,7 +94,7 @@ Each query should return no rows. If a query returns rows, stop and investigate 
 - These migrations have not yet been executed against the user's live Supabase database.
 - The repository CI validates TypeScript and Expo web export; it does not execute PostgreSQL migrations or prove RLS behavior.
 - Android device tests, concurrent POS/closing tests, and staging RLS tests are still required.
-- Enterprise group reporting is introduced by migration `0033`; the current AuthGate still selects one shop membership and the app does not yet provide a multi-company switcher or group dashboard.
+- Enterprise group reporting is introduced by migration `0033`. The current app supports selecting among multiple shop memberships, a group dashboard, group-only accounts restricted to the Group screen, and group owner/admin member-management controls. These client flows still require staging and Android testing; the database RPCs and RLS remain authoritative.
 
 
 ## Stock count and adjustment verification
@@ -136,4 +136,4 @@ Migration `0033_enterprise_company_groups.sql` adds a separate group-membership 
 
 Before production rollout, test group isolation with two groups, a user who belongs to both groups, a group viewer, a shop owner who is not a group member, and a non-member. Confirm group viewers can read aggregates but cannot mutate group membership or link shops. Confirm unlinking a shop removes it from subsequent reports.
 
-The mobile app still needs a multi-company selector and consolidated reporting screens. The existing `AuthGate` currently loads one shop membership with `limit(1)`; do not describe the group feature as end-to-end complete until that app flow is implemented and tested. Migration 0033 has not been executed against a live PostgreSQL/Supabase database.
+The mobile app now includes a multi-shop selector, consolidated group reporting, group-only sign-in routing, and group owner/admin member-management UI. The UI is not a substitute for server authorization: test all RPCs and RLS policies with owner, admin, viewer, shop owner and non-member accounts. Migration 0033 has not been executed against a live PostgreSQL/Supabase database, and the app flows have not yet been tested on Android devices.
