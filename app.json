@@ -4,7 +4,7 @@
     "slug": "gunx-smart-business",
     "version": "0.1.0",
     "orientation": "portrait",
-    "userInterfaceStyle": "dark",
+    "userInterfaceStyle": "light",
     "newArchEnabled": true,
     "scheme": "gunxsmartbusiness",
     "ios": {
@@ -24,7 +24,7 @@
           "image": "./assets/GUNX20Smart20Business20Logo-1.jpg",
           "imageWidth": 240,
           "resizeMode": "contain",
-          "backgroundColor": "#081522"
+          "backgroundColor": "#FFFFFF"
         }
       ]
     ],
