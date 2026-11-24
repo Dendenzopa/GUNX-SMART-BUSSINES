@@ -3,7 +3,8 @@ import { ActivityIndicator, Linking, Platform, Pressable, SafeAreaView, ScrollVi
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 
-const ShopContext = createContext<{ shopId: string | null }>({ shopId: null });
+type ShopRole = "owner" | "manager" | "cashier" | "stockkeeper";
+const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null });
 export function useShopContext() { return useContext(ShopContext); }
 
 const AUTH_REDIRECT_URL = "gunxsmartbusiness://auth/callback";
@@ -25,6 +26,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [shopName, setShopName] = useState("");
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
+  const [shopRole, setShopRole] = useState<ShopRole | null>(null);
+  const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [shopLoading, setShopLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -90,7 +94,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         setMode("reset");
         setMessage("Weka password yako mpya.");
       }
-      if (!next) { setNeedsShop(false); setShopId(null); }
+      if (!next) { setNeedsShop(false); setShopId(null); setShopRole(null); setIsPlatformAdmin(false); setShopLoading(false); }
     });
     return () => {
       urlSubscription.remove();
@@ -99,15 +103,28 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!session || !supabase) return;
+    setIsPlatformAdmin(false);
+    setShopRole(null);
+    if (!session || !supabase) { setShopLoading(false); return; }
     let active = true;
-    supabase.from("shop_members").select("shop_id").eq("user_id", session.user.id).limit(1).maybeSingle()
-      .then(({ data, error }) => {
-        if (!active) return;
-        if (error) setMessage("Imeshindikana kusoma duka: " + error.message);
-        setNeedsShop(!data && !error);
-        setShopId(data?.shop_id ?? null);
-      });
+    setShopLoading(true);
+    Promise.all([
+      supabase.rpc("is_platform_admin"),
+      supabase.from("shop_members").select("shop_id,role").eq("user_id", session.user.id).limit(1).maybeSingle()
+    ]).then(([adminResult, membershipResult]) => {
+      if (!active) return;
+      const admin = !adminResult.error && adminResult.data === true;
+      if (membershipResult.error) setMessage("Imeshindikana kusoma duka: " + membershipResult.error.message);
+      setIsPlatformAdmin(admin);
+      setNeedsShop(!membershipResult.data && !membershipResult.error && !admin);
+      setShopId(membershipResult.data?.shop_id ?? null);
+      setShopRole((membershipResult.data?.role as ShopRole | undefined) ?? null);
+      setShopLoading(false);
+    }).catch((error: unknown) => {
+      if (!active) return;
+      setMessage(error instanceof Error ? error.message : "Imeshindikana kuthibitisha ruhusa za akaunti.");
+      setShopLoading(false);
+    });
     return () => { active = false; };
   }, [session]);
 
@@ -181,7 +198,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.rpc("create_shop", { p_name: shopName.trim() });
     setBusy(false);
     if (error) setMessage("Duka halikuundwa: " + error.message);
-    else { const { data } = await supabase.from("shop_members").select("shop_id").eq("user_id", (await supabase.auth.getUser()).data.user?.id).limit(1).maybeSingle(); setShopId(data?.shop_id ?? null); setNeedsShop(!data); }
+    else { const { data } = await supabase.from("shop_members").select("shop_id,role").eq("user_id", (await supabase.auth.getUser()).data.user?.id).limit(1).maybeSingle(); setShopId(data?.shop_id ?? null); setShopRole((data?.role as ShopRole | undefined) ?? null); setNeedsShop(!data && !isPlatformAdmin); }
   }
 
   if (!supabaseConfigured) return <>{children}</>;
@@ -221,8 +238,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     </View>
     </ScrollView>
   </SafeAreaView>;
+  if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
-  return <ShopContext.Provider value={{ shopId }}>{children}</ShopContext.Provider>;
+  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole }}>{children}</ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
