@@ -43,7 +43,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         if (authCode) {
           const { error } = await supabase.auth.exchangeCodeForSession(authCode);
           if (error) setMessage("Imeshindikana kuthibitisha link: " + error.message);
-          else { setMode("login"); setMessage("Uthibitisho umekamilika. Unaweza kuendelea."); }
+          else {
+            if (Platform.OS === "web" && typeof window !== "undefined") {
+              window.history.replaceState({}, document.title, window.location.pathname);
+            }
+            setMessage("Link imethibitishwa. Unaweza kuendelea.");
+          }
           return;
         }
         const accessToken = fragment.get("access_token") ?? query.get("access_token");
@@ -67,16 +72,24 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       }
     };
 
+    if (Platform.OS === "web" && typeof window !== "undefined") {
+      void handleAuthUrl(window.location.href);
+    }
+
     void supabase.auth.getSession().then(({ data, error }) => {
       if (error) setMessage(error.message);
       setSession(data.session);
       setLoading(false);
     });
 
-    void Linking.getInitialURL().then(handleAuthUrl);
+    if (Platform.OS !== "web") void Linking.getInitialURL().then(handleAuthUrl);
     const urlSubscription = Linking.addEventListener("url", event => { void handleAuthUrl(event.url); });
-    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
+    const { data: listener } = supabase.auth.onAuthStateChange((event, next) => {
       setSession(next);
+      if (event === "PASSWORD_RECOVERY") {
+        setMode("reset");
+        setMessage("Weka password yako mpya.");
+      }
       if (!next) { setNeedsShop(false); setShopId(null); }
     });
     return () => {
@@ -155,8 +168,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setBusy(false);
     if (error) { setMessage("Imeshindikana kuanza Google login: " + error.message); return; }
     if (data.url) {
-      try { await Linking.openURL(data.url); }
-      catch { setMessage("Imeshindikana kufungua Google login. Jaribu tena."); }
+      try {
+        if (Platform.OS === "web" && typeof window !== "undefined") window.location.assign(data.url);
+        else await Linking.openURL(data.url);
+      } catch { setMessage("Imeshindikana kufungua Google login. Jaribu tena."); }
     } else setMessage("Google login haijarudisha link. Hakikisha Google provider imewezeshwa Supabase.");
   }
 
