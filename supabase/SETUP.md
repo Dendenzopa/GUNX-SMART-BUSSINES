@@ -21,6 +21,9 @@
    - `supabase/migrations/0015_restrict_direct_ledger_writes.sql`
    - `supabase/migrations/0016_require_audited_opening_stock.sql`
    - `supabase/migrations/0017_product_catalogue_management_only.sql`
+   - `supabase/migrations/0018_platform_owner_analytics.sql`
+   - `supabase/migrations/0019_harden_installation_analytics.sql`
+   - `supabase/migrations/0020_restrict_product_catalogue_edits.sql`
 3. Copy `.env.example` to `.env.local` and set the Supabase project URL and anon/publishable key.
 4. Deploy the staff invitation Edge Function: `supabase functions deploy invite-staff` (keep JWT verification enabled).
 5. Deploy the trusted Pro activation Edge Function: `supabase functions deploy activate-pro --no-verify-jwt`. This endpoint uses its own `x-gunx-admin-token` check; generate a long random secret and set it with `supabase secrets set GUNX_PRO_ADMIN_TOKEN=...`.
@@ -28,11 +31,36 @@
 7. Ensure the staff invitation Edge Function environment has the platform-provided `SUPABASE_URL`, `SUPABASE_ANON_KEY`, and `SUPABASE_SERVICE_ROLE_KEY`.
 8. Install dependencies with `npm install`, then run `npx expo start`.
 
+
+## Platform Owner and usage analytics
+
+After creating and confirming the account that will own the platform, find that account's UUID in **Supabase Dashboard → Authentication → Users**. Do not use the email as an authorization rule and never share the account password or API secrets. In SQL Editor, run this statement with the exact UUID from your own project:
+
+```sql
+insert into public.platform_admins (user_id, note)
+values ('YOUR_AUTH_USER_UUID', 'GUNX SMART BUSINESS platform owner')
+on conflict (user_id) do nothing;
+```
+
+The migration automatically grants the platform owner's own shop a no-cost Pro entitlement, including shops already owned by that account and shops created later. Other shops/customers are not exempt. The app's Platform Owner tab appears only after the signed-in account is recognized by the server-side `is_platform_admin()` check. Never add a client-side admin flag or expose the service-role key.
+
+The Owner dashboard reports:
+- Verified installations: only signed-in Supabase accounts can register, and each account contributes at most one counted installation. Old anonymous/unverified installation claims are deleted by migration 0019.
+- New installations in the last 7 and 30 days.
+- Registered Supabase Auth accounts.
+- Registered users active in the last 7 and 30 days (best-effort activity heartbeat).
+- Total shops.
+
+**Anti-fraud limits:** unauthenticated callers cannot register installations. The database ties each row to the authenticated Supabase user and enforces one counted installation per account, even if app storage is cleared and a new local ID is generated. This prevents anonymous ID spam and repeated counting by one account. It does not prove a unique physical device or prevent someone creating many verified accounts. Enable email confirmation and abuse protections in Supabase Auth. These counts are verified-account installations, not APK downloads. WhatsApp does not provide the owner with download analytics; downloads require a controlled hosting endpoint.
+
+
 ## Security
 
-- Apply migrations `0015_restrict_direct_ledger_writes.sql`, `0016_require_audited_opening_stock.sql`, and `0017_product_catalogue_management_only.sql` after `0014`. Authenticated clients can no longer insert sales, sale items, payments, stock movements, debts, debt repayments or refunds directly; use the atomic RPC workflows. Direct stock-quantity edits and non-zero opening stock on direct product inserts are blocked; opening stock must be recorded through `receive_stock`. Product creation/deletion and cost/selling-price edits are restricted to owners/managers; stockkeepers receive stock for existing products through audited workflows.
+- Apply migrations `0015_restrict_direct_ledger_writes.sql`, `0016_require_audited_opening_stock.sql`, and `0017_product_catalogue_management_only.sql` after `0014`. Authenticated clients can no longer insert sales, sale items, payments, stock movements, debts, debt repayments or refunds directly; use the atomic RPC workflows. Direct stock-quantity edits and non-zero opening stock on direct product inserts are blocked; opening stock must be recorded through `receive_stock`. Product creation/deletion and all catalogue edits/archiving are restricted to owners/managers by RLS; stockkeepers receive stock for existing products only through audited workflows. Archived products can be restored by management.
 
 - Only use the Supabase anon/publishable key in the app.
+- Treat every value sent by the mobile app as untrusted. Database authorization, tenant isolation, subscription state and financial mutations must remain enforced by RLS and security-definer RPCs; never trust client-side admin/Pro flags.
+- The APK can be decompiled or modified by a determined attacker. Do not put secrets or privileged business rules in the app. A modified client must still be unable to bypass server-side permissions. For stronger proof that a request came from the official Android build/device, integrate Google Play Integrity with a server-side verifier before enabling that enforcement; it requires Play Console/Google Cloud configuration and is not yet deployed.
 - Never embed or commit the Supabase `service_role` key.
 - Configure email confirmation and password reset before production.
 - Apply all RLS and role-aware migrations before entering real business data.
@@ -49,6 +77,8 @@
 - `shop_subscriptions` and `get_shop_subscription`: create a Free subscription for each shop, expose Free/Pro status to shop members, and resolve expired Pro plans to Free without deleting business data. Paid plan changes are intentionally server-controlled; the app cannot activate Pro from a client-side payment claim.
 - `pro_payment_requests` and `submit_pro_payment`: let a shop owner submit a TZS 5,000 payment reference. Submission is only a pending claim and does not activate Pro.
 - `admin_activate_pro` plus the `activate-pro` Edge Function: activate/extend Pro for 30 days only after a trusted operator has independently checked the incoming payment. The function requires the private `GUNX_PRO_ADMIN_TOKEN` secret and uses the service-role key server-side. This is manual verification, not a live M-Pesa/HaloPesa provider API integration.
+- `0019_harden_installation_analytics.sql`: only authenticated users can register installations; the server enforces one counted installation per account and discards earlier anonymous claims.
+- `0020_restrict_product_catalogue_edits.sql`: only owners/managers can edit or archive product catalogue records; stockkeepers use audited stock RPCs.
 - `0012_enforce_free_plan_limits.sql`: enforce the Free plan's 50-product, 100-monthly-sale and 10-outstanding-debtor limits in PostgreSQL. Product creation and POS checkout are checked server-side; offline sales are checked when they sync. Existing data is retained if Pro expires.
 - `invite-staff` Edge Function: validates the signed-in caller and owner membership server-side, sends an email invitation with Supabase Auth Admin, then adds the invited account to the selected shop. Deploy this function before using email invitations.
 
@@ -64,7 +94,7 @@ When Supabase environment variables are configured and a signed-in user has a sh
 
 ## Android test build
 
-A manual GitHub Actions workflow is available at **Actions → GUNX Android test APK → Run workflow**. It generates the Expo Android native project, builds a signed-by-debug-keystore installable debug APK, and uploads it as the artifact `gunx-smart-business-android-debug` for 14 days. This APK is for device testing only, not Google Play release.
+The repository has an Android standalone APK workflow. A build artifact is not proof that an APK is tamper-proof. The production signing key must be held as a protected GitHub Actions secret (never committed to Git), and the app should be distributed from a controlled source. Android signature verification prevents an altered APK from updating an installation signed with the original key, but it does not stop an attacker from repackaging and re-signing a separate copy. Server-side Play Integrity verification is the stronger next step for Android app/device authenticity.
 
 For managed EAS builds, `eas.json` includes:
 - `preview`: internal Android APK distribution.

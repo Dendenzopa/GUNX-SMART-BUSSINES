@@ -2,7 +2,7 @@ name: GUNX Android standalone APK
 
 on:
   push:
-    branches: [main]
+    branches: [main, feature/platform-owner-analytics]
     paths:
       - '.github/workflows/android-apk.yml'
       - 'App.tsx'
@@ -36,12 +36,13 @@ jobs:
           java-version: '17'
       - name: Install dependencies
         run: npm install --no-audit --no-fund
-      - name: Prepare splash logo as PNG
+      - name: Prepare GUNX app and splash icons as PNG
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
+          convert assets/GUNX20Smart20Business20Logo-1.jpg -resize 1024x1024 -gravity center -background '#081522' -extent 1024x1024 -strip assets/gunx-smart-business-app-icon.png
           convert assets/GUNX20Smart20Business20Logo-1.jpg -strip -interlace none assets/gunx-smart-business-logo-splash.png
-          identify assets/gunx-smart-business-logo-splash.png
+          identify assets/gunx-smart-business-app-icon.png assets/gunx-smart-business-logo-splash.png
       - name: Generate native Android project
         run: CI=1 npx expo prebuild --platform android
       - name: Build standalone release APK with embedded JavaScript bundle
