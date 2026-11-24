@@ -21,6 +21,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
+  const userId = session?.user.id ?? null;
 
   useEffect(() => {
     if (!supabaseConfigured || !supabase) { setLoading(false); return; }
@@ -72,10 +73,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }
 
   useEffect(() => {
-    // Clear the previous account's UI privilege immediately while the server
-    // checks the newly signed-in account. The dashboard RPC remains authoritative.
+    // Key authorization work to the authenticated identity, not the Session
+    // object: Supabase emits a fresh Session object on TOKEN_REFRESHED.
     setIsPlatformAdmin(false);
-    if (!session || !supabase) return;
+    if (!userId || !supabase) return;
     let active = true;
     void registerAppInstallation();
     void recordSignedInActivity();
@@ -83,7 +84,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       if (active) setIsPlatformAdmin(!error && data === true);
     });
     return () => { active = false; };
-  }, [session]);
+  }, [userId]);
 
   // Retry both installation registration and activity when the signed-in app
   // returns to foreground. This recovers from temporary offline/RPC failures.
@@ -101,10 +102,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, [session?.user.id]);
 
   useEffect(() => {
-    if (!session || !supabase) return;
     let active = true;
+    if (!userId || !supabase) {
+      setNeedsShop(false);
+      setShopId(null);
+      setShopLoading(false);
+      return () => { active = false; };
+    }
+    // Only a real identity change (or initial resolution) enters this loading
+    // gate. Token refreshes for the same user do not remount the dashboard.
     setShopLoading(true);
-    supabase.from("shop_members").select("shop_id").eq("user_id", session.user.id).limit(1).maybeSingle()
+    setShopId(null);
+    setNeedsShop(false);
+    supabase.from("shop_members").select("shop_id").eq("user_id", userId).limit(1).maybeSingle()
       .then(({ data, error }) => {
         if (!active) return;
         if (error) setMessage("Imeshindikana kusoma duka: " + error.message);
@@ -113,7 +123,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         setShopLoading(false);
       });
     return () => { active = false; };
-  }, [session]);
+  }, [userId]);
 
   async function authenticate() {
     if (!supabase) return;
