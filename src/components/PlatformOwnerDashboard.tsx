@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
 
 type Metrics = {
@@ -143,6 +143,8 @@ export default function PlatformOwnerDashboard() {
   const [notice, setNotice] = useState("Inapakia takwimu za mfumo...");
   const [showNotice, setShowNotice] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
+  const [drawer, setDrawer] = useState<{ title: string; message: string; accent: string } | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -165,22 +167,22 @@ export default function PlatformOwnerDashboard() {
 
   useEffect(() => { void load(); }, [load]);
 
-  const unavailable = "Haijaunganishwa";
-  const openModule = (name: string) => {
-    setNotice(name + " bado inaandaliwa. Itafunguliwa baada ya kuunganishwa na huduma salama za mfumo.");
-    setShowNotice(true);
-  };
+  const unavailable = "--";
+  const openDrawer = (title: string, message: string, accent = "#1D4ED8") => setDrawer({ title, message, accent });
+  const openModule = (name: string, message: string) => openDrawer(name, message);
+  const showBusinesses = () => setSelectedModule("All Businesses");
 
   return (
     <View style={s.screen}>
-      <View pointerEvents="none" style={s.gridOverlay}>
-        {Array.from({ length: 13 }, (_, i) => <View key={"v" + i} style={[s.gridVertical, { left: (i * 8.333) + "%" }]} />)}
-        {Array.from({ length: 18 }, (_, i) => <View key={"h" + i} style={[s.gridHorizontal, { top: (i * 34) }]} />)}
-      </View>
-      <View pointerEvents="none" style={s.glowTop} />
-      <View pointerEvents="none" style={s.glowBottom} />
-
       <View style={s.header}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Akaunti ya Mmiliki"
+          onPress={() => openDrawer("Akaunti ya Mmiliki", "Akaunti kuu ya GUNX Super Admin (Mmiliki). Una mamlaka ya kusimamia biashara, watumiaji, vifurushi, usalama na mipangilio ya mfumo.", "#1E3A8A")}
+          style={s.accountButton}
+        >
+          <Text style={s.accountIcon}>♙</Text>
+        </Pressable>
         <View style={s.brandBlock}>
           <Image
             accessibilityLabel="GUNX SMART BUSINESS official logo"
@@ -189,129 +191,200 @@ export default function PlatformOwnerDashboard() {
             resizeMode="contain"
           />
         </View>
-        <Pressable onPress={() => { setNotice("Arifa za mfumo zitaonekana hapa baada ya notification service kuunganishwa."); setShowNotice(true); }} style={s.bellButton}>
+        <Pressable
+          accessibilityRole="button"
+          accessibilityLabel="Taarifa za Mfumo"
+          onPress={() => setNotificationsOpen(value => !value)}
+          style={s.bellButton}
+        >
           <Text style={s.bell}>♧</Text>
           <View style={s.bellDot} />
         </Pressable>
       </View>
 
-      <View style={s.profileCard}>
-        <View style={s.avatar}><Text style={s.avatarText}>GA</Text></View>
-        <View style={s.profileCopy}>
-          <Text style={s.welcome}>WELCOME BACK!</Text>
-          <Text style={s.profileName}>GUNX Super Admin</Text>
-          <View style={s.ownerBadge}><Text style={s.crown}>♛</Text><Text style={s.ownerText}>OWNER</Text></View>
+      {notificationsOpen && (
+        <View style={s.notificationStrip}>
+          <View style={s.notificationIcon}><Text style={s.notificationIconText}>i</Text></View>
+          <View style={s.notificationCopy}>
+            <Text style={s.notificationTitle}>Kituo cha Arifa</Text>
+            <Text style={s.notificationMessage}>Arifa za mfumo zitaonekana hapa huduma ya notifications ikishawashwa.</Text>
+          </View>
+          <Pressable onPress={() => setNotificationsOpen(false)} style={s.notificationClose}>
+            <Text style={s.notificationCloseText}>Funga</Text>
+          </Pressable>
         </View>
-        <View style={s.accessPill}><View style={s.accessDot}/><Text style={s.accessText}>ROOT ACCESS</Text></View>
-      </View>
+      )}
 
-      <View style={s.sectionHeading}>
-        <View>
-          <Text style={s.sectionEyebrow}>SYSTEM-WIDE CONTROL</Text>
-          <Text style={s.sectionTitle}>Platform Overview</Text>
-        </View>
-        <View style={s.liveBadge}><View style={s.liveDot}/><Text style={s.liveText}>PLATFORM</Text></View>
-      </View>
-      <Text style={s.sectionCopy}>Muhtasari wa biashara na watumiaji wote waliosajiliwa kwenye GUNX SMART BUSINESS.</Text>
+      {selectedModule === "All Businesses" ? (
+        <BusinessDirectory onBack={() => setSelectedModule(null)} />
+      ) : (
+        <>
+          <Pressable
+            onPress={() => openDrawer("Wasifu wa GUNX Super Admin", "Akaunti kuu ya Mmiliki wa mfumo wa GUNX SMART BUSINESS.", "#1E3A8A")}
+            style={s.welcomeBanner}
+          >
+            <View style={s.welcomeAvatar}>
+              <Text style={s.welcomeAvatarIcon}>♙</Text>
+              <View style={s.crownBadge}><Text style={s.crownBadgeText}>♛</Text></View>
+            </View>
+            <View style={s.welcomeCopy}>
+              <Text style={s.welcome}>Karibu Tena!</Text>
+              <Text style={s.profileName}>GUNX Super Admin</Text>
+              <View style={s.ownerBadge}><View style={s.ownerDot}/><Text style={s.ownerText}>Mmiliki</Text></View>
+            </View>
+          </Pressable>
 
-      {loading && <View style={s.loading}><ActivityIndicator color="#42D6A0"/><Text style={s.loadingText}>Inasoma taarifa kutoka server...</Text></View>}
+          <View style={s.sectionHeading}>
+            <Text style={s.sectionTitle}>Muhtasari wa Mfumo</Text>
+          </View>
+          {loading && <View style={s.loading}><ActivityIndicator color="#1D4ED8"/><Text style={s.loadingText}>Inasoma taarifa kutoka server...</Text></View>}
 
-      <View style={s.statsGrid}>
-        <StatCard icon="🏢" label="TOTAL BUSINESSES" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "—"} tone="blue"/>
-        <StatCard icon="👥" label="TOTAL USERS" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "—"} tone="blue"/>
-        <StatCard icon="📈" label="TOTAL REVENUE" value={unavailable} tone="gold"/>
-        <StatCard icon="🛡️" label="SYSTEM UPTIME" value={unavailable} tone="green"/>
-      </View>
-      <Text style={s.metricFootnote}>Active users: {metrics ? metrics.active_7d.toLocaleString("en-US") + " (siku 7) · " + metrics.active_30d.toLocaleString("en-US") + " (siku 30)" : "Takwimu za shughuli zitaonekana baada ya server kurudisha data."}</Text>
+          <View style={s.statsGrid}>
+            <StatCard icon="▣" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
+            <StatCard icon="♙" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
+            <StatCard icon="↗" label="Jumla ya Mapato" value={unavailable} tone="blue"/>
+            <StatCard icon="◈" label="Ufanisi wa Mfumo" value={unavailable} tone="blue"/>
+          </View>
+          <Text style={s.metricFootnote}>
+            Watumiaji hai: {metrics ? metrics.active_7d.toLocaleString("en-US") + " (siku 7) · " + metrics.active_30d.toLocaleString("en-US") + " (siku 30)" : "Takwimu za shughuli zitaonekana baada ya server kurudisha data."}
+          </Text>
 
-      <View style={s.sectionHeading}>
-        <View>
-          <Text style={s.sectionEyebrow}>ADMINISTRATION</Text>
-          <Text style={s.sectionTitle}>Management Tools</Text>
-        </View>
-        <Text style={s.toolCount}>06 MODULES</Text>
-      </View>
-      <View style={s.managementGrid}>
-        <ManagementCard icon="▣" title="All Businesses" description="Hakiki na simamia biashara zote." onPress={() => setSelectedModule("All Businesses")}/>
-        <ManagementCard icon="♙" title="Users Management" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Users Management")}/>
-        <ManagementCard icon="⬡" title="Subscriptions" description="Vifurushi, muda na malipo." onPress={() => openModule("Subscriptions")}/>
-        <ManagementCard icon="⚙" title="System Settings" description="Mipangilio ya jukwaa zima." onPress={() => openModule("System Settings")}/>
-        <ManagementCard icon="◈" title="Security Monitor" description="Uingiaji, matukio na security logs." onPress={() => openModule("Security Monitor")}/>
-        <ManagementCard icon="▤" title="Reports" description="Ukuaji, mapato na matumizi." onPress={() => openModule("Reports")}/>
-      </View>
+          <View style={s.sectionHeading}>
+            <Text style={s.sectionTitle}>Zana za Usimamizi</Text>
+          </View>
+          <View style={s.managementGrid}>
+            <ManagementCard icon="▣" title="Biashara Zote" description="Orodha na usimamizi wa biashara." onPress={showBusinesses}/>
+            <ManagementCard icon="♙" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Usimamizi wa Watumiaji", "Dhibiti akaunti za watumiaji, majukumu na ruhusa za ufikiaji. Sehemu hii itawashwa baada ya kuunganishwa na huduma salama za usimamizi wa watumiaji.")}/>
+            <ManagementCard icon="⬡" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." onPress={() => openModule("Vifurushi/Usajili", "Simamia vifurushi vya huduma, mipango ya usajili, muda wa matumizi na hali ya malipo ya biashara.")}/>
+            <ManagementCard icon="⚙" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." onPress={() => openModule("Mipangilio ya Mfumo", "Rekebisha mipangilio ya mfumo mzima, sarafu, vigezo vya kiufundi na usanidi wa jukwaa.")}/>
+            <ManagementCard icon="◈" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." onPress={() => openModule("Mlinzi wa Usalama", "Fuatilia usalama wa mfumo, kumbukumbu za kuingia, matukio ya kiusalama na shughuli za akaunti.")}/>
+            <ManagementCard icon="▤" title="Ripoti" description="Ukuaji, mapato na matumizi." onPress={() => openModule("Ripoti", "Angalia ripoti za ukuaji wa jukwaa, biashara zilizosajiliwa, matumizi na mapato baada ya data ya kifedha kuunganishwa.")}/>
+          </View>
 
-      <Pressable onPress={() => openModule("GUNX Super Admin Panel")} style={({ pressed }) => [s.panelButton, pressed && s.panelButtonPressed]}>
-        <Text style={s.panelCrown}>♛</Text>
-        <Text style={s.panelButtonText}>GUNX Super Admin Panel</Text>
-        <Text style={s.panelArrow}>›</Text>
-      </Pressable>
+          <Pressable
+            onPress={() => openModule("Jopo la GUNX Super Admin", "Uko ndani ya Jopo la GUNX Super Admin kwa ajili ya usimamizi mkuu wa Mmiliki.", "#B45309")}
+            style={({ pressed }) => [s.panelButton, pressed && s.panelButtonPressed]}
+          >
+            <Text style={s.panelCrown}>♛</Text>
+            <Text style={s.panelButtonText}>Jopo la GUNX Super Admin</Text>
+          </Pressable>
+          {showNotice && <Pressable onPress={() => setShowNotice(false)} style={s.notice}><Text style={s.noticeText}>{notice}</Text><Text style={s.noticeDismiss}>GUSA KUFUNGA</Text></Pressable>}
+          <Pressable onPress={() => void load()} style={s.refresh}><Text style={s.refreshText}>↻  Sasisha takwimu za mfumo</Text></Pressable>
+          <Text style={s.footer}>WEWE – SUPER ADMIN (MMILIKI WA APP)</Text>
+          <Text style={s.footerNote}>Mapato na ufanisi wa mfumo vitaonyeshwa baada ya huduma husika kuunganishwa. Hakuna takwimu za kubuni.</Text>
+        </>
+      )}
 
-      {showNotice && <Pressable onPress={() => setShowNotice(false)} style={s.notice}><Text style={s.noticeText}>{notice}</Text><Text style={s.noticeDismiss}>GUSA KUFUNGA</Text></Pressable>}
-      <Pressable onPress={() => void load()} style={s.refresh}><Text style={s.refreshText}>↻  Refresh platform data</Text></Pressable>
-      <Text style={s.footer}>WEWE – SUPER ADMIN (MMILIKI WA APP)</Text>
-      <Text style={s.footerNote}>Revenue, uptime, arifa na kurasa za usimamizi zitaonyesha taarifa halisi baada ya huduma husika kuunganishwa.</Text>
+      <Modal visible={!!drawer} transparent animationType="slide" onRequestClose={() => setDrawer(null)}>
+        <Pressable style={s.modalBackdrop} onPress={() => setDrawer(null)}>
+          <Pressable style={s.drawer} onPress={() => undefined}>
+            <View style={s.drawerHandle}/>
+            <View style={s.drawerHeader}>
+              <View style={[s.drawerIcon, { borderColor: drawer?.accent ?? "#1D4ED8" }]}><Text style={[s.drawerCrown, { color: drawer?.accent ?? "#1D4ED8" }]}>♛</Text></View>
+              <View style={s.drawerHeadingCopy}>
+                <Text style={s.drawerEyebrow}>GUNX SMART BUSINESS</Text>
+                <Text style={s.drawerTitle}>{drawer?.title ?? "Sehemu"}</Text>
+              </View>
+              <Pressable onPress={() => setDrawer(null)} style={s.drawerClose}><Text style={s.drawerCloseText}>Funga</Text></Pressable>
+            </View>
+            <Text style={s.drawerMessage}>{drawer?.message}</Text>
+            <Pressable onPress={() => setDrawer(null)} style={s.drawerReturn}><Text style={s.drawerReturnText}>Rudi Kwenye Dashboard</Text></Pressable>
+          </Pressable>
+        </Pressable>
+      </Modal>
     </View>
   );
 }
 
 const s = StyleSheet.create({
-  screen: { position: "relative", overflow: "hidden", padding: 16, paddingBottom: 34, maxWidth: 900, width: "100%", alignSelf: "center", backgroundColor: "#FFFFFF" },
+  accountButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#1E3A8A", borderWidth: 2, borderColor: "#D4AF37", alignItems: "center", justifyContent: "center", elevation: 3 },
+  accountIcon: { color: "#FFFFFF", fontSize: 25, fontWeight: "800" },
+  notificationStrip: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: "#8FB5E3", backgroundColor: "#D3E4F8", marginBottom: 14 },
+  notificationIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.7)", alignItems: "center", justifyContent: "center" },
+  notificationIconText: { color: "#1D4ED8", fontSize: 19, fontWeight: "900" },
+  notificationCopy: { flex: 1 },
+  notificationTitle: { color: "#0F172A", fontSize: 11, fontWeight: "900" },
+  notificationMessage: { color: "#1E293B", fontSize: 9, lineHeight: 13, marginTop: 2 },
+  notificationClose: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.7)" },
+  notificationCloseText: { color: "#0F172A", fontSize: 9, fontWeight: "800" },
+  welcomeBanner: { flexDirection: "row", alignItems: "center", gap: 14, padding: 15, borderRadius: 22, borderWidth: 1.5, borderColor: "#7BA9E4", backgroundColor: "#AFCBF0", marginBottom: 20, elevation: 2 },
+  welcomeAvatar: { width: 66, height: 66, borderRadius: 33, backgroundColor: "#1E3A8A", borderWidth: 3, borderColor: "#EAB308", alignItems: "center", justifyContent: "center" },
+  welcomeAvatarIcon: { color: "#FFFFFF", fontSize: 31, fontWeight: "800" },
+  crownBadge: { position: "absolute", top: -5, right: -5, width: 25, height: 25, borderRadius: 13, backgroundColor: "#EAB308", borderWidth: 2, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  crownBadgeText: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
+  welcomeCopy: { flex: 1, minWidth: 0 },
+  ownerDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#4ADE80" },
+  modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(15,23,42,0.55)" },
+  drawer: { width: "100%", maxWidth: 600, alignSelf: "center", backgroundColor: "#FFFFFF", borderTopLeftRadius: 26, borderTopRightRadius: 26, padding: 20, borderTopWidth: 1, borderColor: "#DCE5EC" },
+  drawerHandle: { width: 42, height: 6, borderRadius: 4, backgroundColor: "#CBD5E1", alignSelf: "center", marginBottom: 18 },
+  drawerHeader: { flexDirection: "row", alignItems: "center", gap: 10 },
+  drawerIcon: { width: 44, height: 44, borderRadius: 13, backgroundColor: "#E6EFF8", borderWidth: 1, alignItems: "center", justifyContent: "center" },
+  drawerCrown: { fontSize: 23, fontWeight: "900" },
+  drawerHeadingCopy: { flex: 1 },
+  drawerEyebrow: { color: "#64748B", fontSize: 8, fontWeight: "900", letterSpacing: 1 },
+  drawerTitle: { color: "#0F172A", fontSize: 17, fontWeight: "900", marginTop: 3 },
+  drawerClose: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, backgroundColor: "#F1F5F9" },
+  drawerCloseText: { color: "#334155", fontSize: 10, fontWeight: "800" },
+  drawerMessage: { color: "#1E293B", fontSize: 12, lineHeight: 19, padding: 15, borderRadius: 16, backgroundColor: "#E6EFF8", borderWidth: 1, borderColor: "#8FB5E3", marginTop: 17 },
+  drawerReturn: { backgroundColor: "#0F172A", borderRadius: 12, paddingVertical: 14, alignItems: "center", marginTop: 14 },
+  drawerReturnText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
+  screen: { position: "relative", overflow: "hidden", paddingHorizontal: 16, paddingTop: 10, paddingBottom: 34, maxWidth: 600, width: "100%", alignSelf: "center", backgroundColor: "#E6EFF8", minHeight: 500 },
   gridOverlay: { ...StyleSheet.absoluteFillObject, opacity: 0 },
   gridVertical: { position: "absolute", top: 0, bottom: 0, width: 1, backgroundColor: "#2A5367" },
   gridHorizontal: { position: "absolute", left: 0, right: 0, height: 1, backgroundColor: "#2A5367" },
   glowTop: { position: "absolute", top: -100, right: -100, width: 230, height: 230, borderRadius: 120, backgroundColor: "#FFFFFF", opacity: 0 },
   glowBottom: { position: "absolute", bottom: 140, left: -130, width: 250, height: 250, borderRadius: 130, backgroundColor: "#FFFFFF", opacity: 0 },
-  header: { position: "relative", flexDirection: "row", alignItems: "center", justifyContent: "center", marginBottom: 17, minHeight: 132, backgroundColor: "#FFFFFF" },
-  brandBlock: { width: "100%", alignItems: "center", justifyContent: "center", backgroundColor: "transparent", padding: 0 },
-  brandLogo: { width: 238, height: 128 },
-  bellButton: { position: "absolute", right: 0, top: 43, width: 42, height: 42, borderRadius: 13, borderWidth: 1, borderColor: "#B8DDF4", backgroundColor: "#E8F6FF", alignItems: "center", justifyContent: "center" },
-  bell: { color: "#0876B9", fontSize: 23, fontWeight: "800" },
-  bellDot: { position: "absolute", width: 7, height: 7, borderRadius: 4, backgroundColor: "#E6B94F", top: 8, right: 9 },
+  header: { position: "relative", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, minHeight: 82, backgroundColor: "#E6EFF8" },
+  brandBlock: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", backgroundColor: "transparent", padding: 0 },
+  brandLogo: { width: 238, height: 78 },
+  bellButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#93B8E4", backgroundColor: "#D2E3F7", alignItems: "center", justifyContent: "center" },
+  bell: { color: "#1E3A8A", fontSize: 23, fontWeight: "800" },
+  bellDot: { position: "absolute", width: 9, height: 9, borderRadius: 5, backgroundColor: "#DC2626", top: 8, right: 9, borderWidth: 1, borderColor: "#D2E3F7" },
   profileCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: "#DCE5EC", backgroundColor: "#F7FAFC", marginBottom: 22 },
   avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: "#183C42", borderWidth: 2, borderColor: "#D8B86F", alignItems: "center", justifyContent: "center" },
   avatarText: { color: "#F4D994", fontSize: 17, fontWeight: "900" },
   profileCopy: { flex: 1 },
-  welcome: { color: "#718397", fontSize: 8, fontWeight: "900", letterSpacing: 1.4 },
-  profileName: { color: "#172B3D", fontSize: 16, fontWeight: "900", marginTop: 3 },
-  ownerBadge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 4, backgroundColor: "#493B20", borderColor: "#B8954D", borderWidth: 1, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 3, marginTop: 6 },
+  welcome: { color: "#1E293B", fontSize: 14, fontWeight: "600" },
+  profileName: { color: "#0F172A", fontSize: 21, fontWeight: "900", marginTop: 3 },
+  ownerBadge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, backgroundColor: "#4E74A6", borderColor: "#4E74A6", borderWidth: 1, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 5, marginTop: 8 },
   crown: { color: "#F1D18A", fontSize: 12 },
-  ownerText: { color: "#F1D18A", fontSize: 8, fontWeight: "900", letterSpacing: 1 },
+  ownerText: { color: "#FFFFFF", fontSize: 12, fontWeight: "800", letterSpacing: 0.4 },
   accessPill: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#123B35", borderRadius: 20, paddingHorizontal: 8, paddingVertical: 6 },
   accessDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#4BD5A1" },
   accessText: { color: "#75DDB8", fontSize: 7, fontWeight: "900" },
   sectionHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 4, marginBottom: 7 },
   sectionEyebrow: { color: "#16845D", fontSize: 8, fontWeight: "900", letterSpacing: 1.6 },
-  sectionTitle: { color: "#14283B", fontSize: 21, fontWeight: "900", marginTop: 3 },
+  sectionTitle: { color: "#0F172A", fontSize: 19, fontWeight: "900", marginTop: 3 },
   sectionCopy: { color: "#687B8D", fontSize: 11, lineHeight: 17, marginBottom: 12 },
   liveBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#123A34", borderRadius: 18, paddingHorizontal: 9, paddingVertical: 6, marginBottom: 3 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#51D8A4" },
   liveText: { color: "#7DE0BC", fontSize: 7, fontWeight: "900", letterSpacing: 0.8 },
-  loading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, padding: 11, backgroundColor: "#F2F6F9", borderRadius: 10, marginBottom: 10 },
-  loadingText: { color: "#617487", fontSize: 10 },
+  loading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, padding: 11, backgroundColor: "#D3E4F8", borderRadius: 10, marginBottom: 10 },
+  loadingText: { color: "#1E293B", fontSize: 10 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  statCard: { width: "48%", minHeight: 142, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: "#9CCFF0", backgroundColor: "#DFF2FF", justifyContent: "center" },
-  statIcon: { width: 52, height: 52, borderRadius: 15, alignItems: "center", justifyContent: "center", marginBottom: 10, backgroundColor: "#B9E3FF" },
-  blueIcon: { backgroundColor: "#B9E3FF" },
-  goldIcon: { backgroundColor: "#B9E3FF" },
-  greenIcon: { backgroundColor: "#B9E3FF" },
-  statIconText: { fontSize: 30, fontWeight: "900" },
-  blueText: { color: "#0876B9" },
-  goldText: { color: "#0876B9" },
-  greenText: { color: "#0876B9" },
-  statLabel: { color: "#52677B", fontSize: 8, fontWeight: "900", letterSpacing: 0.6 },
-  statValue: { color: "#14283B", fontSize: 17, fontWeight: "900", marginTop: 6 },
+  statCard: { width: "48%", minHeight: 116, padding: 12, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C7DCF4", justifyContent: "center" },
+  statIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", marginBottom: 9, backgroundColor: "rgba(255,255,255,0.62)" },
+  blueIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
+  goldIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
+  greenIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
+  statIconText: { fontSize: 25, fontWeight: "900" },
+  blueText: { color: "#1D4ED8" },
+  goldText: { color: "#1D4ED8" },
+  greenText: { color: "#1D4ED8" },
+  statLabel: { color: "#1E293B", fontSize: 11, fontWeight: "700", letterSpacing: 0 },
+  statValue: { color: "#0F172A", fontSize: 20, fontWeight: "900", marginTop: 5 },
   metricFootnote: { color: "#6B7D8E", fontSize: 9, lineHeight: 15, marginTop: 9, marginBottom: 17 },
   toolCount: { color: "#D9B96F", fontSize: 8, fontWeight: "900", letterSpacing: 1, marginBottom: 3 },
-  managementGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9, marginTop: 5 },
-  managementCard: { width: "48%", minHeight: 120, borderRadius: 14, borderWidth: 1, borderColor: "#B8DDF4", backgroundColor: "#EDF8FF", padding: 12 },
+  managementGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 5 },
+  managementCard: { width: "31%", minHeight: 112, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
   pressed: { opacity: 0.75, borderColor: "#D8B86F" },
   managementTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
-  managementIcon: { width: 46, height: 46, borderRadius: 13, backgroundColor: "#CBEAFF", alignItems: "center", justifyContent: "center" },
-  managementIconText: { color: "#0876B9", fontSize: 27, fontWeight: "900" },
+  managementIcon: { width: 43, height: 43, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
+  managementIconText: { color: "#1D4ED8", fontSize: 25, fontWeight: "900" },
   chevron: { color: "#718B9E", fontSize: 23, marginTop: -4 },
-  managementTitle: { color: "#172B3D", fontSize: 12, fontWeight: "900" },
-  managementDescription: { color: "#687B8D", fontSize: 9, lineHeight: 14, marginTop: 5 },
-  panelButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#C69D48", borderWidth: 1, borderColor: "#F1D58E", borderRadius: 13, paddingVertical: 14, paddingHorizontal: 14, marginTop: 19, shadowColor: "#C69D48", shadowOpacity: 0.18, shadowRadius: 10, elevation: 3 },
+  managementTitle: { color: "#0F172A", fontSize: 11, fontWeight: "900" },
+  managementDescription: { color: "#1E293B", fontSize: 8, lineHeight: 12, marginTop: 5 },
+  panelButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#E7B51C", borderWidth: 1.5, borderColor: "#B45309", borderRadius: 16, paddingVertical: 15, paddingHorizontal: 14, marginTop: 19, shadowColor: "#CA8A04", shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
   panelButtonPressed: { opacity: 0.82 },
   panelCrown: { color: "#172536", fontSize: 19 },
   panelButtonText: { color: "#152436", fontSize: 13, fontWeight: "900", letterSpacing: 0.2 },
@@ -320,7 +393,7 @@ const s = StyleSheet.create({
   noticeText: { color: "#24394B", fontSize: 11, lineHeight: 17 },
   noticeDismiss: { color: "#E2C477", fontSize: 8, fontWeight: "900", marginTop: 8, textAlign: "right" },
   refresh: { alignItems: "center", padding: 11, marginTop: 9 },
-  refreshText: { color: "#16845D", fontSize: 10, fontWeight: "800" },
+  refreshText: { color: "#1D4ED8", fontSize: 10, fontWeight: "800" },
   footer: { color: "#8A6415", fontSize: 9, fontWeight: "900", letterSpacing: 1, textAlign: "center", marginTop: 13, padding: 10, borderRadius: 9, backgroundColor: "#FFF8E8", borderWidth: 1, borderColor: "#E8D6A8" },
   footerNote: { color: "#758596", fontSize: 8, lineHeight: 13, textAlign: "center", marginTop: 7 },
   directory: { marginTop: 5 },
