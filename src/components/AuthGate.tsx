@@ -9,6 +9,13 @@ export function useShopContext() { return useContext(ShopContext); }
 const AUTH_REDIRECT_URL = "gunxsmartbusiness://auth/callback";
 const getAuthRedirectUrl = () => Platform.OS === "web" ? window.location.origin : AUTH_REDIRECT_URL;
 
+function EmailIcon() {
+  return <View style={a.emailIcon}><View style={a.emailFoldLeft}/><View style={a.emailFoldRight}/></View>;
+}
+function LockIcon() {
+  return <View style={a.lockIconWrap}><View style={a.lockShackle}/><View style={a.lockBody}><View style={a.lockKeyhole}/></View></View>;
+}
+
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
@@ -176,11 +183,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         <View style={a.orRow}><View style={a.orLine}/><Text style={a.orText}>AU</Text><View style={a.orLine}/></View>
       </>}
       {mode !== "reset" && <View style={a.inputWrap}>
-        <Text style={a.inputIcon}>✉</Text>
+        <EmailIcon/>
         <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholder="Email Address" placeholderTextColor="#65758B" style={a.input}/>
       </View>}
       {mode === "login" || mode === "signup" ? <View style={a.inputWrap}>
-        <Text style={a.inputIcon}>▣</Text>
+        <LockIcon/>
         <TextInput value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder="Password (angalau herufi 8)" placeholderTextColor="#65758B" style={a.input}/>
         <Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityLabel={showPassword ? "Ficha password" : "Onyesha password"} style={a.eyeButton}><Text style={a.eyeIcon}>{showPassword ? "◉" : "◎"}</Text></Pressable>
       </View> : null}
@@ -207,14 +214,20 @@ const a = StyleSheet.create({
   safe:{flex:1,backgroundColor:"#FFFFFF",paddingHorizontal:22},
   authScroll:{flexGrow:1,justifyContent:"center",paddingVertical:24},
   authContent:{width:"100%",maxWidth:440,alignSelf:"center",backgroundColor:"#FFFFFF",paddingHorizontal:8,paddingVertical:12},
-  logoImage:{width:280,height:155,alignSelf:"center",marginTop:0,marginBottom:10},
-  title:{color:"#102B63",fontWeight:"900",fontSize:25,textAlign:"center",marginTop:4,marginBottom:22},
-  inputWrap:{minHeight:54,flexDirection:"row",alignItems:"center",borderWidth:1,borderColor:"#B8C8E5",borderRadius:12,backgroundColor:"#FFFFFF",marginTop:12,paddingHorizontal:13},
-  inputIcon:{color:"#102B63",fontSize:22,width:30,textAlign:"center",fontWeight:"700"},
+  logoImage:{width:270,height:150,alignSelf:"center",marginTop:0,marginBottom:8},
+  title:{color:"#102B63",fontWeight:"900",fontSize:25,textAlign:"center",marginTop:4,marginBottom:24,letterSpacing:-.35},
+  inputWrap:{minHeight:56,flexDirection:"row",alignItems:"center",borderWidth:1.2,borderColor:"#AEBED8",borderRadius:13,backgroundColor:"#FFFFFF",marginTop:13,paddingHorizontal:14},
+  emailIcon:{width:22,height:17,borderWidth:1.8,borderColor:"#102B63",borderRadius:3,marginHorizontal:4,marginRight:8,position:"relative",overflow:"hidden"},
+  emailFoldLeft:{position:"absolute",width:13,height:13,borderLeftWidth:1.6,borderBottomWidth:1.6,borderColor:"#102B63",left:1,top:-7,transform:[{rotate:"-45deg"}]},
+  emailFoldRight:{position:"absolute",width:13,height:13,borderRightWidth:1.6,borderBottomWidth:1.6,borderColor:"#102B63",right:1,top:-7,transform:[{rotate:"45deg"}]},
+  lockIconWrap:{width:24,height:25,marginHorizontal:3,marginRight:7,alignItems:"center",justifyContent:"flex-end"},
+  lockShackle:{position:"absolute",top:0,width:14,height:13,borderWidth:1.8,borderColor:"#102B63",borderTopLeftRadius:8,borderTopRightRadius:8,borderBottomWidth:0},
+  lockBody:{width:20,height:14,borderRadius:3,backgroundColor:"#102B63",alignItems:"center",justifyContent:"center"},
+  lockKeyhole:{width:3,height:6,borderRadius:2,backgroundColor:"#FFFFFF"},
   input:{flex:1,minWidth:0,color:"#14264A",paddingVertical:14,paddingHorizontal:8,fontSize:15},
   eyeButton:{padding:8,marginLeft:2},
   eyeIcon:{color:"#50627F",fontSize:22,fontWeight:"700"},
-  googleButton:{minHeight:56,flexDirection:"row",alignItems:"center",justifyContent:"center",borderWidth:1,borderColor:"#B8C8E5",borderRadius:12,backgroundColor:"#FFFFFF",paddingHorizontal:14},
+  googleButton:{minHeight:56,flexDirection:"row",alignItems:"center",justifyContent:"center",borderWidth:1.2,borderColor:"#AEBED8",borderRadius:13,backgroundColor:"#FFFFFF",paddingHorizontal:14},
   googleG:{fontSize:25,fontWeight:"900",color:"#4285F4",marginRight:14},
   googleText:{fontSize:16,color:"#14264A",fontWeight:"800"},
   orRow:{flexDirection:"row",alignItems:"center",gap:12,marginTop:16,marginBottom:2},
@@ -222,7 +235,7 @@ const a = StyleSheet.create({
   orText:{fontSize:13,color:"#14264A",fontWeight:"800"},
   forgotWrap:{alignItems:"flex-end",marginTop:14},
   forgotLink:{color:"#0645D8",fontWeight:"700",fontSize:14},
-  button:{backgroundColor:"#08A83B",paddingVertical:16,borderRadius:12,alignItems:"center",marginTop:18,elevation:2},
+  button:{backgroundColor:"#079B45",paddingVertical:17,borderRadius:13,alignItems:"center",marginTop:20,elevation:2,shadowColor:"#079B45",shadowOpacity:.16,shadowRadius:7,shadowOffset:{width:0,height:3}},
   buttonText:{color:"#FFFFFF",fontWeight:"900",fontSize:17,letterSpacing:.4},
   link:{color:"#0645D8",textAlign:"center",marginTop:17,fontWeight:"700"},
   signupWrap:{alignItems:"center",marginTop:18},
