@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
 
 type Metrics = {
@@ -37,11 +37,111 @@ function ManagementCard({ icon, title, description, onPress }: { icon: string; t
   );
 }
 
+
+type BusinessRow = {
+  shop_id: string;
+  business_name: string;
+  owner_id: string;
+  owner_email: string | null;
+  created_at: string;
+  member_count: number;
+  plan_code: string;
+  subscription_status: string;
+  expires_at: string | null;
+  total_count: number;
+};
+
+function BusinessDirectory({ onBack }: { onBack: () => void }) {
+  const [rows, setRows] = useState<BusinessRow[]>([]);
+  const [search, setSearch] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+  const [total, setTotal] = useState(0);
+
+  const loadBusinesses = useCallback(async (term = "") => {
+    if (!supabase) {
+      setError("Supabase haijaunganishwa.");
+      setRows([]);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    setError("");
+    const { data, error: rpcError } = await supabase.rpc("get_platform_businesses", {
+      p_search: term.trim() || null,
+      p_limit: 100,
+      p_offset: 0
+    });
+    if (rpcError) {
+      setRows([]);
+      setTotal(0);
+      setError("Imeshindikana kupata biashara: " + rpcError.message);
+    } else {
+      const result = (data ?? []) as BusinessRow[];
+      setRows(result);
+      setTotal(result.length ? Number(result[0].total_count) : 0);
+    }
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { void loadBusinesses(""); }, [loadBusinesses]);
+
+  return (
+    <View style={s.directory}>
+      <Pressable onPress={onBack} style={s.backButton}><Text style={s.backText}>‹  Rudi Platform Overview</Text></Pressable>
+      <Text style={s.sectionEyebrow}>PLATFORM DIRECTORY</Text>
+      <Text style={s.sectionTitle}>All Businesses</Text>
+      <Text style={s.sectionCopy}>Orodha ya biashara zilizosajiliwa kwenye GUNX SMART BUSINESS. Taarifa hizi zinapatikana kwa akaunti ya Super Admin pekee.</Text>
+      <View style={s.searchRow}>
+        <TextInput
+          value={search}
+          onChangeText={setSearch}
+          placeholder="Tafuta jina la biashara au email ya mmiliki"
+          placeholderTextColor="#8298AA"
+          autoCapitalize="none"
+          style={s.searchInput}
+          onSubmitEditing={() => void loadBusinesses(search)}
+          returnKeyType="search"
+        />
+        <Pressable onPress={() => void loadBusinesses(search)} style={s.searchButton}><Text style={s.searchButtonText}>TAFUTA</Text></Pressable>
+      </View>
+      <View style={s.directorySummary}>
+        <Text style={s.directorySummaryLabel}>BIASHARA ZILIZOPATIKANA</Text>
+        <Text style={s.directorySummaryValue}>{total.toLocaleString("en-US")}</Text>
+        <Text style={s.directorySummaryHint}>Inaonyesha hadi biashara 100 kwa ukurasa.</Text>
+      </View>
+      {loading && <View style={s.loading}><ActivityIndicator color="#42D6A0"/><Text style={s.loadingText}>Inapakia orodha ya biashara...</Text></View>}
+      {!!error && <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>}
+      {!loading && !error && rows.length === 0 && <View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna biashara iliyopatikana</Text><Text style={s.managementDescription}>Biashara mpya zitaonekana hapa baada ya kusajiliwa.</Text></View>}
+      {rows.map((business) => (
+        <View key={business.shop_id} style={s.businessCard}>
+          <View style={s.businessHeading}>
+            <View style={s.businessIcon}><Text style={s.businessIconText}>▣</Text></View>
+            <View style={s.businessIdentity}>
+              <Text style={s.businessName}>{business.business_name}</Text>
+              <Text style={s.businessEmail}>{business.owner_email || "Email ya mmiliki haipo"}</Text>
+            </View>
+          </View>
+          <View style={s.businessMeta}>
+            <View style={s.metaItem}><Text style={s.metaLabel}>PLAN</Text><Text style={s.metaValue}>{business.plan_code.toUpperCase()}</Text></View>
+            <View style={s.metaItem}><Text style={s.metaLabel}>SUBSCRIPTION</Text><Text style={s.metaValue}>{business.subscription_status.toUpperCase()}</Text></View>
+            <View style={s.metaItem}><Text style={s.metaLabel}>MEMBERS</Text><Text style={s.metaValue}>{Number(business.member_count).toLocaleString("en-US")}</Text></View>
+          </View>
+          <Text style={s.businessDate}>Imesajiliwa: {new Date(business.created_at).toLocaleDateString("sw-TZ")}</Text>
+          <Text style={s.businessId}>ID: {business.shop_id}</Text>
+        </View>
+      ))}
+      <Pressable onPress={() => void loadBusinesses(search)} style={s.refresh}><Text style={s.refreshText}>↻  Refresh business directory</Text></Pressable>
+      <Text style={s.footerNote}>Kwa sasa ukurasa huu ni wa kutazama na kutafuta. Kusimamisha au kufuta biashara kutahitaji status workflow, audit log na uthibitisho wa ziada wa kiusalama.</Text>
+    </View>
+  );
+}
+
 export default function PlatformOwnerDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("Inapakia takwimu za mfumo...");
-  const [showNotice, setShowNotice] = useState(false);
+  const [showNotice, setShowNotice] = useState(false);\n  const [selectedModule, setSelectedModule] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -135,7 +235,7 @@ export default function PlatformOwnerDashboard() {
         <Text style={s.toolCount}>06 MODULES</Text>
       </View>
       <View style={s.managementGrid}>
-        <ManagementCard icon="▣" title="All Businesses" description="Hakiki na simamia biashara zote." onPress={() => openModule("All Businesses")}/>
+        <ManagementCard icon="▣" title="All Businesses" description="Hakiki na simamia biashara zote." onPress={() => setSelectedModule("All Businesses")}/>
         <ManagementCard icon="♙" title="Users Management" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Users Management")}/>
         <ManagementCard icon="⬡" title="Subscriptions" description="Vifurushi, muda na malipo." onPress={() => openModule("Subscriptions")}/>
         <ManagementCard icon="⚙" title="System Settings" description="Mipangilio ya jukwaa zima." onPress={() => openModule("System Settings")}/>
@@ -229,5 +329,5 @@ const s = StyleSheet.create({
   refresh: { alignItems: "center", padding: 11, marginTop: 9 },
   refreshText: { color: "#79DDB8", fontSize: 10, fontWeight: "800" },
   footer: { color: "#E2C477", fontSize: 9, fontWeight: "900", letterSpacing: 1, textAlign: "center", marginTop: 13, padding: 10, borderRadius: 9, backgroundColor: "#172B3A", borderWidth: 1, borderColor: "#55472B" },
-  footerNote: { color: "#748B9D", fontSize: 8, lineHeight: 13, textAlign: "center", marginTop: 7 }
+  footerNote: { color: "#748B9D", fontSize: 8, lineHeight: 13, textAlign: "center", marginTop: 7 },\n  directory: { marginTop: 5 },\n  backButton: { alignSelf: "flex-start", paddingVertical: 9, paddingHorizontal: 12, borderRadius: 9, backgroundColor: "#173247", borderWidth: 1, borderColor: "#31516A", marginBottom: 17 },\n  backText: { color: "#80DDBB", fontSize: 11, fontWeight: "900" },\n  searchRow: { flexDirection: "row", gap: 8, marginTop: 8, marginBottom: 12 },\n  searchInput: { flex: 1, minWidth: 0, color: "#F4F7FA", backgroundColor: "#102638", borderWidth: 1, borderColor: "#29475B", borderRadius: 10, paddingHorizontal: 11, paddingVertical: 11, fontSize: 11 },\n  searchButton: { backgroundColor: "#176B56", borderRadius: 10, justifyContent: "center", paddingHorizontal: 13 },\n  searchButtonText: { color: "#EFFFF8", fontSize: 9, fontWeight: "900" },\n  directorySummary: { padding: 13, borderRadius: 12, backgroundColor: "#102638", borderWidth: 1, borderColor: "#29475B", marginBottom: 10 },\n  directorySummaryLabel: { color: "#91A6B8", fontSize: 8, fontWeight: "900", letterSpacing: 1 },\n  directorySummaryValue: { color: "#F2D99A", fontSize: 23, fontWeight: "900", marginTop: 4 },\n  directorySummaryHint: { color: "#8299AA", fontSize: 8, marginTop: 3 },\n  businessCard: { padding: 13, borderRadius: 13, backgroundColor: "#102638", borderWidth: 1, borderColor: "#294357", marginBottom: 9 },\n  businessHeading: { flexDirection: "row", alignItems: "center", gap: 10 },\n  businessIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: "#153D60", alignItems: "center", justifyContent: "center" },\n  businessIconText: { color: "#62B9F5", fontSize: 20 },\n  businessIdentity: { flex: 1 },\n  businessName: { color: "#F7F8FA", fontSize: 13, fontWeight: "900" },\n  businessEmail: { color: "#91A6B8", fontSize: 9, marginTop: 3 },\n  businessMeta: { flexDirection: "row", gap: 8, marginTop: 12 },\n  metaItem: { flex: 1, backgroundColor: "#0B1B2A", padding: 8, borderRadius: 8 },\n  metaLabel: { color: "#8299AA", fontSize: 7, fontWeight: "900" },\n  metaValue: { color: "#D9B96F", fontSize: 10, fontWeight: "900", marginTop: 4 },\n  businessDate: { color: "#A7B7C4", fontSize: 9, marginTop: 10 },\n  businessId: { color: "#647E91", fontSize: 7, marginTop: 5 },\n  emptyBox: { padding: 20, borderRadius: 12, backgroundColor: "#102638", borderWidth: 1, borderColor: "#294357", alignItems: "center" },\n  emptyTitle: { color: "#F4F7FA", fontSize: 13, fontWeight: "900", marginBottom: 5 },\n  errorBox: { padding: 12, borderRadius: 10, backgroundColor: "#3A2025", borderWidth: 1, borderColor: "#8A4148", marginBottom: 10 },\n  errorText: { color: "#FFD6D6", fontSize: 10, lineHeight: 15 }
 });
