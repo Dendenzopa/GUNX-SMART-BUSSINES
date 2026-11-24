@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View, Image } from "react-native";
+import { ActivityIndicator, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 
@@ -164,8 +164,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (!supabaseConfigured) return <>{children}</>;
   if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
   if (!session || mode === "reset") return <SafeAreaView style={a.safe}>
+    <ScrollView contentContainerStyle={a.authScroll} keyboardShouldPersistTaps="handled">
     <View style={a.authContent}>
-      <Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/>
+      <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/>
       <Text style={a.title}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Umesahau password?" : mode === "reset" ? "Weka password mpya" : "Ingia kwenye akaunti yako"}</Text>
       {mode === "login" && <>
         <Pressable disabled={busy} onPress={signInWithGoogle} style={a.googleButton}>
@@ -195,15 +196,17 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       {mode === "reset" && <Pressable onPress={()=>{setMode("login");setMessage("Omba link mpya kama link hii imeisha muda wake.");}}><Text style={a.link}>Rudi kwenye Login</Text></Pressable>}
       {!!message&&<Text style={a.message}>{message}</Text>}
     </View>
+    </ScrollView>
   </SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   return <ShopContext.Provider value={{ shopId }}>{children}</ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
-  safe:{flex:1,backgroundColor:"#FFFFFF",justifyContent:"center",paddingHorizontal:22,paddingVertical:18},
+  safe:{flex:1,backgroundColor:"#FFFFFF",paddingHorizontal:22},
+  authScroll:{flexGrow:1,justifyContent:"center",paddingVertical:24},
   authContent:{width:"100%",maxWidth:440,alignSelf:"center",backgroundColor:"#FFFFFF",paddingHorizontal:8,paddingVertical:12},
-  logoImage:{width:250,height:170,alignSelf:"center",marginBottom:12},
+  logoImage:{width:280,height:155,alignSelf:"center",marginTop:0,marginBottom:10},
   title:{color:"#102B63",fontWeight:"900",fontSize:25,textAlign:"center",marginTop:4,marginBottom:22},
   inputWrap:{minHeight:54,flexDirection:"row",alignItems:"center",borderWidth:1,borderColor:"#B8C8E5",borderRadius:12,backgroundColor:"#FFFFFF",marginTop:12,paddingHorizontal:13},
   inputIcon:{color:"#102B63",fontSize:22,width:30,textAlign:"center",fontWeight:"700"},
