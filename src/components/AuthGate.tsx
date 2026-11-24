@@ -1,7 +1,8 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
+import { ActivityIndicator, AppState, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
+import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
 
 type ShopRole = "owner" | "manager" | "cashier" | "stockkeeper";
 const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null });
@@ -101,6 +102,19 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       listener.subscription.unsubscribe();
     };
   }, []);
+
+  useEffect(() => {
+    if (!session) return;
+    const refreshAnalytics = () => {
+      void registerAppInstallation();
+      void recordSignedInActivity();
+    };
+    refreshAnalytics();
+    const subscription = AppState.addEventListener("change", state => {
+      if (state === "active") refreshAnalytics();
+    });
+    return () => subscription.remove();
+  }, [session?.user.id]);
 
   useEffect(() => {
     setIsPlatformAdmin(false);
