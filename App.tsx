@@ -347,7 +347,7 @@ function Dashboard() {
      {screen==="Staff"&&effectiveRole==="owner"&&<StaffManagement/>}
      {screen==="Subscription"&&effectiveRole==="owner"&&<SubscriptionManagement/>}
   </ScrollView>
-  <View style={s.bottomNav}>{[["⌂","Home"],["▣","POS"],["▤","Stock"],["☰","More"]].map(([icon,label])=><Pressable key={label} onPress={()=>label==="More"?setShowMore(v=>!v):(setScreen(label as Screen),setShowMore(false))} style={s.bottomItem}><Text style={[s.bottomIcon,(label==="More"?showMore:screen===label)&&s.bottomActive]}>{icon}</Text><Text style={[s.bottomLabel,(label==="More"?showMore:screen===label)&&s.bottomActive]}>{label}</Text></Pressable>)}</View>
+  <View style={s.bottomNav}>{[["⌂","Home"],["▣","POS"],["▤","Stock"],["☰","More"]].filter(([icon,label])=>label==="More"||visibleScreens.includes(label as Screen)).map(([icon,label])=><Pressable key={label} onPress={()=>label==="More"?setShowMore(v=>!v):(setScreen(label as Screen),setShowMore(false))} style={s.bottomItem}><Text style={[s.bottomIcon,(label==="More"?showMore:screen===label)&&s.bottomActive]}>{icon}</Text><Text style={[s.bottomLabel,(label==="More"?showMore:screen===label)&&s.bottomActive]}>{label}</Text></Pressable>)}</View>
  </SafeAreaView>;
 }
 const s=StyleSheet.create({
