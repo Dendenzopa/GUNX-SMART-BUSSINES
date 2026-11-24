@@ -373,7 +373,7 @@ const s = StyleSheet.create({
   metricFootnote: { color: "#6B7D8E", fontSize: 9, lineHeight: 15, marginTop: 9, marginBottom: 17 },
   toolCount: { color: "#D9B96F", fontSize: 8, fontWeight: "900", letterSpacing: 1, marginBottom: 3 },
   managementGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 5 },
-  managementCard: { width: "31%", minHeight: 112, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
+  managementCard: { width: "47%", minHeight: 132, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
   pressed: { opacity: 0.75, borderColor: "#D8B86F" },
   managementTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
   managementIcon: { width: 43, height: 43, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
