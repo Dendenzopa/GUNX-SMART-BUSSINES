@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, View } from "react-native";
 import { supabase } from "../lib/supabase";
 
 type Metrics = {
@@ -50,7 +50,7 @@ export default function PlatformOwnerDashboard() {
 
   return <View style={s.wrap}>
     <View style={s.brandRow}>
-      <View style={s.brandMark}><Text style={s.brandG}>G</Text></View>
+      <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={s.brandLogo} resizeMode="contain"/>
       <View><Text style={s.brandName}>GUNX <Text style={s.brandGold}>SMART</Text></Text><Text style={s.brandSub}>BUSINESS · PLATFORM CONTROL</Text></View>
     </View>
 
@@ -91,8 +91,7 @@ export default function PlatformOwnerDashboard() {
 const s = StyleSheet.create({
   wrap: { padding: 16, paddingBottom: 38, maxWidth: 900, width: "100%", alignSelf: "center" },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 11, padding: 13, backgroundColor: "#102438", borderWidth: 1, borderColor: "#1D3A50", borderRadius: 15, marginBottom: 18 },
-  brandMark: { width: 43, height: 43, borderRadius: 12, backgroundColor: "#173D36", borderWidth: 1, borderColor: "#D7B56D", alignItems: "center", justifyContent: "center" },
-  brandG: { color: "#F2D99F", fontSize: 27, fontWeight: "900" },
+  brandLogo: { width: 66, height: 48 },
   brandName: { color: "#F4F7FA", fontSize: 17, fontWeight: "900", letterSpacing: 1 },
   brandGold: { color: "#D7B56D" },
   brandSub: { color: "#75E0B8", fontSize: 8, fontWeight: "900", letterSpacing: 1.5, marginTop: 3 },
