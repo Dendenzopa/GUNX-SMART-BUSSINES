@@ -18,8 +18,8 @@ function StatCard({ icon, label, value, tone }: { icon: string; label: string; v
       <View style={[s.statIcon, tone === "blue" ? s.blueIcon : tone === "gold" ? s.goldIcon : s.greenIcon]}>
         <Text style={[s.statIconText, tone === "blue" ? s.blueText : tone === "gold" ? s.goldText : s.greenText]}>{icon}</Text>
       </View>
-      <Text style={s.statLabel}>{label}</Text>
       <Text style={s.statValue}>{value}</Text>
+      <Text style={s.statLabel}>{label}</Text>
     </View>
   );
 }
@@ -27,10 +27,7 @@ function StatCard({ icon, label, value, tone }: { icon: string; label: string; v
 function ManagementCard({ icon, title, description, onPress }: { icon: string; title: string; description: string; onPress: () => void }) {
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [s.managementCard, pressed && s.pressed]}>
-      <View style={s.managementTop}>
-        <View style={s.managementIcon}><Text style={s.managementIconText}>{icon}</Text></View>
-        <Text style={s.chevron}>›</Text>
-      </View>
+      <View style={s.managementIcon}><Text style={s.managementIconText}>{icon}</Text></View>
       <Text style={s.managementTitle}>{title}</Text>
       <Text style={s.managementDescription}>{description}</Text>
     </Pressable>
