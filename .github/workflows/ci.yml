@@ -2,7 +2,7 @@ name: GUNX SMART BUSINESS CI
 
 on:
   push:
-    branches: [main, master, feature/email-auth-recovery]
+    branches: [main, master, feature/email-auth-recovery, feature/white-login-screen]
   pull_request:
     branches: [main, master]
 
