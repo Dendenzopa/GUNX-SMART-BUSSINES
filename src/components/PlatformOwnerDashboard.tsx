@@ -141,7 +141,8 @@ export default function PlatformOwnerDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("Inapakia takwimu za mfumo...");
-  const [showNotice, setShowNotice] = useState(false);\n  const [selectedModule, setSelectedModule] = useState<string | null>(null);
+  const [showNotice, setShowNotice] = useState(false);
+  const [selectedModule, setSelectedModule] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) {
