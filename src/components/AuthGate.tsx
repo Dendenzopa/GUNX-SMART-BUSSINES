@@ -192,7 +192,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         <Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityLabel={showPassword ? "Ficha password" : "Onyesha password"} style={a.eyeButton}><Text style={a.eyeIcon}>{showPassword ? "◉" : "◎"}</Text></Pressable>
       </View> : null}
       {mode === "reset" && <View style={a.inputWrap}>
-        <Text style={a.inputIcon}>▣</Text>
+        <LockIcon/>
         <TextInput value={newPassword} onChangeText={setNewPassword} secureTextEntry={!showPassword} placeholder="Password mpya (angalau herufi 8)" placeholderTextColor="#65758B" style={a.input}/>
         <Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityLabel={showPassword ? "Ficha password" : "Onyesha password"} style={a.eyeButton}><Text style={a.eyeIcon}>{showPassword ? "◉" : "◎"}</Text></Pressable>
       </View>}
