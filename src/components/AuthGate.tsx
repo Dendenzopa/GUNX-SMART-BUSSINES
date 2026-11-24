@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { ActivityIndicator, Linking, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 
@@ -7,6 +7,7 @@ const ShopContext = createContext<{ shopId: string | null }>({ shopId: null });
 export function useShopContext() { return useContext(ShopContext); }
 
 const AUTH_REDIRECT_URL = "gunxsmartbusiness://auth/callback";
+const getAuthRedirectUrl = () => Platform.OS === "web" ? window.location.origin : AUTH_REDIRECT_URL;
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
@@ -95,7 +96,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     if (!email.trim() || password.length < 8) { setMessage("Weka email na password yenye angalau herufi 8."); return; }
     setBusy(true); setMessage("");
     const result = mode === "signup"
-      ? await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: AUTH_REDIRECT_URL } })
+      ? await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: getAuthRedirectUrl() } })
       : await supabase.auth.signInWithPassword({ email: email.trim(), password });
     setBusy(false);
     if (result.error) setMessage(result.error.message);
@@ -108,7 +109,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.resend({
       type: "signup",
       email: email.trim(),
-      options: { emailRedirectTo: AUTH_REDIRECT_URL }
+      options: { emailRedirectTo: getAuthRedirectUrl() }
     });
     setBusy(false);
     setMessage(error ? "Imeshindikana kutuma email: " + error.message : "Ombi limetumwa. Angalia Inbox na Spam/Junk ya Gmail.");
@@ -117,7 +118,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   async function sendPasswordReset() {
     if (!supabase || !email.trim()) { setMessage("Weka email ya akaunti yako kwanza."); return; }
     setBusy(true); setMessage("");
-    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: AUTH_REDIRECT_URL });
+    const { error } = await supabase.auth.resetPasswordForEmail(email.trim(), { redirectTo: getAuthRedirectUrl() });
     setBusy(false);
     setMessage(error ? "Imeshindikana kutuma link: " + error.message : "Ikiwa akaunti inatumia email hii, link ya kubadilisha password imetumwa. Angalia Inbox na Spam/Junk.");
   }
@@ -142,7 +143,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setBusy(true); setMessage("");
     const { data, error } = await supabase.auth.signInWithOAuth({
       provider: "google",
-      options: { redirectTo: AUTH_REDIRECT_URL, skipBrowserRedirect: true }
+      options: { redirectTo: getAuthRedirectUrl(), skipBrowserRedirect: true }
     });
     setBusy(false);
     if (error) { setMessage("Imeshindikana kuanza Google login: " + error.message); return; }
