@@ -31,6 +31,7 @@ function Dashboard() {
  const [screen,setScreen]=useState<Screen>("Home");
  const [showMore,setShowMore]=useState(false);
  useEffect(()=>{if(!visibleScreens.includes(screen))setScreen("Home");},[screen,shopRole,isPlatformAdmin]);
+ useEffect(()=>{if(isPlatformAdmin)setScreen("Owner");},[isPlatformAdmin]);
  const [products,setProducts]=useState<Product[]>(supabaseConfigured ? [] : demoProducts);
  const [sales,setSales]=useState<Sale[]>(supabaseConfigured ? [] : demoSales);
  const [refundTotal,setRefundTotal]=useState(0);
