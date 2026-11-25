@@ -345,10 +345,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
 const a = StyleSheet.create({
   safe:{flex:1,backgroundColor:"#FFFFFF",paddingHorizontal:22},
-  onboardingSafe:{flex:1,backgroundColor:"#F8FAFC"},
-  onboardingScroll:{flexGrow:1,paddingBottom:30},
-  onboardingTop:{backgroundColor:"#0B1F4A",minHeight:180,alignItems:"center",justifyContent:"center",paddingTop:24,paddingBottom:20,borderBottomLeftRadius:30,borderBottomRightRadius:30},
-  onboardingLogo:{width:250,height:135,alignSelf:"center"},
+  onboardingSafe:{flex:1,backgroundColor:"#FFFFFF"},
+  onboardingScroll:{flexGrow:1,paddingBottom:30,backgroundColor:"#FFFFFF"},
+  onboardingTop:{backgroundColor:"#0B1F4A",minHeight:166,alignItems:"center",justifyContent:"center",paddingTop:18,paddingBottom:18},
+  onboardingLogo:{width:238,height:126,alignSelf:"center"},
   onboardingContent:{width:"100%",maxWidth:480,alignSelf:"center",paddingHorizontal:22,paddingTop:27},
   welcome:{color:"#0B1F4A",fontSize:22,lineHeight:31,fontWeight:"900",textAlign:"center"},
   tagline:{color:"#0B1F4A",fontSize:14,fontWeight:"800",letterSpacing:.4,textAlign:"center",marginTop:11,marginBottom:27},
