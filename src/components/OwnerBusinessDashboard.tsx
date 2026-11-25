@@ -30,6 +30,7 @@ function Metric({ label, value, helper, tone = "light" }: { label: string; value
 export default function OwnerBusinessDashboard({ shopId, sales, products, expenses, debts, pendingSales, notice, online, onNavigate }: Props) {
   const [businessName, setBusinessName] = useState("Biashara Yangu");
   const [ownerName, setOwnerName] = useState("Mmiliki wa Biashara");
+  const [activeStaffCount, setActiveStaffCount] = useState<number | null>(null);
   const [period, setPeriod] = useState<"Leo" | "Wiki">("Leo");
   const [heroMediaType, setHeroMediaType] = useState<"owner_photo" | "business_logo" | null>(null);
   const [heroMediaUrl, setHeroMediaUrl] = useState<string | null>(null);
@@ -43,6 +44,9 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
     if (!supabase || !shopId) return;
     supabase.from("shops").select("name").eq("id", shopId).maybeSingle().then(({ data }) => {
       if (active && data?.name) setBusinessName(data.name);
+    });
+    supabase.from("shop_members").select("user_id,role").eq("shop_id", shopId).neq("role", "owner").then(({ data, error }) => {
+      if (active && !error) setActiveStaffCount((data ?? []).length);
     });
     return () => { active = false; };
   }, [shopId, mediaKey]);
@@ -106,9 +110,9 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       <Text style={s.heroTag}>Biashara Yako, Mafanikio Yetu</Text>
     </View>
     <View style={s.summaryRow}>
-      <Pressable onPress={()=>onNavigate("POS")} style={[s.summaryCard,{backgroundColor:"#155EEF"}]}><Text style={s.summaryIcon}>🛒</Text><Text style={s.summaryLabel}>Mauzo ya Leo</Text></Pressable>
-      <Pressable onPress={()=>onNavigate("Stock")} style={[s.summaryCard,{backgroundColor:"#15803D"}]}><Text style={s.summaryIcon}>▣</Text><Text style={s.summaryLabel}>Stock Kuu</Text></Pressable>
-      <Pressable onPress={()=>onNavigate("Staff")} style={[s.summaryCard,{backgroundColor:"#6B21A8"}]}><Text style={s.summaryIcon}>♟</Text><Text style={s.summaryLabel}>Wafanyakazi</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("POS")} style={[s.summaryCard,{backgroundColor:"#155EEF"}]}><Text style={s.summaryIcon}>🛒</Text><Text style={s.summaryLabel}>Mauzo ya Leo</Text><Text style={s.summaryValue}>{formatTZS(totalSales(todaySales))}</Text><Text style={s.summaryHint}>TZS · mauzo yaliyothibitishwa</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Stock")} style={[s.summaryCard,{backgroundColor:"#15803D"}]}><Text style={s.summaryIcon}>▣</Text><Text style={s.summaryLabel}>Stock Iliyopo</Text><Text style={s.summaryValue}>{products.filter(item=>item.active).reduce((sum,item)=>sum+item.stockQuantity,0).toLocaleString("sw-TZ")}</Text><Text style={s.summaryHint}>Jumla ya vipande</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Staff")} style={[s.summaryCard,{backgroundColor:"#6B21A8"}]}><Text style={s.summaryIcon}>♟</Text><Text style={s.summaryLabel}>Wafanyakazi Hai</Text><Text style={s.summaryValue}>{activeStaffCount===null?"—":activeStaffCount.toLocaleString("sw-TZ")}</Text><Text style={s.summaryHint}>Wanachama wa biashara</Text></Pressable>
     </View>
     <View style={s.chartCard}>
       <View style={s.sectionHead}><Text style={s.sectionTitle}>▥  Muhtasari wa Mauzo</Text><View style={s.period}><Pressable onPress={()=>setPeriod("Leo")} style={[s.periodBtn,period==="Leo"&&s.periodActive]}><Text style={s.periodText}>Leo</Text></Pressable><Pressable onPress={()=>setPeriod("Wiki")} style={[s.periodBtn,period==="Wiki"&&s.periodActive]}><Text style={s.periodText}>Wiki</Text></Pressable></View></View>
@@ -182,7 +186,7 @@ const s=StyleSheet.create({
  verified:{alignSelf:"flex-start",color:"#FFFFFF",backgroundColor:"#168653",paddingHorizontal:10,paddingVertical:5,borderRadius:20,overflow:"hidden",fontSize:10,fontWeight:"900",marginTop:7},
  heroTag:{color:"#D7B56D",fontSize:11,fontWeight:"800",marginTop:12},
  summaryRow:{flexDirection:"row",gap:8},summaryCard:{flex:1,minHeight:92,borderRadius:13,padding:11,justifyContent:"space-between",elevation:2},
- summaryIcon:{fontSize:26,color:"#FFFFFF"},summaryLabel:{fontSize:11,color:"#FFFFFF",fontWeight:"900"},
+ summaryIcon:{fontSize:26,color:"#FFFFFF"},summaryLabel:{fontSize:11,color:"#FFFFFF",fontWeight:"900"},summaryValue:{fontSize:15,color:"#FFFFFF",fontWeight:"900",marginTop:5},summaryHint:{fontSize:8,color:"#E7EEF9",fontWeight:"700",marginTop:2},
  chartCard:{backgroundColor:"#FFFFFF",borderRadius:15,padding:13,borderWidth:1,borderColor:"#E2E8F0",elevation:2},
  sectionHead:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:8},sectionTitle:{color:"#0B1F4A",fontSize:14,fontWeight:"900"},
  period:{flexDirection:"row",backgroundColor:"#F1F5F9",padding:3,borderRadius:8},periodBtn:{paddingHorizontal:9,paddingVertical:5,borderRadius:6},periodActive:{backgroundColor:"#155EEF"},periodText:{color:"#334155",fontSize:10,fontWeight:"800"},
