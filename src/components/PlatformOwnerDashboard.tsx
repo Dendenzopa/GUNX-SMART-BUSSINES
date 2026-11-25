@@ -183,7 +183,7 @@ export default function PlatformOwnerDashboard() {
         <View style={s.brandBlock}>
           <Image
             accessibilityLabel="GUNX SMART BUSINESS official logo"
-            source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")}
+            source={require("../../assets/1795472814228.jpg")}
             style={s.brandLogo}
             resizeMode="contain"
           />
