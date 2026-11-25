@@ -259,9 +259,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
 const a = StyleSheet.create({
   safe:{flex:1,backgroundColor:"#FFFFFF",paddingHorizontal:22},
-  authScroll:{flexGrow:1,justifyContent:"center",paddingVertical:24},
-  authContent:{width:"100%",maxWidth:440,alignSelf:"center",backgroundColor:"#FFFFFF",paddingHorizontal:8,paddingVertical:12},
-  logoImage:{width:270,height:150,alignSelf:"center",marginTop:0,marginBottom:8},
+  authScroll:{flexGrow:1,justifyContent:"center",paddingTop:42,paddingBottom:28},
+  authContent:{width:"100%",maxWidth:440,alignSelf:"center",backgroundColor:"#FFFFFF",paddingHorizontal:8,paddingTop:20,paddingBottom:12},
+  logoImage:{width:300,height:190,alignSelf:"center",marginTop:0,marginBottom:14},
   title:{color:"#102B63",fontWeight:"900",fontSize:25,textAlign:"center",marginTop:4,marginBottom:24,letterSpacing:-.35},
   inputWrap:{minHeight:56,flexDirection:"row",alignItems:"center",borderWidth:1.2,borderColor:"#AEBED8",borderRadius:13,backgroundColor:"#FFFFFF",marginTop:13,paddingHorizontal:14},
   emailIcon:{width:22,height:17,borderWidth:1.8,borderColor:"#102B63",borderRadius:3,marginHorizontal:4,marginRight:8,position:"relative",overflow:"hidden"},
