@@ -12,15 +12,15 @@ type Metrics = {
   total_shops: number;
 };
 
-function StatCard({ icon, label, value, tone }: { icon: string; label: string; value: string; tone: "blue" | "gold" | "green" }) {
+function StatCard({ icon, label, value, tone, onPress }: { icon: string; label: string; value: string; tone: "blue" | "gold" | "green"; onPress: () => void }) {
   return (
-    <View style={[s.statCard, tone === "blue" ? s.statBlueCard : tone === "gold" ? s.statGoldCard : s.statGreenCard]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [[s.statCard, tone === "blue" ? s.statBlueCard : tone === "gold" ? s.statGoldCard : s.statGreenCard], pressed && s.pressed]}>
       <View style={[s.statIcon, tone === "blue" ? s.blueIcon : tone === "gold" ? s.goldIcon : s.greenIcon]}>
         <Text style={[s.statIconText, tone === "blue" ? s.blueText : tone === "gold" ? s.goldText : s.greenText]}>{icon}</Text>
       </View>
       <Text style={s.statValue}>{value}</Text>
       <Text style={s.statLabel}>{label}</Text>
-    </View>
+    </Pressable>
   );
 }
 
@@ -134,6 +134,140 @@ function BusinessDirectory({ onBack }: { onBack: () => void }) {
   );
 }
 
+
+type ModulePageData = {
+  icon: string;
+  title: string;
+  subtitle: string;
+  status: string;
+  sections: { heading: string; body: string; items: string[] }[];
+};
+
+const MODULE_PAGES: Record<string, ModulePageData> = {
+  Users: {
+    icon: "👥", title: "Usimamizi wa Watumiaji",
+    subtitle: "Akaunti, biashara wanazohusishwa nazo, majukumu na mipaka ya ruhusa.",
+    status: "Muonekano wa ukurasa umeandaliwa. Orodha kamili ya watumiaji na mabadiliko ya akaunti yanahitaji huduma maalum ya platform-admin na ukaguzi wa usalama.",
+    sections: [
+      { heading: "Usimamizi wa akaunti", body: "Hapa ndipo Super Admin ataangalia watumiaji wa jukwaa kwa ujumla.", items: ["Tafuta mtumiaji kwa jina, email au namba ya simu", "Angalia biashara anazomiliki au anazofanyia kazi", "Angalia hali ya akaunti na tarehe ya usajili"] },
+      { heading: "Majukumu na ruhusa", body: "Majukumu ya biashara yanabaki ndani ya biashara husika; ruhusa za Super Admin ni za jukwaa zima.", items: ["Business Owner", "Manager", "Cashier", "Stockkeeper", "Platform Super Admin"] }
+    ]
+  },
+  Subscriptions: {
+    icon: "🛡️", title: "Vifurushi na Usajili",
+    subtitle: "Dhibiti mipango ya Free na Pro, muda wa usajili na uthibitishaji wa malipo.",
+    status: "Database tayari ina shop_subscriptions na pro_payment_requests. Ukurasa huu unaonyesha muundo wa usimamizi; vitendo vya kuthibitisha au kukataa malipo vitahitaji kuunganishwa kwa orodha ya maombi na audit trail.",
+    sections: [
+      { heading: "Mipango ya huduma", body: "Muhtasari wa vifurushi vinavyotumika kwenye GUNX SMART BUSINESS.", items: ["FREE — matumizi ya msingi kulingana na mipaka ya mpango", "PRO — huduma za ziada kwa usajili unaotumika", "Usajili ulioisha muda hurudi Free bila kufuta data ya biashara"] },
+      { heading: "Uthibitishaji wa malipo", body: "Malipo ya Pro yanahitaji kuhakikiwa kabla ya kuwasha huduma.", items: ["M-Pesa, HaloPesa, Mixx, Airtel Money au Benki", "Kiasi kinachotarajiwa: TZS 5,000", "Hali za ombi: Pending, Verified au Rejected"] }
+    ]
+  },
+  Settings: {
+    icon: "⚙️", title: "Mipangilio ya Mfumo",
+    subtitle: "Vigezo vya jukwaa zima na usanidi wa GUNX SMART BUSINESS.",
+    status: "Mipangilio nyeti haibadilishwi kutoka ukurasa huu bado. Inahitaji jedwali la platform settings, uthibitishaji wa Super Admin na kumbukumbu ya kila badiliko.",
+    sections: [
+      { heading: "Mipangilio ya msingi", body: "Vigezo vilivyowekwa kwa mfumo kwa sasa.", items: ["Sarafu ya biashara: TZS", "Saa za mfumo: Africa/Dar_es_Salaam", "Lugha ya kiolesura: Kiswahili / English"] },
+      { heading: "Udhibiti wa jukwaa", body: "Mabadiliko haya yatahitaji kuhifadhiwa kwa usalama na kufuatiliwa.", items: ["Mipaka ya mpango wa Free na Pro", "Matengenezo ya mfumo na matoleo", "Mipangilio ya arifa na mawasiliano"] }
+    ]
+  },
+  Security: {
+    icon: "🔐", title: "Mlinzi wa Usalama",
+    subtitle: "Ufuatiliaji wa uingiaji, ruhusa, matukio na usalama wa tenant.",
+    status: "RLS na jedwali la platform_admins vipo. Jedwali maalum la audit/security events halijaonekana kwenye schema ya sasa; kwa hiyo hakuna historia ya matukio itakayobuniwa.",
+    sections: [
+      { heading: "Ulinzi wa data", body: "Msingi wa usalama unaotumika kwenye mfumo.", items: ["Row Level Security imewashwa kwenye jedwali za biashara", "Biashara zinatenganishwa kwa shop_id", "Vitendo vya Super Admin vinapaswa kuthibitisha platform_admins"] },
+      { heading: "Kumbukumbu za usalama", body: "Audit trail itaonyesha nani alifanya nini, lini na kwa akaunti gani.", items: ["Majaribio ya kuingia na kutoka", "Mabadiliko ya majukumu na usajili", "Vitendo vya uthibitishaji wa malipo", "Tahadhari za matumizi yasiyo ya kawaida"] }
+    ]
+  },
+  Reports: {
+    icon: "📄", title: "Ripoti za Jukwaa",
+    subtitle: "Ukuaji wa biashara, watumiaji, usajili, matumizi na mapato.",
+    status: "Takwimu za biashara na watumiaji zinapatikana kupitia get_platform_metrics. Ripoti za mapato halisi na matumizi ya jukwaa zitaonyesha data baada ya ledger ya mapato kuunganishwa.",
+    sections: [
+      { heading: "Ripoti zinazolengwa", body: "Ripoti za jumla za jukwaa kwa mmiliki wa GUNX.", items: ["Ukuaji wa biashara zilizosajiliwa", "Watumiaji wapya na watumiaji hai", "Idadi ya installations kwa siku 7 na siku 30", "Muhtasari wa usajili wa Free na Pro"] },
+      { heading: "Ripoti za fedha", body: "Mapato yatahesabiwa kutokana na malipo yaliyothibitishwa pekee.", items: ["Mapato ya Pro yaliyothibitishwa", "Malipo yanayosubiri uhakiki", "Marejesho na marekebisho ya fedha", "Export ya PDF na CSV baada ya ledger kuunganishwa"] }
+    ]
+  },
+  Revenue: {
+    icon: "📈", title: "Mapato ya Jukwaa",
+    subtitle: "Mapato ya usajili wa GUNX PRO na malipo yaliyothibitishwa.",
+    status: "Mapato halisi bado hayajaunganishwa na ledger ya platform. Mfumo hautachukulia maombi ya malipo yanayosubiri kuwa mapato yaliyopokelewa.",
+    sections: [
+      { heading: "Vyanzo vya mapato", body: "Mapato ya jukwaa yatatokana na huduma za kulipia.", items: ["Usajili wa GUNX PRO", "Malipo yaliyothibitishwa tu", "Rekodi ya provider na transaction reference"] },
+      { heading: "Udhibiti wa fedha", body: "Kila uthibitisho au marekebisho lazima yawe na kumbukumbu.", items: ["Jumla ya mapato kwa siku, mwezi na mwaka", "Malipo yanayosubiri na yaliyokataliwa", "Historia ya uthibitishaji wa malipo"] }
+    ]
+  },
+  Health: {
+    icon: "🛡️", title: "Afya na Ufanisi wa Mfumo",
+    subtitle: "Hali ya huduma, database, API na upatikanaji wa jukwaa.",
+    status: "Asilimia ya uptime haiwezi kuonyeshwa bila health-check monitoring yenye vipimo vya muda. Namba ya kubuni haitaonyeshwa.",
+    sections: [
+      { heading: "Vipimo vya ufuatiliaji", body: "Vipimo vinavyohitajika ili kutoa hali sahihi ya mfumo.", items: ["API availability na response time", "Database connectivity na latency", "Makosa ya server na edge functions", "Uptime kwa saa 24, siku 7 na siku 30"] },
+      { heading: "Matukio ya mfumo", body: "Matukio yatapangwa kwa kiwango cha athari.", items: ["Operational", "Warning", "Critical", "Resolved"] }
+    ]
+  },
+  Account: {
+    icon: "♙", title: "Akaunti ya Super Admin",
+    subtitle: "Wasifu wa mmiliki na mamlaka ya usimamizi wa jukwaa.",
+    status: "Akaunti hii inatambuliwa kupitia uthibitisho wa platform_admins. Mabadiliko ya wasifu na usalama wa session yataunganishwa kwenye hatua inayofuata.",
+    sections: [
+      { heading: "Mamlaka ya akaunti", body: "Super Admin ana uwezo wa kusimamia jukwaa zima, si tenant moja tu.", items: ["Biashara zote na taarifa zake", "Watumiaji na majukumu ya jukwaa", "Usajili, mipango na malipo", "Ripoti na usalama wa mfumo"] },
+      { heading: "Usalama wa akaunti", body: "Vitendo nyeti vitahitaji uthibitisho wa ziada.", items: ["Uthibitishaji wa akaunti", "Usimamizi wa session na vifaa", "Historia ya mabadiliko ya akaunti"] }
+    ]
+  },
+  Notifications: {
+    icon: "🔔", title: "Kituo cha Arifa",
+    subtitle: "Arifa muhimu za biashara, usajili, malipo na afya ya mfumo.",
+    status: "Huduma ya kuhifadhi na kusambaza arifa bado haijaunganishwa. Kituo hiki hakitaonyesha arifa za kubuni.",
+    sections: [
+      { heading: "Aina za arifa", body: "Arifa zitapangwa kwa umuhimu na chanzo.", items: ["Maombi mapya ya usajili wa Pro", "Biashara au watumiaji wapya", "Tahadhari za usalama", "Matatizo ya huduma au database"] },
+      { heading: "Udhibiti wa arifa", body: "Super Admin ataweza kuchuja na kufuatilia arifa.", items: ["Zote", "Hazijasomwa", "Muhimu", "Zilizofungwa"] }
+    ]
+  }
+};
+
+function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics: Metrics | null; onBack: () => void }) {
+  const page = MODULE_PAGES[moduleKey];
+  if (!page) return null;
+  return (
+    <View style={s.modulePage}>
+      <Pressable onPress={onBack} style={s.backButton}><Text style={s.backText}>‹  Rudi Dashboard</Text></Pressable>
+      <View style={s.moduleHero}>
+        <View style={s.moduleHeroIcon}><Text style={s.moduleHeroIconText}>{page.icon}</Text></View>
+        <Text style={s.moduleEyebrow}>GUNX SMART BUSINESS · SUPER ADMIN</Text>
+        <Text style={s.moduleTitle}>{page.title}</Text>
+        <Text style={s.moduleSubtitle}>{page.subtitle}</Text>
+      </View>
+      {moduleKey === "Reports" && metrics && (
+        <View style={s.moduleMetrics}>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.total_shops.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Biashara</Text></View>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.registrations.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Usajili</Text></View>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.active_7d.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Hai siku 7</Text></View>
+        </View>
+      )}
+      {moduleKey === "Users" && metrics && (
+        <View style={s.moduleMetrics}>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.registrations.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Usajili wote</Text></View>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.active_7d.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Hai siku 7</Text></View>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.active_30d.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Hai siku 30</Text></View>
+        </View>
+      )}
+      {page.sections.map((section, index) => (
+        <View key={section.heading} style={s.moduleSection}>
+          <Text style={s.moduleSectionTitle}>{section.heading}</Text>
+          <Text style={s.moduleBody}>{section.body}</Text>
+          {section.items.map(item => <View key={item} style={s.moduleItem}><Text style={s.moduleBullet}>✓</Text><Text style={s.moduleItemText}>{item}</Text></View>)}
+        </View>
+      ))}
+      <View style={s.moduleStatus}>
+        <Text style={s.moduleStatusTitle}>HALI YA HUDUMA</Text>
+        <Text style={s.moduleStatusText}>{page.status}</Text>
+      </View>
+    </View>
+  );
+}
+
 export default function PlatformOwnerDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -141,7 +275,7 @@ export default function PlatformOwnerDashboard() {
   const [showNotice, setShowNotice] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
-  const [drawer, setDrawer] = useState<{ title: string; message: string; accent: string } | null>(null);
+
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -165,8 +299,7 @@ export default function PlatformOwnerDashboard() {
   useEffect(() => { void load(); }, [load]);
 
   const unavailable = "--";
-  const openDrawer = (title: string, message: string, accent = "#1D4ED8") => setDrawer({ title, message, accent });
-  const openModule = (name: string, message: string) => openDrawer(name, message);
+  const openModule = (name: string) => setSelectedModule(name);
   const showBusinesses = () => setSelectedModule("All Businesses");
 
   return (
@@ -175,7 +308,7 @@ export default function PlatformOwnerDashboard() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Akaunti ya Mmiliki"
-          onPress={() => openDrawer("Akaunti ya Mmiliki", "Akaunti kuu ya GUNX Super Admin (Mmiliki). Una mamlaka ya kusimamia biashara, watumiaji, vifurushi, usalama na mipangilio ya mfumo.", "#1E3A8A")}
+          onPress={() => openModule("Account")}
           style={s.accountButton}
         >
           <Text style={s.accountIcon}>♙</Text>
@@ -191,7 +324,7 @@ export default function PlatformOwnerDashboard() {
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Taarifa za Mfumo"
-          onPress={() => setNotificationsOpen(value => !value)}
+          onPress={() => openModule("Notifications")}
           style={s.bellButton}
         >
           <Text style={s.bell}>🔔</Text>
@@ -199,25 +332,14 @@ export default function PlatformOwnerDashboard() {
         </Pressable>
       </View>
 
-      {notificationsOpen && (
-        <View style={s.notificationStrip}>
-          <View style={s.notificationIcon}><Text style={s.notificationIconText}>i</Text></View>
-          <View style={s.notificationCopy}>
-            <Text style={s.notificationTitle}>Kituo cha Arifa</Text>
-            <Text style={s.notificationMessage}>Arifa za mfumo zitaonekana hapa huduma ya notifications ikishawashwa.</Text>
-          </View>
-          <Pressable onPress={() => setNotificationsOpen(false)} style={s.notificationClose}>
-            <Text style={s.notificationCloseText}>Funga</Text>
-          </Pressable>
-        </View>
-      )}
-
       {selectedModule === "All Businesses" ? (
         <BusinessDirectory onBack={() => setSelectedModule(null)} />
+      ) : selectedModule ? (
+        <ModulePage moduleKey={selectedModule} metrics={metrics} onBack={() => setSelectedModule(null)} />
       ) : (
         <>
           <Pressable
-            onPress={() => openDrawer("Wasifu wa GUNX Super Admin", "Akaunti kuu ya Mmiliki wa mfumo wa GUNX SMART BUSINESS.", "#1E3A8A")}
+            onPress={() => openModule("Account")}
             style={s.welcomeBanner}
           >
             <View style={s.welcomeAvatar}>
@@ -237,10 +359,10 @@ export default function PlatformOwnerDashboard() {
           {loading && <View style={s.loading}><ActivityIndicator color="#1D4ED8"/><Text style={s.loadingText}>Inasoma taarifa kutoka server...</Text></View>}
 
           <View style={s.statsGrid}>
-            <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
-            <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
-            <StatCard icon="📈" label="Jumla ya Mapato" value={unavailable} tone="gold"/>
-            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="green"/>
+            <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" onPress={() => openModule("All Businesses")}/>
+            <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" onPress={() => openModule("Users")}/>
+            <StatCard icon="📈" label="Jumla ya Mapato" value={unavailable} tone="gold" onPress={() => openModule("Revenue")}/>
+            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="green" onPress={() => openModule("Health")}/>
           </View>
           <Text style={s.metricFootnote}>
             Watumiaji hai: {metrics ? metrics.active_7d.toLocaleString("en-US") + " (siku 7) · " + metrics.active_30d.toLocaleString("en-US") + " (siku 30)" : "Takwimu za shughuli zitaonekana baada ya server kurudisha data."}
@@ -251,15 +373,15 @@ export default function PlatformOwnerDashboard() {
           </View>
           <View style={s.managementGrid}>
             <ManagementCard icon="🏪" title="Biashara Zote" description="Orodha na usimamizi wa biashara." onPress={showBusinesses}/>
-            <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Usimamizi wa Watumiaji", "Dhibiti akaunti za watumiaji, majukumu na ruhusa za ufikiaji. Sehemu hii itawashwa baada ya kuunganishwa na huduma salama za usimamizi wa watumiaji.")}/>
-            <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." onPress={() => openModule("Vifurushi/Usajili", "Simamia vifurushi vya huduma, mipango ya usajili, muda wa matumizi na hali ya malipo ya biashara.")}/>
-            <ManagementCard icon="⚙️" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." onPress={() => openModule("Mipangilio ya Mfumo", "Rekebisha mipangilio ya mfumo mzima, sarafu, vigezo vya kiufundi na usanidi wa jukwaa.")}/>
-            <ManagementCard icon="🛡️" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." onPress={() => openModule("Mlinzi wa Usalama", "Fuatilia usalama wa mfumo, kumbukumbu za kuingia, matukio ya kiusalama na shughuli za akaunti.")}/>
-            <ManagementCard icon="📄" title="Ripoti" description="Ukuaji, mapato na matumizi." onPress={() => openModule("Ripoti", "Angalia ripoti za ukuaji wa jukwaa, biashara zilizosajiliwa, matumizi na mapato baada ya data ya kifedha kuunganishwa.")}/>
+            <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Users")}/>
+            <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." onPress={() => openModule("Subscriptions")}/>
+            <ManagementCard icon="⚙️" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." onPress={() => openModule("Settings")}/>
+            <ManagementCard icon="🛡️" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." onPress={() => openModule("Security")}/>
+            <ManagementCard icon="📄" title="Ripoti" description="Ukuaji, mapato na matumizi." onPress={() => openModule("Reports")}/>
           </View>
 
           <Pressable
-            onPress={() => openModule("Jopo la GUNX Super Admin", "Uko ndani ya Jopo la GUNX Super Admin kwa ajili ya usimamizi mkuu wa Mmiliki.", "#B45309")}
+            onPress={() => setSelectedModule(null)}
             style={({ pressed }) => [s.panelButton, pressed && s.panelButtonPressed]}
           >
             <Text style={s.panelCrown}>♛</Text>
@@ -272,23 +394,6 @@ export default function PlatformOwnerDashboard() {
         </>
       )}
 
-      <Modal visible={!!drawer} transparent animationType="slide" onRequestClose={() => setDrawer(null)}>
-        <Pressable style={s.modalBackdrop} onPress={() => setDrawer(null)}>
-          <Pressable style={s.drawer} onPress={() => undefined}>
-            <View style={s.drawerHandle}/>
-            <View style={s.drawerHeader}>
-              <View style={[s.drawerIcon, { borderColor: drawer?.accent ?? "#1D4ED8" }]}><Text style={[s.drawerCrown, { color: drawer?.accent ?? "#1D4ED8" }]}>♛</Text></View>
-              <View style={s.drawerHeadingCopy}>
-                <Text style={s.drawerEyebrow}>GUNX SMART BUSINESS</Text>
-                <Text style={s.drawerTitle}>{drawer?.title ?? "Sehemu"}</Text>
-              </View>
-              <Pressable onPress={() => setDrawer(null)} style={s.drawerClose}><Text style={s.drawerCloseText}>Funga</Text></Pressable>
-            </View>
-            <Text style={s.drawerMessage}>{drawer?.message}</Text>
-            <Pressable onPress={() => setDrawer(null)} style={s.drawerReturn}><Text style={s.drawerReturnText}>Rudi Kwenye Dashboard</Text></Pressable>
-          </Pressable>
-        </Pressable>
-      </Modal>
     </View>
   );
 }
