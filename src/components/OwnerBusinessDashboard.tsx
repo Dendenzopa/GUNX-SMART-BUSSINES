@@ -266,8 +266,8 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
               const barHeight = Math.max(2, (point.amount / chartMax) * 70);
               return <View key={"fill-" + point.label} style={[s.areaColumn, { left: coord.x - 5, height: barHeight, backgroundColor: chartColor }]} />;
             })}
-            {chartCoords.slice(1).map((point, index) => {
-              const previous = chartCoords[index];
+            {smoothCoords.slice(1).map((point, index) => {
+              const previous = smoothCoords[index];
               const dx = point.x - previous.x; const dy = point.y - previous.y;
               return <View key={"line-" + index} style={[s.lineSegment, { left: previous.x, top: previous.y, width: Math.sqrt(dx * dx + dy * dy), backgroundColor: chartColor, transform: [{ rotate: Math.atan2(dy, dx) * 180 / Math.PI + "deg" }] }]} />;
             })}
