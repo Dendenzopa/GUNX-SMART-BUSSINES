@@ -161,7 +161,9 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
     y: 91 - (point.amount / chartMax) * 68,
   }));
 
-  const smoothCoords = smoothLinePoints(chartCoords);\n\n  const pickHeroMedia = async (type: HeroMediaType) => {
+  const smoothCoords = smoothLinePoints(chartCoords);
+
+  const pickHeroMedia = async (type: HeroMediaType) => {
     setMenuOpen(false);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
