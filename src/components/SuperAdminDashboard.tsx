@@ -5,7 +5,7 @@ import {
 } from "react-native";
 import { supabase } from "../lib/supabase";
 
-type AdminTab = "Overview" | "Businesses" | "Users" | "Payments" | "Audit" | "System" | "Settings";
+type AdminTab = "Overview" | "Businesses" | "Users" | "Payments" | "Notifications" | "Audit" | "System" | "Settings";
 type Row = Record<string, any>;
 
 function money(value: unknown) {
@@ -34,6 +34,7 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
   const [businesses, setBusinesses] = useState<Row[]>([]);
   const [users, setUsers] = useState<Row[]>([]);
   const [payments, setPayments] = useState<Row[]>([]);
+  const [notifications, setNotifications] = useState<Row[]>([]);
   const [logs, setLogs] = useState<Row[]>([]);
   const [health, setHealth] = useState<Row[]>([]);
   const [settings, setSettings] = useState<Row[]>([]);
@@ -74,6 +75,10 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
         const { data, error: rpcError } = await supabase.rpc("get_platform_payment_requests", { p_status: null, p_limit: 50, p_offset: 0 });
         if (rpcError) throw rpcError;
         setPayments(Array.isArray(data) ? data : []);
+      } else if (tab === "Notifications") {
+        const { data, error: rpcError } = await supabase.rpc("get_platform_notifications", { p_limit: 100 });
+        if (rpcError) throw rpcError;
+        setNotifications(Array.isArray(data) ? data : []);
       } else if (tab === "Audit") {
         const { data, error: rpcError } = await supabase.rpc("get_platform_audit_logs", { p_limit: 100 });
         if (rpcError) throw rpcError;
@@ -95,6 +100,13 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
   }, [tab, search]);
 
   useEffect(() => { void load(); }, [load]);
+
+  async function markNotificationRead(id: string) {
+    if (!supabase) return;
+    const { error: rpcError } = await supabase.rpc("mark_platform_notification_read", { p_notification_id: id });
+    if (rpcError) setError(rpcError.message);
+    else { setNotice("Notification marked as read."); void load(); }
+  }
 
   async function signOut() {
     if (!supabase) return;
@@ -157,6 +169,20 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
     </>;
   }
 
+  function renderNotifications() {
+    return <>
+      <Text style={s.pageTitle}>Platform Notifications</Text>
+      <Text style={s.muted}>Matangazo na tahadhari za jukwaa. Hazionyeshi taarifa binafsi za mauzo ya biashara.</Text>
+      {notifications.map((item, i) => <View key={String(item.id ?? i)} style={s.card}>
+        <Text style={s.recordTitle}>{String(item.title ?? "Notification")}</Text>
+        <Text style={s.recordLine}>{String(item.message ?? "")}</Text>
+        <Text style={s.muted}>{String(item.severity ?? "info").toUpperCase()} · {date(item.created_at)}</Text>
+        {!item.read_at && <ActionButton label="Mark as read" quiet onPress={() => void markNotificationRead(String(item.id))} />}
+      </View>)}
+      {!notifications.length && <Text style={s.muted}>Hakuna notifications kwa sasa.</Text>}
+    </>;
+  }
+
   function renderAudit() {
     return <>
       <Text style={s.pageTitle}>Platform Audit Logs</Text>
@@ -184,7 +210,7 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
     </>;
   }
 
-  const tabs: AdminTab[] = ["Overview", "Businesses", "Users", "Payments", "Audit", "System", "Settings"];
+  const tabs: AdminTab[] = ["Overview", "Businesses", "Users", "Payments", "Notifications", "Audit", "System", "Settings"];
   return <SafeAreaView style={s.safe}>
     <StatusBar barStyle="light-content" backgroundColor="#081522" />
     <View style={s.header}>
@@ -204,6 +230,7 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
       {!loading && tab === "Businesses" && renderBusinesses()}
       {!loading && tab === "Users" && renderUsers()}
       {!loading && tab === "Payments" && renderPayments()}
+      {!loading && tab === "Notifications" && renderNotifications()}
       {!loading && tab === "Audit" && renderAudit()}
       {!loading && tab === "System" && renderSystem()}
       {!loading && tab === "Settings" && renderSettings()}
