@@ -54,3 +54,18 @@ using (
       and s.owner_id = (select auth.uid())
   )
 );
+
+-- Ensure the owner chart receives committed sales events through Supabase Realtime.
+do $$
+begin
+  if exists (select 1 from pg_publication where pubname = 'supabase_realtime')
+     and not exists (
+       select 1
+       from pg_publication_tables
+       where pubname = 'supabase_realtime'
+         and schemaname = 'public'
+         and tablename = 'sales'
+     ) then
+    alter publication supabase_realtime add table public.sales;
+  end if;
+end $$;
