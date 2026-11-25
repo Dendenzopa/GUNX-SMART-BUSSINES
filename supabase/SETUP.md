@@ -32,6 +32,7 @@
 
 - Apply migrations `0015_restrict_direct_ledger_writes.sql`, `0016_require_audited_opening_stock.sql`, and `0017_product_catalogue_management_only.sql` after `0014`. Authenticated clients can no longer insert sales, sale items, payments, stock movements, debts, debt repayments or refunds directly; use the atomic RPC workflows. Direct stock-quantity edits and non-zero opening stock on direct product inserts are blocked; opening stock must be recorded through `receive_stock`. Product creation/deletion and cost/selling-price edits are restricted to owners/managers; stockkeepers receive stock for existing products through audited workflows.
 
+- Apply `0023_owner_dashboard_branding.sql` to add the owner-selected hero media fields and public image bucket. Upload, update and delete permissions are restricted to the authenticated shop owner and paths under that owner's shop ID.
 - Only use the Supabase anon/publishable key in the app.
 - Never embed or commit the Supabase `service_role` key.
 - Configure email confirmation and password reset before production.
@@ -71,6 +72,9 @@ For managed EAS builds, `eas.json` includes:
 - `production`: Android App Bundle (AAB) profile for a release build.
 
 An EAS build still requires an Expo account/project setup and the appropriate build credentials. No release signing credentials are stored in this repository.
+
+- Google/Gmail display name and avatar are read from the current Supabase Google OAuth identity and refreshed when the auth session changes. Google OAuth must already be enabled in the Supabase Auth provider settings.
+- The owner dashboard branding fields and image bucket are added by migration `0023_owner_dashboard_branding.sql`; apply that migration before using cloud hero image uploads.
 
 ## Current limitations — not production certification
 
