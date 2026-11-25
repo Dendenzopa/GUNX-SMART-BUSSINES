@@ -30,3 +30,12 @@ Install Node.js, then:
 - `npm run android`
 - `npm run ios`
 - `npm run web`
+
+
+## Official privacy promise
+
+**Your Business, Your Data, Your Privacy.**
+
+GUNX must protect each business tenant's private sales, profit/loss, expenses, customers, customer contact details and transaction history from routine Super Admin access. Super Admin is limited to privacy-preserving platform metrics and GUNX subscription/billing information. Exceptional support or investigation access must be purpose-limited, explicitly authorized, time-bound, disclosed to the business owner when possible, and fully audited. Tenant isolation must be enforced by database Row Level Security, not just by hiding UI controls.
+
+See [docs/SUPER_ADMIN_PRIVACY_SPEC.md](docs/SUPER_ADMIN_PRIVACY_SPEC.md) for the approved Super Admin modules, security requirements and acceptance criteria.
