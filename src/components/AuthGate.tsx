@@ -39,13 +39,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     if (!session || !supabase) return;
+    const client = supabase;
     let active = true;
     setAccessLoading(true);
     const resolveAccess = async () => {
       try {
         const [adminResult, memberResult] = await Promise.all([
-          supabase.rpc("is_platform_admin"),
-          supabase.from("shop_members").select("shop_id").eq("user_id", session.user.id).limit(1).maybeSingle(),
+          client.rpc("is_platform_admin"),
+          client.from("shop_members").select("shop_id").eq("user_id", session.user.id).limit(1).maybeSingle(),
         ]);
         if (!active) return;
         if (memberResult.error) throw new Error("Imeshindikana kusoma uanachama wa biashara: " + memberResult.error.message);
