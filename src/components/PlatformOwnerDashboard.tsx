@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Image, Modal, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
 
 type Metrics = {
@@ -253,7 +253,7 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
           <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.active_30d.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Hai siku 30</Text></View>
         </View>
       )}
-      {page.sections.map((section, index) => (
+      {page.sections.map((section) => (
         <View key={section.heading} style={s.moduleSection}>
           <Text style={s.moduleSectionTitle}>{section.heading}</Text>
           <Text style={s.moduleBody}>{section.body}</Text>
@@ -274,7 +274,6 @@ export default function PlatformOwnerDashboard() {
   const [notice, setNotice] = useState("Inapakia takwimu za mfumo...");
   const [showNotice, setShowNotice] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
-  const [notificationsOpen, setNotificationsOpen] = useState(false);
 
 
   const load = useCallback(async () => {
@@ -399,6 +398,27 @@ export default function PlatformOwnerDashboard() {
 }
 
 const s = StyleSheet.create({
+   modulePage: { paddingBottom: 28 },
+   moduleHero: { padding: 19, borderRadius: 18, backgroundColor: "#DCEBFA", borderWidth: 1, borderColor: "#A9C9EB", marginBottom: 13 },
+   moduleHeroIcon: { width: 58, height: 58, borderRadius: 17, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", marginBottom: 12 },
+   moduleHeroIconText: { fontSize: 34 },
+   moduleEyebrow: { color: "#315F91", fontSize: 8, fontWeight: "900", letterSpacing: 1 },
+   moduleTitle: { color: "#102A43", fontSize: 22, fontWeight: "900", marginTop: 5 },
+   moduleSubtitle: { color: "#38556F", fontSize: 11, lineHeight: 17, marginTop: 6 },
+   moduleMetrics: { flexDirection: "row", gap: 8, marginBottom: 12 },
+   moduleMetric: { flex: 1, minWidth: 0, padding: 11, borderRadius: 12, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E5EF" },
+   moduleMetricValue: { color: "#163D63", fontSize: 19, fontWeight: "900" },
+   moduleMetricLabel: { color: "#65798B", fontSize: 8, fontWeight: "800", marginTop: 4 },
+   moduleSection: { padding: 15, borderRadius: 14, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5EC", marginBottom: 10 },
+   moduleSectionTitle: { color: "#163D63", fontSize: 14, fontWeight: "900" },
+   moduleBody: { color: "#617487", fontSize: 10, lineHeight: 15, marginTop: 5, marginBottom: 9 },
+   moduleItem: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#EEF2F6" },
+   moduleBullet: { color: "#16835F", fontSize: 12, fontWeight: "900" },
+   moduleItemText: { flex: 1, color: "#243B50", fontSize: 10, lineHeight: 15 },
+   moduleStatus: { padding: 13, borderRadius: 12, backgroundColor: "#FFF8E8", borderWidth: 1, borderColor: "#E7D5A8", marginTop: 2 },
+   moduleStatusTitle: { color: "#8A6415", fontSize: 8, fontWeight: "900", letterSpacing: 1 },
+   moduleStatusText: { color: "#66532E", fontSize: 9, lineHeight: 14, marginTop: 5 },
+
   accountButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#1E3A8A", borderWidth: 2, borderColor: "#D4AF37", alignItems: "center", justifyContent: "center", elevation: 3 },
   accountIcon: { color: "#FFFFFF", fontSize: 25, fontWeight: "800" },
   notificationStrip: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: "#8FB5E3", backgroundColor: "#D3E4F8", marginBottom: 14 },
