@@ -34,6 +34,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [shopRole, setShopRole] = useState<ShopRole | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [shopLoading, setShopLoading] = useState(false);
+  const [membershipCheckError, setMembershipCheckError] = useState<string | null>(null);
+  const [membershipCheckAttempt, setMembershipCheckAttempt] = useState(0);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -123,19 +125,26 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     setIsPlatformAdmin(false);
     setShopRole(null);
-    if (!session || !supabase) { setShopLoading(false); return; }
+    if (!session || !supabase) { setShopLoading(false); setMembershipCheckError(null); return; }
     let active = true;
     setShopLoading(true);
+    setMembershipCheckError(null);
     Promise.all([
       supabase.rpc("is_platform_admin"),
       supabase.from("shop_members").select("shop_id,role").eq("user_id", session.user.id).limit(1).maybeSingle()
     ]).then(([adminResult, membershipResult]) => {
       if (!active) return;
-      const admin = !adminResult.error && adminResult.data === true;
-      if (membershipResult.error) setMessage("Imeshindikana kusoma duka: " + membershipResult.error.message);
+      if (adminResult.error || membershipResult.error) {
+        const reason = adminResult.error?.message ?? membershipResult.error?.message ?? "Taarifa za ruhusa hazijapatikana.";
+        setMembershipCheckError("Imeshindikana kuthibitisha role na biashara ya akaunti hii: " + reason);
+        setShopLoading(false);
+        return;
+      }
+      const admin = adminResult.data === true;
       setIsPlatformAdmin(admin);
       const hasMembership = Boolean(membershipResult.data);
-      setNeedsShop(!hasMembership && !membershipResult.error && !admin);
+      setNeedsShop(!hasMembership && !admin);
+      setMembershipCheckError(null);
       const metadata = session.user.user_metadata ?? {};
       const googleIdentity = session.user.identities?.find((item: any) => item.provider === "google")?.identity_data ?? {};
       const displayName = googleIdentity.name ?? googleIdentity.full_name ?? metadata.full_name ?? metadata.name ?? metadata.display_name ?? session.user.email ?? "Mmiliki wa Biashara";
@@ -149,7 +158,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       setShopLoading(false);
     });
     return () => { active = false; };
-  }, [session]);
+  }, [session, membershipCheckAttempt]);
 
   async function signOut() {
     if (!supabase) return;
@@ -314,6 +323,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     </ScrollView>
   </SafeAreaView>;
   if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
+  if (session && membershipCheckError) return <SafeAreaView style={a.safe}><View style={a.authContent}><Text style={a.title}>Imeshindikana kuthibitisha akaunti</Text><Text style={a.message}>{membershipCheckError}</Text><Text style={a.copy}>Kwa usalama, dashboard haijafunguliwa kwa sababu role ya akaunti haijathibitishwa. Jaribu tena ukiwa na intaneti.</Text><Pressable onPress={()=>{setShopLoading(true);setMembershipCheckAttempt(v=>v+1);}} style={a.button}><Text style={a.buttonText}>JARIBU TENA</Text></Pressable><Pressable disabled={busy} onPress={signOut}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.onboardingSafe}>
     <ScrollView contentContainerStyle={a.onboardingScroll} keyboardShouldPersistTaps="handled">
       <View style={a.onboardingTop}>
