@@ -16,6 +16,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [shopId, setShopId] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
   const [accessLoading, setAccessLoading] = useState(false);
+  const [accessError, setAccessError] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -25,11 +26,13 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) setMessage(error.message);
       setSession(data.session);
+      setAccessLoading(Boolean(data.session));
       setLoading(false);
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      if (!next) { setNeedsShop(false); setShopId(null); setIsPlatformAdmin(false); setAccessLoading(false); }
+      setAccessLoading(Boolean(next));
+      if (!next) { setNeedsShop(false); setShopId(null); setIsPlatformAdmin(false); setAccessError(""); }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -39,18 +42,28 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     let active = true;
     setAccessLoading(true);
     const resolveAccess = async () => {
-      const [adminResult, memberResult] = await Promise.all([
-        supabase.rpc("is_platform_admin"),
-        supabase.from("shop_members").select("shop_id").eq("user_id", session.user.id).limit(1).maybeSingle(),
-      ]);
-      if (!active) return;
-      const platformAdmin = !adminResult.error && adminResult.data === true;
-      if (adminResult.error) setMessage("Imeshindikana kuthibitisha ruhusa za Platform Admin. " + adminResult.error.message);
-      if (memberResult.error) setMessage("Imeshindikana kusoma uanachama wa biashara: " + memberResult.error.message);
-      setIsPlatformAdmin(platformAdmin);
-      setShopId(memberResult.data?.shop_id ?? null);
-      setNeedsShop(!memberResult.data && !platformAdmin && !memberResult.error);
-      setAccessLoading(false);
+      try {
+        const [adminResult, memberResult] = await Promise.all([
+          supabase.rpc("is_platform_admin"),
+          supabase.from("shop_members").select("shop_id").eq("user_id", session.user.id).limit(1).maybeSingle(),
+        ]);
+        if (!active) return;
+        if (memberResult.error) throw new Error("Imeshindikana kusoma uanachama wa biashara: " + memberResult.error.message);
+        const platformAdmin = !adminResult.error && adminResult.data === true;
+        if (adminResult.error && !memberResult.data) {
+          throw new Error("Huduma ya kuthibitisha Platform Admin haipatikani. Ufikiaji umesitishwa kwa usalama; wasiliana na msimamizi.");
+        }
+        setAccessError("");
+        setIsPlatformAdmin(platformAdmin);
+        setShopId(memberResult.data?.shop_id ?? null);
+        setNeedsShop(!memberResult.data && !platformAdmin);
+      } catch (e) {
+        if (!active) return;
+        setAccessError(e instanceof Error ? e.message : "Imeshindikana kuthibitisha ruhusa za akaunti.");
+        setNeedsShop(false);
+      } finally {
+        if (active) setAccessLoading(false);
+      }
     };
     void resolveAccess();
     return () => { active = false; };
@@ -80,6 +93,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (!supabaseConfigured) return <>{children}</>;
   if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
   if (session && accessLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
+  if (session && accessError) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.title}>Ufikiaji umesitishwa</Text><Text style={a.copy}>{accessError}</Text><Pressable onPress={()=>supabase?.auth.signOut()} style={a.button}><Text style={a.buttonText}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   if (!session) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "login" ? "Karibu tena" : "Fungua akaunti"}</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={authenticate} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "login" ? "Ingia" : "Jisajili"}</Text></Pressable><Pressable onPress={()=>{setMode(mode === "login" ? "signup" : "login");setMessage("");}}><Text style={a.link}>{mode === "login" ? "Huna akaunti? Jisajili" : "Tayari una akaunti? Ingia"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}</View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   return <ShopContext.Provider value={{ shopId, isPlatformAdmin }}>{children}</ShopContext.Provider>;
