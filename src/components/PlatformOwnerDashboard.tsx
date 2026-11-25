@@ -451,9 +451,10 @@ export default function PlatformOwnerDashboard() {
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
 
   useEffect(() => {
+    if (!selectedModule) return;
     const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
-      if (selectedModule) { setSelectedModule(null); return true; }
-      return false;
+      setSelectedModule(null);
+      return true;
     });
     return () => subscription.remove();
   }, [selectedModule]);
