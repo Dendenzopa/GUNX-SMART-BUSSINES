@@ -16,7 +16,34 @@ create policy business_assets_member_upload
 on storage.objects for insert to authenticated
 with check (
   bucket_id = 'business-assets'
-  and (storage.foldername(name))[1] ~* '^[0-9a-f-]{36}$'
+  and (storage.foldername(name))[1] ~* '^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}
+  and exists (select 1 from public.shop_members sm where sm.shop_id = ((storage.foldername(name))[1])::uuid and sm.user_id = (select auth.uid()) and sm.role = 'owner')
+  and (storage.foldername(name))[2] = (select auth.uid())::text
+);
+
+drop policy if exists business_assets_owner_update on storage.objects;
+create policy business_assets_owner_update
+on storage.objects for update to authenticated
+using (
+  bucket_id = 'business-assets'
+  and public.is_shop_member(((storage.foldername(name))[1])::uuid)
+  and (storage.foldername(name))[2] = (select auth.uid())::text
+)
+with check (
+  bucket_id = 'business-assets'
+  and public.is_shop_member(((storage.foldername(name))[1])::uuid)
+  and (storage.foldername(name))[2] = (select auth.uid())::text
+);
+
+drop policy if exists business_assets_owner_delete on storage.objects;
+create policy business_assets_owner_delete
+on storage.objects for delete to authenticated
+using (
+  bucket_id = 'business-assets'
+  and public.is_shop_member(((storage.foldername(name))[1])::uuid)
+  and (storage.foldername(name))[2] = (select auth.uid())::text
+);
+
   and public.is_shop_member(((storage.foldername(name))[1])::uuid)
   and (storage.foldername(name))[2] = (select auth.uid())::text
 );
