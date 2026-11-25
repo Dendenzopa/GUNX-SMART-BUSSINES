@@ -491,7 +491,8 @@ export default function PlatformOwnerDashboard() {
       if (!active || !data.user) return;
       const metadata = data.user.user_metadata ?? {};
       const googleName = metadata.full_name || metadata.name || metadata.display_name;
-      const emailName = data.user.email?.split("@")[0]?.replace(/[._-]+/g, " ");
+      const emailAddress = data.user.email?.toLowerCase();
+      const emailName = emailAddress === "eliaspaulmarwa505@gmail.com" ? "Elias PAUL MARWA" : data.user.email?.split("@")[0]?.replace(/[._-]+/g, " ");
       setAccountName(String(googleName || emailName || "Super Admin").trim());
       const picture = metadata.avatar_url || metadata.picture;
       if (typeof picture === "string" && picture.startsWith("https://")) setAvatarUri(picture);
