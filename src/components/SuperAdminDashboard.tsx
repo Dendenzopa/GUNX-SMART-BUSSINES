@@ -161,7 +161,7 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
     return <>
       <Text style={s.pageTitle}>Platform Audit Logs</Text>
       <Text style={s.muted}>Kumbukumbu za vitendo vya wasimamizi wa jukwaa. Hazipaswi kuwa na taarifa za siri za biashara.</Text>
-      {logs.map((l, i) => <RecordCard key={String(l.id ?? i)} title={String(l.action ?? "Activity")} subtitle={String(l.target_type ?? "platform") + " · " + String(l.target_id ?? "—")} lines={["Actor: " + String(l.actor_id ?? "system"), "Time: " + date(l.created_at), "Details: " + JSON.stringify(l.metadata ?? {})]} />)}
+      {logs.map((l, i) => <RecordCard key={String(l.id ?? i)} title={String(l.action ?? "Activity")} subtitle={String(l.target_type ?? "platform") + " · " + String(l.target_id ?? "—")} lines={["Actor: " + String(l.actor_id ?? "system"), "Time: " + date(l.created_at)]} />)}
       {!logs.length && <Text style={s.muted}>Hakuna audit logs.</Text>}
     </>;
   }
@@ -170,7 +170,7 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
     return <>
       <Text style={s.pageTitle}>System Monitoring</Text>
       <Text style={s.muted}>Hali inategemea health checks halisi zilizorekodiwa. Hakuna uptime ya kubuni.</Text>
-      {health.map((h, i) => <RecordCard key={String(h.id ?? i)} title={String(h.service ?? "Service")} subtitle={"Status: " + String(h.status ?? "unknown")} lines={["Response time: " + (h.response_time_ms == null ? "—" : h.response_time_ms + " ms"), "Checked: " + date(h.checked_at), "Details: " + JSON.stringify(h.details ?? {})]} />)}
+      {health.map((h, i) => <RecordCard key={String(h.id ?? i)} title={String(h.service ?? "Service")} subtitle={"Status: " + String(h.status ?? "unknown")} lines={["Response time: " + (h.response_time_ms == null ? "—" : h.response_time_ms + " ms"), "Checked: " + date(h.checked_at)]} />)}
       {!health.length && <Text style={s.notice}>Hakuna health checks zilizorekodiwa bado. Uptime, backup status na API latency hazijathibitishwa.</Text>}
     </>;
   }
@@ -179,7 +179,7 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
     return <>
       <Text style={s.pageTitle}>Global Settings</Text>
       <Text style={s.muted}>Mipangilio ya jukwaa iliyopo kwenye database. Mabadiliko ya settings yataongezwa baada ya kila setting kupewa validation na audit rule.</Text>
-      {settings.map((item, i) => <RecordCard key={String(item.key ?? i)} title={String(item.key ?? "Setting")} subtitle={String(item.description ?? "")} lines={["Value: " + JSON.stringify(item.value ?? {}), "Updated: " + date(item.updated_at)]} />)}
+      {settings.map((item, i) => <RecordCard key={String(item.key ?? i)} title={String(item.key ?? "Setting")} subtitle={String(item.description ?? "")} lines={["Updated: " + date(item.updated_at)]} />)}
       {!settings.length && <Text style={s.muted}>Hakuna settings zilizowekwa.</Text>}
     </>;
   }
