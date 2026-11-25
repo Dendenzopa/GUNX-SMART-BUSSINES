@@ -15,6 +15,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
   const [isPlatformAdmin, setIsPlatformAdmin] = useState(false);
+  const [accessLoading, setAccessLoading] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -28,7 +29,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      if (!next) { setNeedsShop(false); setShopId(null); setIsPlatformAdmin(false); }
+      if (!next) { setNeedsShop(false); setShopId(null); setIsPlatformAdmin(false); setAccessLoading(false); }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -36,6 +37,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!session || !supabase) return;
     let active = true;
+    setAccessLoading(true);
     const resolveAccess = async () => {
       const [adminResult, memberResult] = await Promise.all([
         supabase.rpc("is_platform_admin"),
@@ -48,6 +50,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       setIsPlatformAdmin(platformAdmin);
       setShopId(memberResult.data?.shop_id ?? null);
       setNeedsShop(!memberResult.data && !platformAdmin && !memberResult.error);
+      setAccessLoading(false);
     };
     void resolveAccess();
     return () => { active = false; };
@@ -76,6 +79,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 
   if (!supabaseConfigured) return <>{children}</>;
   if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
+  if (session && accessLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
   if (!session) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "login" ? "Karibu tena" : "Fungua akaunti"}</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={authenticate} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "login" ? "Ingia" : "Jisajili"}</Text></Pressable><Pressable onPress={()=>{setMode(mode === "login" ? "signup" : "login");setMessage("");}}><Text style={a.link}>{mode === "login" ? "Huna akaunti? Jisajili" : "Tayari una akaunti? Ingia"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}</View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   return <ShopContext.Provider value={{ shopId, isPlatformAdmin }}>{children}</ShopContext.Provider>;
