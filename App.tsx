@@ -334,7 +334,7 @@ function Dashboard() {
   );
  }
  return <SafeAreaView style={s.safe}><StatusBar barStyle="light-content" backgroundColor="#081522"/>
-  <View style={s.header}><Image source={require("./assets/GUNX20Smart20Business20Logo-1.jpg")} style={s.logoImage} resizeMode="contain"/><View style={s.headerText}><Text style={s.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={s.brand}>GUNX <Text style={s.gold}>SMART</Text> BUSINESS</Text><Text style={s.muted}>Sales · Stock · Finance</Text></View></View>
+  <View style={s.header}><Image source={require("./assets/1795472814228.jpg")} style={s.logoImage} resizeMode="contain"/><View style={s.headerText}><Text style={s.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={s.brand}>GUNX <Text style={s.gold}>SMART</Text> BUSINESS</Text><Text style={s.muted}>Sales · Stock · Finance</Text></View></View>
 {showMore&&<View style={s.morePanel}>{visibleScreens.filter(x=>!["Home","POS","Stock"].includes(x)).map(x=><Pressable key={x} onPress={()=>{setScreen(x);setShowMore(false);}} style={s.moreItem}><Text style={s.moreText}>{({Debts:"Madeni",Expenses:"Gharama",Returns:"Marejesho",Sync:"Offline Sync",Payments:"Malipo",Reports:"Ripoti",Staff:"Wafanyakazi",Subscription:"Subscription",Owner:"Super Admin"} as Partial<Record<Screen,string>>)[x]??x}</Text></Pressable>)}</View>}
   <ScrollView contentContainerStyle={s.content}>
     {screen==="Home"&&<>
