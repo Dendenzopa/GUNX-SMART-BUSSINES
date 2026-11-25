@@ -227,9 +227,92 @@ const MODULE_PAGES: Record<string, ModulePageData> = {
   }
 };
 
+
+type PlatformUserRow = { user_id:string; email:string|null; created_at:string; shop_count:number; roles:string[]; total_count:number };
+type PlatformPaymentRow = { request_id:string; shop_id:string; business_name:string; owner_email:string|null; provider:string; amount_tzs:number; transaction_reference:string; payer_phone:string|null; status:string; submitted_at:string; verified_at:string|null; admin_note:string|null; total_count:number };
+type PlatformSettingRow = { key:string; value:any; description:string|null; updated_at:string; updated_by:string|null };
+type PlatformAuditRow = { id:string; actor_id:string|null; action:string; target_type:string; target_id:string|null; metadata:any; created_at:string };
+type PlatformNotificationRow = { id:string; title:string; message:string; severity:string; source:string; read_at:string|null; created_at:string };
+type PlatformHealthRow = { id:string; service:string; status:string; response_time_ms:number|null; details:any; checked_at:string };
+
 function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics: Metrics | null; onBack: () => void }) {
   const page = MODULE_PAGES[moduleKey];
+  const [busy,setBusy]=useState(false);
+  const [error,setError]=useState("");
+  const [users,setUsers]=useState<PlatformUserRow[]>([]);
+  const [payments,setPayments]=useState<PlatformPaymentRow[]>([]);
+  const [subscriptionMetrics,setSubscriptionMetrics]=useState<any>(null);
+  const [settings,setSettings]=useState<PlatformSettingRow[]>([]);
+  const [audit,setAudit]=useState<PlatformAuditRow[]>([]);
+  const [notifications,setNotifications]=useState<PlatformNotificationRow[]>([]);
+  const [health,setHealth]=useState<PlatformHealthRow[]>([]);
+  const [userSearch,setUserSearch]=useState("");
+  const [settingDrafts,setSettingDrafts]=useState<Record<string,string>>({});
   if (!page) return null;
+
+  const loadPage = async () => {
+    if (!supabase) { setError("Supabase haijaunganishwa."); return; }
+    setBusy(true); setError("");
+    try {
+      if (moduleKey === "Users") {
+        const {data,error:err}=await supabase.rpc("get_platform_admin_users",{p_search:userSearch.trim()||null,p_limit:100,p_offset:0});
+        if(err) throw err;
+        setUsers((data??[]) as PlatformUserRow[]);
+      } else if (moduleKey === "Subscriptions" || moduleKey === "Revenue" || moduleKey === "Reports") {
+        const [stats,pay]=await Promise.all([
+          supabase.rpc("get_platform_subscription_metrics"),
+          supabase.rpc("get_platform_payment_requests",{p_status:null,p_limit:100,p_offset:0})
+        ]);
+        if(stats.error) throw stats.error;
+        if(pay.error) throw pay.error;
+        setSubscriptionMetrics(stats.data);
+        setPayments((pay.data??[]) as PlatformPaymentRow[]);
+      } else if (moduleKey === "Settings") {
+        const {data,error:err}=await supabase.from("platform_settings").select("key,value,description,updated_at,updated_by").order("key");
+        if(err) throw err;
+        const rows=(data??[]) as PlatformSettingRow[];
+        setSettings(rows);
+        setSettingDrafts(Object.fromEntries(rows.map(row=>[row.key,JSON.stringify(row.value)])));
+      } else if (moduleKey === "Security") {
+        const {data,error:err}=await supabase.from("platform_audit_logs").select("id,actor_id,action,target_type,target_id,metadata,created_at").order("created_at",{ascending:false}).limit(50);
+        if(err) throw err; setAudit((data??[]) as PlatformAuditRow[]);
+      } else if (moduleKey === "Notifications") {
+        const {data,error:err}=await supabase.from("platform_notifications").select("id,title,message,severity,source,read_at,created_at").order("created_at",{ascending:false}).limit(50);
+        if(err) throw err; setNotifications((data??[]) as PlatformNotificationRow[]);
+      } else if (moduleKey === "Health") {
+        const {data,error:err}=await supabase.from("platform_health_checks").select("id,service,status,response_time_ms,details,checked_at").order("checked_at",{ascending:false}).limit(50);
+        if(err) throw err; setHealth((data??[]) as PlatformHealthRow[]);
+      }
+    } catch(e:any) { setError(e?.message || "Imeshindikana kupakia taarifa."); }
+    finally { setBusy(false); }
+  };
+
+  useEffect(()=>{ void loadPage(); },[moduleKey]);
+
+  const saveSetting = async (key:string) => {
+    if(!supabase) return;
+    setBusy(true); setError("");
+    try {
+      const {data:sessionData}=await supabase.auth.getSession();
+      const raw=settingDrafts[key]??"";
+      let parsed:any;
+      try { parsed=JSON.parse(raw); } catch { parsed=raw; }
+      const {error:err}=await supabase.from("platform_settings").upsert({
+        key, value:parsed, updated_by:sessionData.session?.user.id ?? null, updated_at:new Date().toISOString()
+      });
+      if(err) throw err;
+      await loadPage();
+    } catch(e:any) { setError(e?.message || "Mipangilio haijahifadhiwa."); }
+    finally { setBusy(false); }
+  };
+
+  const markRead = async (id:string) => {
+    if(!supabase) return;
+    const {error:err}=await supabase.from("platform_notifications").update({read_at:new Date().toISOString()}).eq("id",id);
+    if(err) setError(err.message); else setNotifications(rows=>rows.map(row=>row.id===id?{...row,read_at:new Date().toISOString()}:row));
+  };
+
+  const money=(value:number)=>"TZS "+Number(value||0).toLocaleString("en-US");
   return (
     <View style={s.modulePage}>
       <Pressable onPress={onBack} style={s.backButton}><Text style={s.backText}>‹  Rudi Dashboard</Text></Pressable>
@@ -239,27 +322,105 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
         <Text style={s.moduleTitle}>{page.title}</Text>
         <Text style={s.moduleSubtitle}>{page.subtitle}</Text>
       </View>
-      {moduleKey === "Reports" && metrics && (
-        <View style={s.moduleMetrics}>
-          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.total_shops.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Biashara</Text></View>
-          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.registrations.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Usajili</Text></View>
-          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.active_7d.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Hai siku 7</Text></View>
+      {busy && <View style={s.loading}><ActivityIndicator color="#176B56"/><Text style={s.loadingText}>Inapakia taarifa halisi...</Text></View>}
+      {!!error && <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>}
+
+      {moduleKey==="Users" && <>
+        <View style={s.dataToolbar}>
+          <TextInput value={userSearch} onChangeText={setUserSearch} placeholder="Tafuta kwa email au User ID" placeholderTextColor="#8298AA" style={s.searchInput} autoCapitalize="none"/>
+          <Pressable onPress={()=>void loadPage()} style={s.searchButton}><Text style={s.searchButtonText}>TAFUTA</Text></Pressable>
         </View>
-      )}
-      {moduleKey === "Users" && metrics && (
+        <Text style={s.dataCount}>Watumiaji: {users.length ? Number(users[0].total_count).toLocaleString("en-US") : "0"}</Text>
+        {users.map(user=><View key={user.user_id} style={s.dataCard}>
+          <Text style={s.dataTitle}>{user.email||"Email haipo"}</Text>
+          <Text style={s.dataSub}>User ID: {user.user_id}</Text>
+          <View style={s.dataMetaRow}><Text style={s.dataMeta}>Biashara: {user.shop_count}</Text><Text style={s.dataMeta}>Majukumu: {user.roles?.join(", ")||"Hakuna"}</Text></View>
+          <Text style={s.dataSub}>Amesajiliwa: {new Date(user.created_at).toLocaleDateString("sw-TZ")}</Text>
+        </View>)}
+        {!busy&&users.length===0&&<View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna mtumiaji aliyepatikana</Text></View>}
+      </>}
+
+      {(moduleKey==="Subscriptions"||moduleKey==="Revenue"||moduleKey==="Reports") && <>
         <View style={s.moduleMetrics}>
-          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.registrations.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Usajili wote</Text></View>
-          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.active_7d.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Hai siku 7</Text></View>
-          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.active_30d.toLocaleString("en-US")}</Text><Text style={s.moduleMetricLabel}>Hai siku 30</Text></View>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{subscriptionMetrics?.total_subscriptions??"—"}</Text><Text style={s.moduleMetricLabel}>Subscriptions</Text></View>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{subscriptionMetrics?.active_pro??"—"}</Text><Text style={s.moduleMetricLabel}>PRO hai</Text></View>
+          <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{subscriptionMetrics?.pending_payments??"—"}</Text><Text style={s.moduleMetricLabel}>Malipo pending</Text></View>
         </View>
-      )}
-      {page.sections.map((section) => (
+        <View style={s.dataCard}>
+          <Text style={s.dataSub}>MAPATO YALIYOTHIBITISHWA PEKEE</Text>
+          <Text style={s.revenueValue}>{money(subscriptionMetrics?.verified_revenue_tzs??0)}</Text>
+          <Text style={s.dataSub}>Malipo yaliyothibitishwa: {subscriptionMetrics?.verified_payments??0} · Yaliyokataliwa: {subscriptionMetrics?.rejected_payments??0}</Text>
+        </View>
+        <Text style={s.dataSectionTitle}>Maombi ya malipo ya PRO</Text>
+        {payments.map(payment=><View key={payment.request_id} style={s.dataCard}>
+          <View style={s.dataMetaRow}><Text style={s.dataTitle}>{payment.business_name}</Text><Text style={[s.statusPill,payment.status==="verified"?s.statusGood:payment.status==="rejected"?s.statusBad:s.statusPending]}>{payment.status.toUpperCase()}</Text></View>
+          <Text style={s.dataSub}>{payment.owner_email||"Mmiliki hajulikani"} · {payment.provider.toUpperCase()}</Text>
+          <Text style={s.dataTitle}>{money(payment.amount_tzs)}</Text>
+          <Text style={s.dataSub}>Ref: {payment.transaction_reference}</Text>
+          <Text style={s.dataSub}>Simu: {payment.payer_phone||"Haijatolewa"} · {new Date(payment.submitted_at).toLocaleString("sw-TZ")}</Text>
+          {!!payment.admin_note&&<Text style={s.dataSub}>Maelezo: {payment.admin_note}</Text>}
+        </View>)}
+        {!busy&&payments.length===0&&<View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna maombi ya malipo</Text></View>}
+        <Text style={s.footerNote}>Ukurasa huu unaonyesha rekodi halisi. Vitufe vya ku-verify/reject vitafunguliwa baada ya kuweka uthibitisho wa server-side na audit trail kwa kila hatua.</Text>
+      </>}
+
+      {moduleKey==="Settings" && <>
+        <Text style={s.dataSectionTitle}>Mipangilio iliyohifadhiwa</Text>
+        {settings.map(setting=><View key={setting.key} style={s.dataCard}>
+          <Text style={s.dataTitle}>{setting.key}</Text>
+          {!!setting.description&&<Text style={s.dataSub}>{setting.description}</Text>}
+          <TextInput value={settingDrafts[setting.key]??JSON.stringify(setting.value)} onChangeText={value=>setSettingDrafts(prev=>({...prev,[setting.key]:value}))} style={s.searchInput} placeholder="Thamani ya JSON au maandishi" placeholderTextColor="#8298AA" autoCapitalize="none"/>
+          <Pressable onPress={()=>void saveSetting(setting.key)} style={s.searchButton}><Text style={s.searchButtonText}>HIFADHI MABADILIKO</Text></Pressable>
+          <Text style={s.dataSub}>Ilisasishwa: {new Date(setting.updated_at).toLocaleString("sw-TZ")}</Text>
+        </View>)}
+        {!busy&&settings.length===0&&<View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna mipangilio iliyohifadhiwa bado</Text><Text style={s.managementDescription}>Jedwali liko tayari; funguo za mfumo zitaongezwa kwa hatua maalum baada ya kukubaliana thamani zake.</Text></View>}
+      </>}
+
+      {moduleKey==="Security" && <>
+        <Text style={s.dataSectionTitle}>Audit trail · Matukio 50 ya mwisho</Text>
+        {audit.map(item=><View key={item.id} style={s.dataCard}>
+          <Text style={s.dataTitle}>{item.action}</Text>
+          <Text style={s.dataSub}>Aina: {item.target_type} · ID: {item.target_id||"—"}</Text>
+          <Text style={s.dataSub}>Actor: {item.actor_id||"System"} · {new Date(item.created_at).toLocaleString("sw-TZ")}</Text>
+          <Text style={s.dataSub}>{JSON.stringify(item.metadata)}</Text>
+        </View>)}
+        {!busy&&audit.length===0&&<View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna matukio yaliyorekodiwa bado</Text></View>}
+      </>}
+
+      {moduleKey==="Notifications" && <>
+        <Text style={s.dataSectionTitle}>Arifa zilizohifadhiwa</Text>
+        {notifications.map(item=><Pressable key={item.id} onPress={()=>!item.read_at&&void markRead(item.id)} style={s.dataCard}>
+          <View style={s.dataMetaRow}><Text style={s.dataTitle}>{item.title}</Text><Text style={[s.statusPill,item.severity==="critical"?s.statusBad:item.severity==="warning"?s.statusPending:s.statusGood]}>{item.severity.toUpperCase()}</Text></View>
+          <Text style={s.dataSub}>{item.message}</Text>
+          <Text style={s.dataSub}>{new Date(item.created_at).toLocaleString("sw-TZ")} · {item.read_at?"Imesomwa":"Haijasomwa — gusa kuweka imesomwa"}</Text>
+        </Pressable>)}
+        {!busy&&notifications.length===0&&<View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna arifa zilizohifadhiwa bado</Text></View>}
+      </>}
+
+      {moduleKey==="Health" && <>
+        <Text style={s.dataSectionTitle}>Vipimo vya afya vilivyorekodiwa</Text>
+        {health.map(item=><View key={item.id} style={s.dataCard}>
+          <View style={s.dataMetaRow}><Text style={s.dataTitle}>{item.service}</Text><Text style={[s.statusPill,item.status==="operational"?s.statusGood:item.status==="outage"?s.statusBad:s.statusPending]}>{item.status.toUpperCase()}</Text></View>
+          <Text style={s.dataSub}>Response: {item.response_time_ms==null?"—":item.response_time_ms+" ms"} · {new Date(item.checked_at).toLocaleString("sw-TZ")}</Text>
+          <Text style={s.dataSub}>{JSON.stringify(item.details)}</Text>
+        </View>)}
+        {!busy&&health.length===0&&<View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna health checks zilizorekodiwa</Text><Text style={s.managementDescription}>Uptime haitabuniwa. Inahitaji monitor inayotuma vipimo kwenye jedwali hili.</Text></View>}
+      </>}
+
+      {moduleKey==="Reports" && metrics && <View style={s.moduleMetrics}>
+        <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.total_shops}</Text><Text style={s.moduleMetricLabel}>Biashara</Text></View>
+        <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.registrations}</Text><Text style={s.moduleMetricLabel}>Usajili</Text></View>
+        <View style={s.moduleMetric}><Text style={s.moduleMetricValue}>{metrics.active_7d}</Text><Text style={s.moduleMetricLabel}>Hai siku 7</Text></View>
+      </View>}
+
+      {page.sections.map(section => (
         <View key={section.heading} style={s.moduleSection}>
           <Text style={s.moduleSectionTitle}>{section.heading}</Text>
           <Text style={s.moduleBody}>{section.body}</Text>
           {section.items.map(item => <View key={item} style={s.moduleItem}><Text style={s.moduleBullet}>✓</Text><Text style={s.moduleItemText}>{item}</Text></View>)}
         </View>
       ))}
+      <Pressable onPress={()=>void loadPage()} style={s.refresh}><Text style={s.refreshText}>↻  Sasisha taarifa</Text></Pressable>
       <View style={s.moduleStatus}>
         <Text style={s.moduleStatusTitle}>HALI YA HUDUMA</Text>
         <Text style={s.moduleStatusText}>{page.status}</Text>
@@ -399,6 +560,21 @@ export default function PlatformOwnerDashboard() {
 
 const s = StyleSheet.create({
    modulePage: { paddingBottom: 28 },
+
+  dataToolbar:{flexDirection:"row",gap:8,marginBottom:10},
+  dataCount:{color:"#52697C",fontSize:10,fontWeight:"800",marginBottom:8},
+  dataCard:{padding:13,borderRadius:13,backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#DCE5EC",marginBottom:9,gap:6},
+  dataTitle:{color:"#172B3D",fontSize:12,fontWeight:"900"},
+  dataSub:{color:"#65798B",fontSize:9,lineHeight:14},
+  dataMetaRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8},
+  dataMeta:{color:"#425A70",fontSize:9,fontWeight:"800",flex:1},
+  dataSectionTitle:{color:"#163D63",fontSize:14,fontWeight:"900",marginTop:9,marginBottom:9},
+  revenueValue:{color:"#8A6415",fontSize:23,fontWeight:"900"},
+  statusPill:{overflow:"hidden",paddingHorizontal:8,paddingVertical:4,borderRadius:10,fontSize:8,fontWeight:"900",color:"#334155"},
+  statusGood:{backgroundColor:"#DCFCE7",color:"#166534"},
+  statusBad:{backgroundColor:"#FEE2E2",color:"#991B1B"},
+  statusPending:{backgroundColor:"#FEF3C7",color:"#92400E"},
+
    moduleHero: { padding: 19, borderRadius: 18, backgroundColor: "#DCEBFA", borderWidth: 1, borderColor: "#A9C9EB", marginBottom: 13 },
    moduleHeroIcon: { width: 58, height: 58, borderRadius: 17, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", marginBottom: 12 },
    moduleHeroIconText: { fontSize: 34 },
