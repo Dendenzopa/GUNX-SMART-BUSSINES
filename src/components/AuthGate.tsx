@@ -5,7 +5,7 @@ import { supabase, supabaseConfigured } from "../lib/supabase";
 import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
 
 type ShopRole = "owner" | "manager" | "cashier" | "stockkeeper";
-const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null });
+const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null; signOut: () => Promise<void> }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null, signOut: async () => {} });
 export function useShopContext() { return useContext(ShopContext); }
 
 const AUTH_REDIRECT_URL = "gunxsmartbusiness://auth/callback";
@@ -142,7 +142,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [session]);
 
-  async function authenticate() {
+  async function signOut() {\n    if (!supabase) return;\n    setBusy(true);\n    const { error } = await supabase.auth.signOut();\n    setBusy(false);\n    if (error) setMessage("Imeshindikana kutoka kwenye akaunti: " + error.message);\n  }\n\n  async function authenticate() {
     if (!supabase) return;
     if (!email.trim() || password.length < 8) { setMessage("Weka email na password yenye angalau herufi 8."); return; }
     setBusy(true); setMessage("");
@@ -254,7 +254,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   </SafeAreaView>;
   if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
-  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole }}>{children}</ShopContext.Provider>;
+  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole, signOut }}>{children}</ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
