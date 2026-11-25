@@ -3,7 +3,8 @@ import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, TextInput
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 
-const ShopContext = createContext<{ shopId: string | null }>({ shopId: null });
+type ShopRole = "owner" | "manager" | "cashier" | "stockkeeper";
+const ShopContext = createContext<{ shopId: string | null; role: ShopRole | null; shopName: string; userEmail: string }>({ shopId: null, role: null, shopName: "", userEmail: "" });
 export function useShopContext() { return useContext(ShopContext); }
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
@@ -14,6 +15,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [shopName, setShopName] = useState("");
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
+  const [role, setRole] = useState<ShopRole | null>(null);
+  const [shopName, setShopName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -27,7 +30,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     });
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
       setSession(next);
-      if (!next) { setNeedsShop(false); setShopId(null); }
+      if (!next) { setNeedsShop(false); setShopId(null); setRole(null); setShopName(""); }
     });
     return () => listener.subscription.unsubscribe();
   }, []);
@@ -35,12 +38,20 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     if (!session || !supabase) return;
     let active = true;
-    supabase.from("shop_members").select("shop_id").eq("user_id", session.user.id).limit(1).maybeSingle()
-      .then(({ data, error }) => {
+    supabase.from("shop_members").select("shop_id,role").eq("user_id", session.user.id).limit(1).maybeSingle()
+      .then(async ({ data, error }) => {
         if (!active) return;
         if (error) setMessage("Imeshindikana kusoma duka: " + error.message);
         setNeedsShop(!data && !error);
         setShopId(data?.shop_id ?? null);
+        const validRole = data?.role === "owner" || data?.role === "manager" || data?.role === "cashier" || data?.role === "stockkeeper" ? data.role : null;
+        setRole(validRole);
+        if (data?.shop_id) {
+          const { data: shop, error: shopError } = await supabase.from("shops").select("name").eq("id", data.shop_id).maybeSingle();
+          if (!active) return;
+          if (shopError) setMessage("Jina la biashara halijapakiwa: " + shopError.message);
+          setShopName(shop?.name ?? "");
+        }
       });
     return () => { active = false; };
   }, [session]);
@@ -63,14 +74,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.rpc("create_shop", { p_name: shopName.trim() });
     setBusy(false);
     if (error) setMessage("Duka halikuundwa: " + error.message);
-    else { const { data } = await supabase.from("shop_members").select("shop_id").eq("user_id", (await supabase.auth.getUser()).data.user?.id).limit(1).maybeSingle(); setShopId(data?.shop_id ?? null); setNeedsShop(!data); }
+    else { const { data } = await supabase.from("shop_members").select("shop_id,role").eq("user_id", (await supabase.auth.getUser()).data.user?.id).limit(1).maybeSingle(); setShopId(data?.shop_id ?? null); setNeedsShop(!data); setRole(data?.role === "owner" || data?.role === "manager" || data?.role === "cashier" || data?.role === "stockkeeper" ? data.role : null); if(data?.shop_id){ const {data:shop}=await supabase.from("shops").select("name").eq("id",data.shop_id).maybeSingle(); setShopName(shop?.name ?? ""); } }
   }
 
   if (!supabaseConfigured) return <>{children}</>;
   if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
   if (!session) return <SafeAreaView style={a.safe}><View style={a.card}><Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>{mode === "login" ? "Karibu tena" : "Fungua akaunti"}</Text><TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email" placeholderTextColor="#8194A5" style={a.input}/><TextInput value={password} onChangeText={setPassword} secureTextEntry placeholder="Password (angalau herufi 8)" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={authenticate} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : mode === "login" ? "Ingia" : "Jisajili"}</Text></Pressable><Pressable onPress={()=>{setMode(mode === "login" ? "signup" : "login");setMessage("");}}><Text style={a.link}>{mode === "login" ? "Huna akaunti? Jisajili" : "Tayari una akaunti? Ingia"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}</View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
-  return <ShopContext.Provider value={{ shopId }}>{children}</ShopContext.Provider>;
+  return <ShopContext.Provider value={{ shopId, role, shopName, userEmail: session.user.email ?? "" }}>{children}</ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
