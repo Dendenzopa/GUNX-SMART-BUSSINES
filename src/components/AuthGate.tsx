@@ -259,7 +259,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       const extension = (uri.split(".").pop()?.split("?")[0] || "jpg").toLowerCase();
       const contentType = blob.type || (extension === "png" ? "image/png" : "image/jpeg");
       const path = shopId + "/" + session.user.id + "/business-" + Date.now() + "." + (extension === "png" ? "png" : "jpg");
-      const { error: uploadError } = await supabase.storage.from("business-assets").upload(path, blob, { contentType, upsert: true, cacheControl: "3600" });
+      const { error: uploadError } = await supabase.storage.from("business-assets").upload(path, blob, { contentType, upsert: false, cacheControl: "3600" });
       if (uploadError) throw uploadError;
       const { data: publicUrl } = supabase.storage.from("business-assets").getPublicUrl(path);
       const { error: updateError } = await supabase.from("shops").update({ hero_media_type: "business_logo", hero_media_url: publicUrl.publicUrl }).eq("id", shopId);
