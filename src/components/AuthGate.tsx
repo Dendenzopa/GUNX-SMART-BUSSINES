@@ -16,7 +16,6 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
   const [role, setRole] = useState<ShopRole | null>(null);
-  const [shopName, setShopName] = useState("");
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState("");
   const [mode, setMode] = useState<"login" | "signup">("login");
@@ -36,9 +35,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   }, []);
 
   useEffect(() => {
-    if (!session || !supabase) return;
+    const client = supabase;
+    if (!session || !client) return;
     let active = true;
-    supabase.from("shop_members").select("shop_id,role").eq("user_id", session.user.id).limit(1).maybeSingle()
+    client.from("shop_members").select("shop_id,role").eq("user_id", session.user.id).limit(1).maybeSingle()
       .then(async ({ data, error }) => {
         if (!active) return;
         if (error) setMessage("Imeshindikana kusoma duka: " + error.message);
@@ -47,7 +47,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         const validRole = data?.role === "owner" || data?.role === "manager" || data?.role === "cashier" || data?.role === "stockkeeper" ? data.role : null;
         setRole(validRole);
         if (data?.shop_id) {
-          const { data: shop, error: shopError } = await supabase.from("shops").select("name").eq("id", data.shop_id).maybeSingle();
+          const { data: shop, error: shopError } = await client.from("shops").select("name").eq("id", data.shop_id).maybeSingle();
           if (!active) return;
           if (shopError) setMessage("Jina la biashara halijapakiwa: " + shopError.message);
           setShopName(shop?.name ?? "");
