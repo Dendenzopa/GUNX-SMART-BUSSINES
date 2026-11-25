@@ -221,7 +221,7 @@ export default function PlatformOwnerDashboard() {
             style={s.welcomeBanner}
           >
             <View style={s.welcomeAvatar}>
-              <Text style={s.welcomeAvatarIcon}>♙</Text>
+              <Text style={s.welcomeAvatarIcon}>👨🏻‍💼</Text>
               <View style={s.crownBadge}><Text style={s.crownBadgeText}>♛</Text></View>
             </View>
             <View style={s.welcomeCopy}>
@@ -237,10 +237,10 @@ export default function PlatformOwnerDashboard() {
           {loading && <View style={s.loading}><ActivityIndicator color="#1D4ED8"/><Text style={s.loadingText}>Inasoma taarifa kutoka server...</Text></View>}
 
           <View style={s.statsGrid}>
-            <StatCard icon="▣" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
-            <StatCard icon="♙" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
-            <StatCard icon="↗" label="Jumla ya Mapato" value={unavailable} tone="blue"/>
-            <StatCard icon="◈" label="Ufanisi wa Mfumo" value={unavailable} tone="blue"/>
+            <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
+            <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
+            <StatCard icon="📈" label="Jumla ya Mapato" value={unavailable} tone="blue"/>
+            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="blue"/>
           </View>
           <Text style={s.metricFootnote}>
             Watumiaji hai: {metrics ? metrics.active_7d.toLocaleString("en-US") + " (siku 7) · " + metrics.active_30d.toLocaleString("en-US") + " (siku 30)" : "Takwimu za shughuli zitaonekana baada ya server kurudisha data."}
@@ -250,12 +250,12 @@ export default function PlatformOwnerDashboard() {
             <Text style={s.sectionTitle}>Zana za Usimamizi</Text>
           </View>
           <View style={s.managementGrid}>
-            <ManagementCard icon="▣" title="Biashara Zote" description="Orodha na usimamizi wa biashara." onPress={showBusinesses}/>
-            <ManagementCard icon="♙" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Usimamizi wa Watumiaji", "Dhibiti akaunti za watumiaji, majukumu na ruhusa za ufikiaji. Sehemu hii itawashwa baada ya kuunganishwa na huduma salama za usimamizi wa watumiaji.")}/>
-            <ManagementCard icon="⬡" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." onPress={() => openModule("Vifurushi/Usajili", "Simamia vifurushi vya huduma, mipango ya usajili, muda wa matumizi na hali ya malipo ya biashara.")}/>
-            <ManagementCard icon="⚙" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." onPress={() => openModule("Mipangilio ya Mfumo", "Rekebisha mipangilio ya mfumo mzima, sarafu, vigezo vya kiufundi na usanidi wa jukwaa.")}/>
-            <ManagementCard icon="◈" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." onPress={() => openModule("Mlinzi wa Usalama", "Fuatilia usalama wa mfumo, kumbukumbu za kuingia, matukio ya kiusalama na shughuli za akaunti.")}/>
-            <ManagementCard icon="▤" title="Ripoti" description="Ukuaji, mapato na matumizi." onPress={() => openModule("Ripoti", "Angalia ripoti za ukuaji wa jukwaa, biashara zilizosajiliwa, matumizi na mapato baada ya data ya kifedha kuunganishwa.")}/>
+            <ManagementCard icon="🏪" title="Biashara Zote" description="Orodha na usimamizi wa biashara." onPress={showBusinesses}/>
+            <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Usimamizi wa Watumiaji", "Dhibiti akaunti za watumiaji, majukumu na ruhusa za ufikiaji. Sehemu hii itawashwa baada ya kuunganishwa na huduma salama za usimamizi wa watumiaji.")}/>
+            <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." onPress={() => openModule("Vifurushi/Usajili", "Simamia vifurushi vya huduma, mipango ya usajili, muda wa matumizi na hali ya malipo ya biashara.")}/>
+            <ManagementCard icon="⚙️" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." onPress={() => openModule("Mipangilio ya Mfumo", "Rekebisha mipangilio ya mfumo mzima, sarafu, vigezo vya kiufundi na usanidi wa jukwaa.")}/>
+            <ManagementCard icon="🛡️" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." onPress={() => openModule("Mlinzi wa Usalama", "Fuatilia usalama wa mfumo, kumbukumbu za kuingia, matukio ya kiusalama na shughuli za akaunti.")}/>
+            <ManagementCard icon="📄" title="Ripoti" description="Ukuaji, mapato na matumizi." onPress={() => openModule("Ripoti", "Angalia ripoti za ukuaji wa jukwaa, biashara zilizosajiliwa, matumizi na mapato baada ya data ya kifedha kuunganishwa.")}/>
           </View>
 
           <Pressable
@@ -304,9 +304,9 @@ const s = StyleSheet.create({
   notificationMessage: { color: "#1E293B", fontSize: 9, lineHeight: 13, marginTop: 2 },
   notificationClose: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.7)" },
   notificationCloseText: { color: "#0F172A", fontSize: 9, fontWeight: "800" },
-  welcomeBanner: { flexDirection: "row", alignItems: "center", gap: 14, padding: 15, borderRadius: 22, borderWidth: 1.5, borderColor: "#7BA9E4", backgroundColor: "#AFCBF0", marginBottom: 20, elevation: 2 },
-  welcomeAvatar: { width: 66, height: 66, borderRadius: 33, backgroundColor: "#1E3A8A", borderWidth: 3, borderColor: "#EAB308", alignItems: "center", justifyContent: "center" },
-  welcomeAvatarIcon: { color: "#FFFFFF", fontSize: 31, fontWeight: "800" },
+  welcomeBanner: { flexDirection: "row", alignItems: "center", gap: 18, padding: 22, minHeight: 132, borderRadius: 22, borderWidth: 1.5, borderColor: "#7BA9E4", backgroundColor: "#AFCBF0", marginBottom: 20, elevation: 2 },
+  welcomeAvatar: { width: 82, height: 82, borderRadius: 41, backgroundColor: "#1E3A8A", borderWidth: 3, borderColor: "#EAB308", alignItems: "center", justifyContent: "center" },
+  welcomeAvatarIcon: { color: "#FFFFFF", fontSize: 42, fontWeight: "800" },
   crownBadge: { position: "absolute", top: -5, right: -5, width: 25, height: 25, borderRadius: 13, backgroundColor: "#EAB308", borderWidth: 2, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
   crownBadgeText: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
   welcomeCopy: { flex: 1, minWidth: 0 },
@@ -331,9 +331,9 @@ const s = StyleSheet.create({
   gridHorizontal: { position: "absolute", left: 0, right: 0, height: 1, backgroundColor: "#2A5367" },
   glowTop: { position: "absolute", top: -100, right: -100, width: 230, height: 230, borderRadius: 120, backgroundColor: "#FFFFFF", opacity: 0 },
   glowBottom: { position: "absolute", bottom: 140, left: -130, width: 250, height: 250, borderRadius: 130, backgroundColor: "#FFFFFF", opacity: 0 },
-  header: { position: "relative", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 14, minHeight: 82, backgroundColor: "#FFFFFF" },
+  header: { position: "relative", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 20, minHeight: 112, paddingVertical: 12, backgroundColor: "#FFFFFF" },
   brandBlock: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", backgroundColor: "transparent", padding: 0 },
-  brandLogo: { width: 238, height: 78 },
+  brandLogo: { width: 250, height: 96 },
   bellButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#93B8E4", backgroundColor: "#D2E3F7", alignItems: "center", justifyContent: "center" },
   bell: { color: "#1E3A8A", fontSize: 23, fontWeight: "800" },
   bellDot: { position: "absolute", width: 9, height: 9, borderRadius: 5, backgroundColor: "#DC2626", top: 8, right: 9, borderWidth: 1, borderColor: "#D2E3F7" },
@@ -359,12 +359,12 @@ const s = StyleSheet.create({
   loading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, padding: 11, backgroundColor: "#D3E4F8", borderRadius: 10, marginBottom: 10 },
   loadingText: { color: "#1E293B", fontSize: 10 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  statCard: { width: "48%", minHeight: 116, padding: 12, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C7DCF4", justifyContent: "center" },
-  statIcon: { width: 42, height: 42, borderRadius: 13, alignItems: "center", justifyContent: "center", marginBottom: 9, backgroundColor: "rgba(255,255,255,0.62)" },
+  statCard: { width: "48%", minHeight: 154, padding: 16, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C7DCF4", justifyContent: "center" },
+  statIcon: { width: 62, height: 62, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 9, backgroundColor: "rgba(255,255,255,0.62)" },
   blueIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
   goldIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
   greenIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
-  statIconText: { fontSize: 25, fontWeight: "900" },
+  statIconText: { fontSize: 42, fontWeight: "900" },
   blueText: { color: "#1D4ED8" },
   goldText: { color: "#1D4ED8" },
   greenText: { color: "#1D4ED8" },
@@ -373,17 +373,17 @@ const s = StyleSheet.create({
   metricFootnote: { color: "#6B7D8E", fontSize: 9, lineHeight: 15, marginTop: 9, marginBottom: 17 },
   toolCount: { color: "#D9B96F", fontSize: 8, fontWeight: "900", letterSpacing: 1, marginBottom: 3 },
   managementGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 5 },
-  managementCard: { width: "47%", minHeight: 132, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
+  managementCard: { width: "47%", minHeight: 170, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
   pressed: { opacity: 0.75, borderColor: "#D8B86F" },
   managementTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
-  managementIcon: { width: 43, height: 43, borderRadius: 13, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
-  managementIconText: { color: "#1D4ED8", fontSize: 25, fontWeight: "900" },
+  managementIcon: { width: 66, height: 66, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
+  managementIconText: { color: "#1D4ED8", fontSize: 44, fontWeight: "900" },
   chevron: { color: "#718B9E", fontSize: 23, marginTop: -4 },
   managementTitle: { color: "#0F172A", fontSize: 11, fontWeight: "900" },
   managementDescription: { color: "#1E293B", fontSize: 8, lineHeight: 12, marginTop: 5 },
   panelButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#E7B51C", borderWidth: 1.5, borderColor: "#B45309", borderRadius: 16, paddingVertical: 15, paddingHorizontal: 14, marginTop: 19, shadowColor: "#CA8A04", shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
   panelButtonPressed: { opacity: 0.82 },
-  panelCrown: { color: "#172536", fontSize: 19 },
+  panelCrown: { color: "#172536", fontSize: 30 },
   panelButtonText: { color: "#152436", fontSize: 13, fontWeight: "900", letterSpacing: 0.2 },
   panelArrow: { color: "#152436", fontSize: 22, fontWeight: "900" },
   notice: { backgroundColor: "#F4F8FB", borderColor: "#C69D48", borderWidth: 1, borderRadius: 11, padding: 12, marginTop: 12 },
