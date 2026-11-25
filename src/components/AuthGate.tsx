@@ -72,7 +72,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
  }
 
  if(!supabaseConfigured)return <>{children}</>;
- if(loading)return <SafeAreaView style={a.loading}><StatusBar barStyle="light-content" backgroundColor={NAVY}/><ActivityIndicator color={GREEN} size="large"/></SafeAreaView>;
+ if(loading)return <SafeAreaView style={a.loading}><StatusBar barStyle="dark-content" backgroundColor="#FFFFFF"/><ActivityIndicator color={GREEN} size="large"/></SafeAreaView>;
  if(!session)return <SafeAreaView style={a.safe}>
   <StatusBar barStyle="light-content" backgroundColor={NAVY}/>
   <KeyboardAvoidingView style={a.flex} behavior={Platform.OS==="ios"?"padding":undefined}>
@@ -111,11 +111,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
 }
 
 const a=StyleSheet.create({
- flex:{flex:1},loading:{flex:1,backgroundColor:NAVY,alignItems:"center",justifyContent:"center"},safe:{flex:1,backgroundColor:NAVY},
- scroll:{flexGrow:1,backgroundColor:NAVY,paddingBottom:24},brandPanel:{minHeight:265,backgroundColor:NAVY,alignItems:"center",justifyContent:"center",paddingTop:26,paddingBottom:22,overflow:"hidden"},
- glowOne:{position:"absolute",width:260,height:260,borderRadius:130,backgroundColor:"#123E67",opacity:.45,top:-130,right:-70},
- glowTwo:{position:"absolute",width:190,height:190,borderRadius:95,backgroundColor:"#0C594C",opacity:.2,bottom:-115,left:-65},
- logo:{width:236,height:172,alignSelf:"center"},tagline:{color:GOLD,fontSize:9,fontWeight:"800",letterSpacing:2,marginTop:3},
+ flex:{flex:1},loading:{flex:1,backgroundColor:"#FFFFFF",alignItems:"center",justifyContent:"center"},safe:{flex:1,backgroundColor:"#FFFFFF"},
+ scroll:{flexGrow:1,backgroundColor:"#FFFFFF",paddingBottom:24},brandPanel:{minHeight:265,backgroundColor:"#FFFFFF",alignItems:"center",justifyContent:"center",paddingTop:26,paddingBottom:22,overflow:"hidden"},
+ glowOne:{position:"absolute",width:260,height:260,borderRadius:130,backgroundColor:"#EAF0F6",opacity:.0,top:-130,right:-70},
+ glowTwo:{position:"absolute",width:190,height:190,borderRadius:95,backgroundColor:"#EAF0F6",opacity:.0,bottom:-115,left:-65},
+ logo:{width:236,height:172,alignSelf:"center"},tagline:{color:NAVY,fontSize:9,fontWeight:"800",letterSpacing:2,marginTop:3},
  form:{backgroundColor:"#FFF",borderTopLeftRadius:28,borderTopRightRadius:28,paddingHorizontal:24,paddingTop:27,paddingBottom:28,flexGrow:1},
  title:{color:INK,fontSize:21,fontWeight:"800",textAlign:"center",marginBottom:22},
  google:{height:54,borderRadius:12,borderWidth:1,borderColor:"#D9E0E8",backgroundColor:"#FFF",flexDirection:"row",alignItems:"center",justifyContent:"center",gap:13},
@@ -130,8 +130,8 @@ const a=StyleSheet.create({
  backLink:{color:"#1769C2",fontSize:13,fontWeight:"800",textAlign:"center",marginTop:22},
  message:{color:"#9A5A12",backgroundColor:"#FFF6E5",borderWidth:1,borderColor:"#F0D7A5",borderRadius:10,padding:12,fontSize:12,lineHeight:18,marginTop:16},
  footer:{textAlign:"center",color:"#9AA5B2",fontSize:9,fontWeight:"700",letterSpacing:1,marginTop:28},
- shopCard:{flex:1,justifyContent:"center",width:"100%",maxWidth:460,alignSelf:"center",padding:24},shopTitle:{color:"#FFF",fontWeight:"900",fontSize:25,textAlign:"center",marginTop:10},
- shopCopy:{color:"#B7C5D4",fontSize:13,lineHeight:20,textAlign:"center",marginTop:8,marginBottom:12},
+ shopCard:{flex:1,justifyContent:"center",width:"100%",maxWidth:460,alignSelf:"center",padding:24},shopTitle:{color:NAVY,fontWeight:"900",fontSize:25,textAlign:"center",marginTop:10},
+ shopCopy:{color:MUTED,fontSize:13,lineHeight:20,textAlign:"center",marginTop:8,marginBottom:12},
  shopInput:{backgroundColor:"#FFF",borderWidth:1,borderColor:"#C9D8E8",borderRadius:11,color:INK,padding:14,marginTop:10},
  shopButton:{backgroundColor:GREEN,padding:15,borderRadius:12,alignItems:"center",marginTop:16}
 });
