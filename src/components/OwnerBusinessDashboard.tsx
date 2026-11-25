@@ -227,7 +227,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       <View style={s.midSection}>
         <View style={[s.chartCard, s.splitCard]}>
           <View style={s.cardHeader}>
-            <Text style={s.cardTitle}>▥ Muhtasari wa Mauzo</Text>
+            <View style={s.chartTitleRow}><Text style={s.chartTitleIcon}>▥</Text><Text style={s.cardTitle}>Muhtasari wa Mauzo</Text></View>
             <Pressable onPress={() => setPeriodMenu(value => !value)} style={s.periodSelect}>
               <Text style={s.periodSelectText}>{period}⌄</Text>
             </Pressable>
@@ -258,7 +258,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         </View>
 
         <View style={[s.quickCard, s.splitCard]}>
-          <Text style={s.cardTitle}>ϟ Vitendo vya Haraka</Text>
+          <View style={s.quickTitleRow}><Text style={s.quickBolt}>ϟ</Text><Text style={s.cardTitle}>Vitendo vya Haraka</Text></View>
           <Pressable onPress={() => onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#16A34A" }]}>＋</Text><Text style={s.quickLabel}>Ongeza Bidhaa</Text><Text style={s.chevron}>›</Text></Pressable>
           <Pressable onPress={() => onNavigate("Staff")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#2563EB" }]}>♟</Text><Text style={s.quickLabel}>Ongeza Mfanyakazi</Text><Text style={s.chevron}>›</Text></Pressable>
           <Pressable onPress={() => onNavigate("Reports")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#D69E0B" }]}>▥</Text><Text style={s.quickLabel}>Angalia Ripoti</Text><Text style={s.chevron}>›</Text></Pressable>
@@ -339,7 +339,7 @@ const s = StyleSheet.create({
   chartCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 9, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1 },
   quickCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 9, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1 },
   cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 3 },
-  cardTitle: { color: "#0B1F4A", fontSize: 11, fontWeight: "900", flexShrink: 1 },
+  cardTitle: { color: "#0B1F4A", fontSize: 11, fontWeight: "900", flexShrink: 1 },\n  chartTitleRow: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },\n  chartTitleIcon: { color: "#0B1F4A", fontSize: 17, fontWeight: "900" },\n  quickTitleRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 2 },\n  quickBolt: { color: "#D69E0B", fontSize: 19, fontWeight: "900" },
   periodSelect: { backgroundColor: "#EFF6FF", paddingHorizontal: 7, paddingVertical: 5, borderRadius: 7 },
   periodSelectText: { color: "#155EEF", fontSize: 9, fontWeight: "900" },
   periodOptions: { position: "absolute", zIndex: 5, right: 8, top: 35, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DBEAFE", borderRadius: 7, elevation: 4 },
@@ -353,7 +353,7 @@ const s = StyleSheet.create({
   chartGridLine: { position: "absolute", left: 0, right: 0, borderTopWidth: 1, borderColor: "#E8EEF5", borderStyle: "dashed" },
   chartYAxis: { position: "absolute", left: 0, top: 0, bottom: 0, justifyContent: "space-between", zIndex: 3 },
   axisSmall: { color: "#94A3B8", fontSize: 7 },
-  areaColumn: { position: "absolute", bottom: 5, width: 13, opacity: 0.13, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
+  areaColumn: { position: "absolute", bottom: 5, width: 21, opacity: 0.13, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
   lineSegment: { position: "absolute", height: 2.5, borderRadius: 3, zIndex: 2 },
   chartDot: { position: "absolute", width: 7, height: 7, borderRadius: 4, backgroundColor: "#FFFFFF", borderWidth: 2, zIndex: 3 },
   chartCallout: { position: "absolute", top: 1, backgroundColor: "#FFFFFF", borderWidth: 1, borderRadius: 8, paddingHorizontal: 4, paddingVertical: 2, zIndex: 4 },
