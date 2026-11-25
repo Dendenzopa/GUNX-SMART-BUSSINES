@@ -29,3 +29,10 @@ jobs:
         run: npm run typecheck
       - name: Export Expo web build
         run: npm run build:web
+      - name: Upload owner dashboard preview artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: gunx-owner-dashboard-preview
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
