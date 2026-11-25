@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import { supabase } from "../lib/supabase";
 import { useShopContext } from "./AuthGate";
 
@@ -439,6 +440,9 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 
 export default function PlatformOwnerDashboard() {
   const { signOut } = useShopContext();
+  const [accountName, setAccountName] = useState("Super Admin");
+  const [avatarUri, setAvatarUri] = useState<string | null>(null);
+  const [avatarBusy, setAvatarBusy] = useState(false);
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [subscriptionMetrics, setSubscriptionMetrics] = useState<SubscriptionMetrics | null>(null);
   const [loading, setLoading] = useState(true);
@@ -480,6 +484,39 @@ export default function PlatformOwnerDashboard() {
   }, []);
 
   useEffect(() => { void load(); }, [load]);
+
+  useEffect(() => {
+    let active = true;
+    void supabase?.auth.getUser().then(({ data }) => {
+      if (!active || !data.user) return;
+      const metadata = data.user.user_metadata ?? {};
+      const googleName = metadata.full_name || metadata.name || metadata.display_name;
+      const emailName = data.user.email?.split("@")[0]?.replace(/[._-]+/g, " ");
+      setAccountName(String(googleName || emailName || "Super Admin").trim());
+      const picture = metadata.avatar_url || metadata.picture;
+      if (typeof picture === "string" && picture.startsWith("https://")) setAvatarUri(picture);
+    });
+    return () => { active = false; };
+  }, []);
+
+  const changeProfilePhoto = async () => {
+    setAvatarBusy(true);
+    try {
+      const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      if (!permission.granted) {
+        setNotice("Ruhusu GUNX kufikia picha zako ili ubadilishe picha ya wasifu.");
+        setShowNotice(true);
+        return;
+      }
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.85
+      });
+      if (!result.canceled && result.assets[0]?.uri) setAvatarUri(result.assets[0].uri);
+    } catch (error) {
+      setNotice(error instanceof Error ? error.message : "Imeshindikana kufungua Gallery.");
+      setShowNotice(true);
+    } finally { setAvatarBusy(false); }
+  };
 
   const unavailable = "--";
   const verifiedRevenue = subscriptionMetrics ? "TZS " + Number(subscriptionMetrics.verified_revenue_tzs || 0).toLocaleString("en-US") : loading ? "…" : unavailable;
@@ -525,20 +562,20 @@ export default function PlatformOwnerDashboard() {
         <ModulePage moduleKey={selectedModule} metrics={metrics} onBack={() => setSelectedModule(null)} />
       ) : (
         <>
-          <Pressable
-            onPress={() => openModule("Account")}
-            style={s.welcomeBanner}
-          >
-            <View style={s.welcomeAvatar}>
-              <Text style={s.welcomeAvatarIcon}>👨🏻‍💼</Text>
-              <View style={s.crownBadge}><Text style={s.crownBadgeText}>♛</Text></View>
-            </View>
+          <View style={s.welcomeBanner}>
+            <Pressable accessibilityRole="button" accessibilityLabel="Badilisha picha ya wasifu" onPress={() => void changeProfilePhoto()} style={s.avatarPicker}>
+              <View style={s.welcomeAvatar}>
+                {avatarUri ? <Image source={{ uri: avatarUri }} style={s.avatarPhoto} /> : <Text style={s.welcomeAvatarIcon}>👤</Text>}
+                <View style={s.crownBadge}><Text style={s.crownBadgeText}>♛</Text></View>
+              </View>
+              <View style={s.cameraBadge}><Text style={s.cameraBadgeText}>{avatarBusy ? "…" : "📷"}</Text></View>
+            </Pressable>
             <View style={s.welcomeCopy}>
               <Text style={s.welcome}>Karibu Tena!</Text>
-              <Text style={s.profileName}>GUNX Super Admin</Text>
-              <View style={s.ownerBadge}><View style={s.ownerDot}/><Text style={s.ownerText}>Mmiliki</Text></View>
+              <Text style={s.profileName}>{accountName}</Text>
+              <View style={s.ownerBadge}><View style={s.ownerDot}/><Text style={s.ownerText}>SUPER ADMIN</Text></View>
             </View>
-          </Pressable>
+          </View>
 
           <View style={s.sectionHeading}>
             <Text style={s.sectionTitle}>Muhtasari wa Mfumo</Text>
@@ -634,8 +671,12 @@ const s = StyleSheet.create({
   notificationMessage: { color: "#1E293B", fontSize: 13, lineHeight: 16, marginTop: 2 },
   notificationClose: { paddingHorizontal: 9, paddingVertical: 7, borderRadius: 8, backgroundColor: "rgba(255,255,255,0.7)" },
   notificationCloseText: { color: "#0F172A", fontSize: 13, fontWeight: "800" },
-  welcomeBanner: { flexDirection: "row", alignItems: "center", gap: 18, padding: 22, minHeight: 132, borderRadius: 22, borderWidth: 1.5, borderColor: "#7BA9E4", backgroundColor: "#AFCBF0", marginBottom: 20, elevation: 2 },
-  welcomeAvatar: { width: 82, height: 82, borderRadius: 41, backgroundColor: "#1E3A8A", borderWidth: 3, borderColor: "#EAB308", alignItems: "center", justifyContent: "center" },
+  welcomeBanner: { flexDirection: "row", alignItems: "center", gap: 16, padding: 19, minHeight: 142, borderRadius: 22, borderWidth: 1.5, borderColor: "#C6A64A", backgroundColor: "#102A4C", marginBottom: 20, elevation: 4, shadowColor: "#102A4C", shadowOpacity: 0.2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 } },
+  avatarPicker: { position: "relative" },
+  avatarPhoto: { width: 76, height: 76, borderRadius: 38 },
+  cameraBadge: { position: "absolute", right: -2, bottom: -3, width: 30, height: 30, borderRadius: 15, backgroundColor: "#0C9B72", borderWidth: 2, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  cameraBadgeText: { color: "#FFFFFF", fontSize: 15, fontWeight: "900" },
+  welcomeAvatar: { width: 82, height: 82, borderRadius: 41, overflow: "visible", backgroundColor: "#173F70", borderWidth: 3, borderColor: "#D8B65A", alignItems: "center", justifyContent: "center" },
   welcomeAvatarIcon: { color: "#FFFFFF", fontSize: 42, fontWeight: "800" },
   crownBadge: { position: "absolute", top: -5, right: -5, width: 25, height: 25, borderRadius: 13, backgroundColor: "#EAB308", borderWidth: 2, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
   crownBadgeText: { color: "#0F172A", fontSize: 18, fontWeight: "900" },
@@ -671,11 +712,11 @@ const s = StyleSheet.create({
   avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: "#183C42", borderWidth: 2, borderColor: "#D8B86F", alignItems: "center", justifyContent: "center" },
   avatarText: { color: "#F4D994", fontSize: 20, fontWeight: "900" },
   profileCopy: { flex: 1 },
-  welcome: { color: "#1E293B", fontSize: 18, fontWeight: "600" },
-  profileName: { color: "#0F172A", fontSize: 21, fontWeight: "900", marginTop: 3 },
-  ownerBadge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, backgroundColor: "#4E74A6", borderColor: "#4E74A6", borderWidth: 1, borderRadius: 20, paddingHorizontal: 15, paddingVertical: 5, marginTop: 8 },
+  welcome: { color: "#E9C96D", fontSize: 17, fontWeight: "900", letterSpacing: 0.5 },
+  profileName: { color: "#FFFFFF", fontSize: 21, fontWeight: "900", marginTop: 4, letterSpacing: 0.2 },
+  ownerBadge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, backgroundColor: "#0B6B55", borderColor: "#41D5A2", borderWidth: 1, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 6, marginTop: 9 },
   crown: { color: "#F1D18A", fontSize: 16 },
-  ownerText: { color: "#FFFFFF", fontSize: 16, fontWeight: "800", letterSpacing: 0.4 },
+  ownerText: { color: "#D9FFEF", fontSize: 13, fontWeight: "900", letterSpacing: 1.1 },
   accessPill: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#123B35", borderRadius: 20, paddingHorizontal: 8, paddingVertical: 6 },
   accessDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#4BD5A1" },
   accessText: { color: "#75DDB8", fontSize: 12, fontWeight: "900" },
