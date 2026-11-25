@@ -248,8 +248,6 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
   const [health,setHealth]=useState<PlatformHealthRow[]>([]);
   const [userSearch,setUserSearch]=useState("");
   const [settingDrafts,setSettingDrafts]=useState<Record<string,string>>({});
-  if (!page) return null;
-
   const loadPage = async () => {
     if (!supabase) { setError("Supabase haijaunganishwa."); return; }
     setBusy(true); setError("");
@@ -268,19 +266,19 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
         setSubscriptionMetrics(stats.data);
         setPayments((pay.data??[]) as PlatformPaymentRow[]);
       } else if (moduleKey === "Settings") {
-        const {data,error:err}=await supabase.from("platform_settings").select("key,value,description,updated_at,updated_by").order("key");
+        const {data,error:err}=await supabase.rpc("get_platform_settings");
         if(err) throw err;
         const rows=(data??[]) as PlatformSettingRow[];
         setSettings(rows);
         setSettingDrafts(Object.fromEntries(rows.map(row=>[row.key,JSON.stringify(row.value)])));
       } else if (moduleKey === "Security") {
-        const {data,error:err}=await supabase.from("platform_audit_logs").select("id,actor_id,action,target_type,target_id,metadata,created_at").order("created_at",{ascending:false}).limit(50);
+        const {data,error:err}=await supabase.rpc("get_platform_audit_logs",{p_limit:50});
         if(err) throw err; setAudit((data??[]) as PlatformAuditRow[]);
       } else if (moduleKey === "Notifications") {
-        const {data,error:err}=await supabase.from("platform_notifications").select("id,title,message,severity,source,read_at,created_at").order("created_at",{ascending:false}).limit(50);
+        const {data,error:err}=await supabase.rpc("get_platform_notifications",{p_limit:50});
         if(err) throw err; setNotifications((data??[]) as PlatformNotificationRow[]);
       } else if (moduleKey === "Health") {
-        const {data,error:err}=await supabase.from("platform_health_checks").select("id,service,status,response_time_ms,details,checked_at").order("checked_at",{ascending:false}).limit(50);
+        const {data,error:err}=await supabase.rpc("get_platform_health_checks",{p_limit:50});
         if(err) throw err; setHealth((data??[]) as PlatformHealthRow[]);
       }
     } catch(e:any) { setError(e?.message || "Imeshindikana kupakia taarifa."); }
@@ -293,13 +291,10 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
     if(!supabase) return;
     setBusy(true); setError("");
     try {
-      const {data:sessionData}=await supabase.auth.getSession();
       const raw=settingDrafts[key]??"";
       let parsed:any;
       try { parsed=JSON.parse(raw); } catch { parsed=raw; }
-      const {error:err}=await supabase.from("platform_settings").upsert({
-        key, value:parsed, updated_by:sessionData.session?.user.id ?? null, updated_at:new Date().toISOString()
-      });
+      const {error:err}=await supabase.rpc("save_platform_setting",{p_key:key,p_value:parsed,p_description:null});
       if(err) throw err;
       await loadPage();
     } catch(e:any) { setError(e?.message || "Mipangilio haijahifadhiwa."); }
@@ -308,11 +303,13 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 
   const markRead = async (id:string) => {
     if(!supabase) return;
-    const {error:err}=await supabase.from("platform_notifications").update({read_at:new Date().toISOString()}).eq("id",id);
+    const {error:err}=await supabase.rpc("mark_platform_notification_read",{p_notification_id:id});
     if(err) setError(err.message); else setNotifications(rows=>rows.map(row=>row.id===id?{...row,read_at:new Date().toISOString()}:row));
   };
 
-  const money=(value:number)=>"TZS "+Number(value||0).toLocaleString("en-US");
+  if (!page) return null;
+
+    const money=(value:number)=>"TZS "+Number(value||0).toLocaleString("en-US");
   return (
     <View style={s.modulePage}>
       <Pressable onPress={onBack} style={s.backButton}><Text style={s.backText}>‹  Rudi Dashboard</Text></Pressable>
