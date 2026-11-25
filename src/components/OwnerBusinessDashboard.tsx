@@ -99,7 +99,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable accessibilityLabel="Arifa" onPress={()=>setNotificationsOpen(true)} style={s.headerIcon}><Text style={s.headerIconText}>♧</Text>{(lowStock.length>0||pendingSales.length>0)&&<View style={s.notificationDot}/>}</Pressable>
       </View>
       <Text style={s.onlineText}>{online===false?"● OFFLINE":online===true?"● ONLINE":"● INAANGALIA MUUNGANISHO"}</Text>
-      <View style={s.identityRow}><Pressable onPress={()=>setMenuOpen(true)} style={s.ownerMedia}>
+      <View style={s.identityRow}><Pressable accessibilityLabel={heroMediaType || "owner avatar"} onPress={()=>setMenuOpen(true)} style={s.ownerMedia}>
         {heroMediaUrl ? <Image source={{uri:heroMediaUrl}} style={s.ownerImage}/> : <Text style={s.ownerInitial}>{ownerName.charAt(0).toUpperCase()}</Text>}
         <View style={s.cameraBadge}><Text style={s.cameraBadgeText}>✎</Text></View>
       </Pressable><View style={s.identityCopy}><Text style={s.businessName}>{businessName}</Text><Text style={s.ownerName}>{ownerName}</Text><Text style={s.verified}>✓  Biashara Yako</Text></View></View>
