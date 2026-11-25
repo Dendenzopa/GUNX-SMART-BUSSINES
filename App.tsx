@@ -171,7 +171,7 @@ function Dashboard() {
  async function exportReport(kind:"pdf"|"csv") {
   try {
    const labels={today:"Leo", "7d":"Siku 7", "30d":"Siku 30", year:"Mwaka huu", all:"Tangu mwanzo"};
-   const input={businessName:"GUNX SMART BUSINESS",periodLabel:labels[reportRange],sales:reportSales,expenses:reportExpenses,refundTotal};
+   const input={businessName:businessProfile?.name||"GUNX SMART BUSINESS",periodLabel:labels[reportRange],sales:reportSales,expenses:reportExpenses,refundTotal};
    if(kind==="pdf")await exportBusinessReportPdf(input);else await exportBusinessReportCsv(input);
    setNotice(kind==="pdf"?"Ripoti ya PDF imeandaliwa kwa kushirikishwa.":"Ripoti ya CSV inayofunguka kwenye Excel imeandaliwa.");
   }catch(error){setNotice("Imeshindikana kutoa ripoti: "+(error instanceof Error?error.message:"Hitilafu isiyojulikana"));}
