@@ -378,6 +378,14 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
       </>}
 
       {moduleKey==="Settings" && <>
+        <View style={s.languageCard}>
+          <Text style={s.languageTitle}>Change Language / Badilisha Lugha</Text>
+          <Text style={s.languageHint}>Chagua lugha ya kiolesura cha GUNX SMART BUSINESS.</Text>
+          {[{code:"sw" as const,title:"Kiswahili",subtitle:"Lugha ya Kiswahili",flag:"🇹🇿"},{code:"en" as const,title:"English",subtitle:"English language",flag:"🇬🇧"}].map(option=><Pressable key={option.code} accessibilityRole="radio" accessibilityState={{selected:selectedLanguage===option.code}} onPress={()=>void chooseLanguage(option.code)} style={[s.languageOption,selectedLanguage===option.code&&s.languageOptionSelected]}>
+            <Text style={s.languageFlag}>{option.flag}</Text><View style={s.languageCopy}><Text style={s.languageOptionTitle}>{option.title}</Text><Text style={s.languageOptionSubtitle}>{option.subtitle}</Text></View><View style={[s.languageCheck,selectedLanguage===option.code&&s.languageCheckSelected]}>{selectedLanguage===option.code&&<Text style={s.languageCheckMark}>✓</Text>}</View>
+          </Pressable>)}
+          <Text style={s.languageSaved}>✓  {selectedLanguage==="sw"?"Lugha iliyochaguliwa: Kiswahili":"Selected language: English"}</Text>
+        </View>
         <Text style={s.dataSectionTitle}>Mipangilio iliyohifadhiwa</Text>
         {settings.map(setting=><View key={setting.key} style={s.dataCard}>
           <Text style={s.dataTitle}>{setting.key}</Text>
@@ -629,7 +637,20 @@ export default function PlatformOwnerDashboard() {
 }
 
 const s = StyleSheet.create({
-   languageCard:{backgroundColor:"#F0F7F5",borderColor:"#8BCDB5",borderWidth:1.5,borderRadius:16,padding:15,marginBottom:18},\n   languageTitle:{color:"#102A43",fontSize:19,fontWeight:"900"},\n   languageHint:{color:"#40566B",fontSize:15,lineHeight:22,marginTop:5,marginBottom:12},\n   languageOption:{flexDirection:"row",alignItems:"center",backgroundColor:"#FFFFFF",borderWidth:1.5,borderColor:"#D2DEE7",borderRadius:13,padding:13,marginTop:9,minHeight:70},\n   languageOptionSelected:{borderColor:"#16835F",backgroundColor:"#E8F7F0"},\n   languageFlag:{fontSize:26,marginRight:12},\n   languageCopy:{flex:1},\n   languageOptionTitle:{color:"#142D42",fontSize:17,fontWeight:"900"},\n   languageOptionSubtitle:{color:"#40566B",fontSize:14,marginTop:3},\n   languageCheck:{width:27,height:27,borderRadius:14,borderWidth:2,borderColor:"#91A4B5",alignItems:"center",justifyContent:"center"},\n   languageCheckSelected:{backgroundColor:"#16835F",borderColor:"#16835F"},\n   languageCheckMark:{color:"#FFFFFF",fontSize:17,fontWeight:"900"},\n   languageSaved:{color:"#126347",fontSize:14,fontWeight:"900",marginTop:13},\n   modulePage: { paddingBottom: 28 },
+   languageCard:{backgroundColor:"#F0F7F5",borderColor:"#8BCDB5",borderWidth:1.5,borderRadius:16,padding:15,marginBottom:18},\n   languageTitle:{color:"#102A43",fontSize:19,fontWeight:"900"},\n   languageHint:{color:"#40566B",fontSize:15,lineHeight:22,marginTop:5,marginBottom:12},\n   languageOption:{flexDirection:"row",alignItems:"center",backgroundColor:"#FFFFFF",borderWidth:1.5,borderColor:"#D2DEE7",borderRadius:13,padding:13,marginTop:9,minHeight:70},\n   languageOptionSelected:{borderColor:"#16835F",backgroundColor:"#E8F7F0"},\n   languageFlag:{fontSize:26,marginRight:12},\n   languageCopy:{flex:1},\n   languageOptionTitle:{color:"#142D42",fontSize:17,fontWeight:"900"},\n   languageOptionSubtitle:{color:"#40566B",fontSize:14,marginTop:3},\n   languageCheck:{width:27,height:27,borderRadius:14,borderWidth:2,borderColor:"#91A4B5",alignItems:"center",justifyContent:"center"},\n   languageCheckSelected:{backgroundColor:"#16835F",borderColor:"#16835F"},\n   languageCheckMark:{color:"#FFFFFF",fontSize:17,fontWeight:"900"},\n   languageSaved:{color:"#126347",fontSize:14,fontWeight:"900",marginTop:13},\n   languageCard:{backgroundColor:"#F0F7F5",borderColor:"#8BCDB5",borderWidth:1.5,borderRadius:16,padding:15,marginBottom:18},
+   languageTitle:{color:"#102A43",fontSize:19,fontWeight:"900"},
+   languageHint:{color:"#40566B",fontSize:15,lineHeight:22,marginTop:5,marginBottom:12},
+   languageOption:{flexDirection:"row",alignItems:"center",backgroundColor:"#FFFFFF",borderWidth:1.5,borderColor:"#D2DEE7",borderRadius:13,padding:13,marginTop:9,minHeight:70},
+   languageOptionSelected:{borderColor:"#16835F",backgroundColor:"#E8F7F0"},
+   languageFlag:{fontSize:26,marginRight:12},
+   languageCopy:{flex:1},
+   languageOptionTitle:{color:"#142D42",fontSize:17,fontWeight:"900"},
+   languageOptionSubtitle:{color:"#40566B",fontSize:14,marginTop:3},
+   languageCheck:{width:27,height:27,borderRadius:14,borderWidth:2,borderColor:"#91A4B5",alignItems:"center",justifyContent:"center"},
+   languageCheckSelected:{backgroundColor:"#16835F",borderColor:"#16835F"},
+   languageCheckMark:{color:"#FFFFFF",fontSize:17,fontWeight:"900"},
+   languageSaved:{color:"#126347",fontSize:14,fontWeight:"900",marginTop:13},
+   modulePage: { paddingBottom: 28 },
   logoutBar:{alignSelf:"flex-end",backgroundColor:"#173D36",borderWidth:1,borderColor:"#43C99A",borderRadius:10,paddingHorizontal:15,paddingVertical:10,marginBottom:12},
   logoutBarText:{color:"#75E0B8",fontSize:14,fontWeight:"900"},
 
