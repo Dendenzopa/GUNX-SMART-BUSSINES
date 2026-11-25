@@ -1,5 +1,6 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
+import * as ImagePicker from "expo-image-picker";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
@@ -25,6 +26,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [password, setPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [shopName, setShopName] = useState("");
+  const [onboardingStep, setOnboardingStep] = useState<"business" | "photo">("business");
+  const [businessImageUri, setBusinessImageUri] = useState<string | null>(null);
+  const [ownerDisplayName, setOwnerDisplayName] = useState("Mmiliki wa Biashara");
   const [needsShop, setNeedsShop] = useState(false);
   const [shopId, setShopId] = useState<string | null>(null);
   const [shopRole, setShopRole] = useState<ShopRole | null>(null);
@@ -130,7 +134,12 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       const admin = !adminResult.error && adminResult.data === true;
       if (membershipResult.error) setMessage("Imeshindikana kusoma duka: " + membershipResult.error.message);
       setIsPlatformAdmin(admin);
-      setNeedsShop(!membershipResult.data && !membershipResult.error && !admin);
+      const hasMembership = Boolean(membershipResult.data);
+      setNeedsShop(!hasMembership && !membershipResult.error && !admin);
+      const metadata = session.user.user_metadata ?? {};
+      const googleIdentity = session.user.identities?.find((item: any) => item.provider === "google")?.identity_data ?? {};
+      const displayName = googleIdentity.name ?? googleIdentity.full_name ?? metadata.full_name ?? metadata.name ?? metadata.display_name ?? session.user.email ?? "Mmiliki wa Biashara";
+      setOwnerDisplayName(typeof displayName === "string" && displayName.trim() ? displayName.trim() : "Mmiliki wa Biashara");
       setShopId(membershipResult.data?.shop_id ?? null);
       setShopRole((membershipResult.data?.role as ShopRole | undefined) ?? null);
       setShopLoading(false);
@@ -214,13 +223,57 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     } else setMessage("Google login haijarudisha link. Hakikisha Google provider imewezeshwa Supabase.");
   }
 
-  async function createShop() {
-    if (!supabase || shopName.trim().length < 2) { setMessage("Jina la duka liwe na angalau herufi 2."); return; }
+  async function createShopAndContinue(skipName = false) {
+    if (!supabase) return;
+    const name = shopName.trim() || (skipName ? "Biashara Yangu" : "");
+    if (name.length < 2) { setMessage("Tafadhali andika jina la biashara yako."); return; }
+    if (name.length > 120) { setMessage("Jina la biashara lisizidi herufi 120."); return; }
     setBusy(true); setMessage("");
-    const { error } = await supabase.rpc("create_shop", { p_name: shopName.trim() });
+    const { data: createdShopId, error } = await supabase.rpc("create_shop", { p_name: name });
+    if (error) { setBusy(false); setMessage("Biashara haikuundwa: " + error.message); return; }
+    const { data, error: membershipError } = await supabase.from("shop_members").select("shop_id,role").eq("user_id", session?.user.id).limit(1).maybeSingle();
+    const resolvedShopId = createdShopId ?? data?.shop_id ?? null;
     setBusy(false);
-    if (error) setMessage("Duka halikuundwa: " + error.message);
-    else { const { data } = await supabase.from("shop_members").select("shop_id,role").eq("user_id", (await supabase.auth.getUser()).data.user?.id).limit(1).maybeSingle(); setShopId(data?.shop_id ?? null); setShopRole((data?.role as ShopRole | undefined) ?? null); setNeedsShop(!data && !isPlatformAdmin); }
+    if (membershipError || !resolvedShopId) { setMessage("Biashara imeundwa lakini haikuweza kuthibitisha akaunti ya mmiliki. Jaribu tena."); return; }
+    setShopId(resolvedShopId);
+    setShopRole((data?.role as ShopRole | undefined) ?? "owner");
+    setOnboardingStep("photo");
+    setMessage("Taarifa za biashara zimehifadhiwa. Sasa unaweza kuweka picha au logo.");
+  }
+
+  async function uploadBusinessImage() {
+    if (!supabase || !shopId || !session) return;
+    setBusy(true); setMessage("");
+    try {
+      let uri = businessImageUri;
+      if (!uri) {
+        const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
+        if (!permission.granted) { setMessage("Ruhusu GUNX kufungua picha kwenye simu yako."); setBusy(false); return; }
+        const picked = await ImagePicker.launchImageLibraryAsync({ mediaTypes: ["images"], allowsEditing: true, aspect: [1, 1], quality: 0.82 });
+        if (picked.canceled || !picked.assets?.[0]?.uri) { setBusy(false); return; }
+        uri = picked.assets[0].uri;
+        setBusinessImageUri(uri);
+      }
+      const response = await fetch(uri);
+      const blob = await response.blob();
+      const extension = (uri.split(".").pop()?.split("?")[0] || "jpg").toLowerCase();
+      const contentType = blob.type || (extension === "png" ? "image/png" : "image/jpeg");
+      const path = shopId + "/" + session.user.id + "/business-" + Date.now() + "." + (extension === "png" ? "png" : "jpg");
+      const { error: uploadError } = await supabase.storage.from("business-assets").upload(path, blob, { contentType, upsert: true, cacheControl: "3600" });
+      if (uploadError) throw uploadError;
+      const { data: publicUrl } = supabase.storage.from("business-assets").getPublicUrl(path);
+      const { error: updateError } = await supabase.from("shops").update({ hero_media_type: "business_logo", hero_media_url: publicUrl.publicUrl }).eq("id", shopId);
+      if (updateError) throw updateError;
+      setNeedsShop(false);
+      setMessage("Logo/picha ya biashara imehifadhiwa.");
+    } catch (error) {
+      setMessage("Picha haikuhifadhiwa: " + (error instanceof Error ? error.message : "Jaribu tena."));
+    } finally { setBusy(false); }
+  }
+
+  function skipBusinessPhoto() {
+    setNeedsShop(false);
+    setMessage("");
   }
 
   if (!supabaseConfigured) return <>{children}</>;
@@ -261,12 +314,55 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     </ScrollView>
   </SafeAreaView>;
   if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
-  if (needsShop) return <SafeAreaView style={a.safe}><View style={a.card}><Text style={a.brand}>GUNX SMART BUSINESS</Text><Text style={a.title}>Unda duka lako</Text><Text style={a.copy}>Akaunti yako imeingia. Weka jina la biashara ili kuanzisha workspace.</Text><TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la duka / biashara" placeholderTextColor="#8194A5" style={a.input}/><Pressable disabled={busy} onPress={createShop} style={a.button}><Text style={a.buttonText}>{busy ? "Inaunda..." : "Unda duka"}</Text></Pressable>{!!message&&<Text style={a.message}>{message}</Text>}<Pressable onPress={()=>supabase?.auth.signOut()}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
+  if (needsShop) return <SafeAreaView style={a.onboardingSafe}>
+    <ScrollView contentContainerStyle={a.onboardingScroll} keyboardShouldPersistTaps="handled">
+      <View style={a.onboardingTop}>
+        <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.onboardingLogo} resizeMode="contain"/>
+      </View>
+      <View style={a.onboardingContent}>
+        <Text style={a.welcome}>Karibu {ownerDisplayName}, Ahsante kwa kuchagua GUNX SMART BUSINESS</Text>
+        <Text style={a.tagline}>Think Big, Build Smart, Grow beyond</Text>
+        {onboardingStep === "business" ? <>
+          <Text style={a.prompt}>Tafadhali Andika Jina la Kampuni yako au Biashara yako</Text>
+          <TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la Kampuni / Biashara" placeholderTextColor="#8291A8" style={a.onboardingInput} maxLength={120}/>
+          <Pressable disabled={busy} onPress={()=>void createShopAndContinue(false)} style={a.onboardingButton}><Text style={a.onboardingButtonText}>{busy ? "Inahifadhi..." : "Create"}</Text></Pressable>
+          <Pressable disabled={busy} onPress={()=>void createShopAndContinue(true)} style={a.skipButton}><Text style={a.skipText}>Skip</Text></Pressable>
+        </> : <>
+          <Text style={a.prompt}>Pakia Picha ya Biashara yako, Logo au Icon</Text>
+          <Pressable disabled={busy} onPress={()=>void uploadBusinessImage()} style={a.uploadArea}>
+            {businessImageUri ? <Image source={{uri:businessImageUri}} style={a.previewImage} resizeMode="cover"/> : <><Text style={a.uploadIcon}>＋</Text><Text style={a.uploadHint}>Chagua picha, logo au icon kutoka kwenye simu</Text></>}
+          </Pressable>
+          <Pressable disabled={busy} onPress={()=>void uploadBusinessImage()} style={a.onboardingButton}><Text style={a.onboardingButtonText}>{busy ? "Inapakia..." : "Create"}</Text></Pressable>
+          <Pressable disabled={busy} onPress={skipBusinessPhoto} style={a.skipButton}><Text style={a.skipText}>Skip</Text></Pressable>
+        </>}
+        {!!message&&<Text style={a.onboardingMessage}>{message}</Text>}
+        <Pressable disabled={busy} onPress={signOut}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable>
+      </View>
+    </ScrollView>
+  </SafeAreaView>;
   return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole, signOut }}>{children}</ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
   safe:{flex:1,backgroundColor:"#FFFFFF",paddingHorizontal:22},
+  onboardingSafe:{flex:1,backgroundColor:"#F8FAFC"},
+  onboardingScroll:{flexGrow:1,paddingBottom:30},
+  onboardingTop:{backgroundColor:"#0B1F4A",minHeight:180,alignItems:"center",justifyContent:"center",paddingTop:24,paddingBottom:20,borderBottomLeftRadius:30,borderBottomRightRadius:30},
+  onboardingLogo:{width:250,height:135,alignSelf:"center"},
+  onboardingContent:{width:"100%",maxWidth:480,alignSelf:"center",paddingHorizontal:22,paddingTop:27},
+  welcome:{color:"#0B1F4A",fontSize:22,lineHeight:31,fontWeight:"900",textAlign:"center"},
+  tagline:{color:"#0B1F4A",fontSize:14,fontWeight:"800",letterSpacing:.4,textAlign:"center",marginTop:11,marginBottom:27},
+  prompt:{color:"#102B63",fontSize:16,lineHeight:24,fontWeight:"800",marginBottom:12},
+  onboardingInput:{minHeight:56,borderWidth:1.4,borderColor:"#B7C5D9",borderRadius:13,backgroundColor:"#FFFFFF",paddingHorizontal:15,color:"#14264A",fontSize:15},
+  onboardingButton:{minHeight:54,backgroundColor:"#079B45",borderRadius:13,alignItems:"center",justifyContent:"center",marginTop:17,elevation:2},
+  onboardingButtonText:{color:"#FFFFFF",fontSize:17,fontWeight:"900",letterSpacing:.5},
+  skipButton:{alignItems:"center",justifyContent:"center",paddingVertical:15},
+  skipText:{color:"#155EEF",fontSize:15,fontWeight:"800"},
+  uploadArea:{minHeight:165,borderWidth:1.5,borderColor:"#AAB9D4",borderStyle:"dashed",borderRadius:16,backgroundColor:"#FFFFFF",alignItems:"center",justifyContent:"center",padding:14},
+  uploadIcon:{color:"#079B45",fontSize:42,fontWeight:"400"},
+  uploadHint:{color:"#64748B",fontSize:13,textAlign:"center",marginTop:8},
+  previewImage:{width:132,height:132,borderRadius:14},
+  onboardingMessage:{color:"#8A5B00",fontSize:12,lineHeight:18,marginTop:14,textAlign:"center"},
   authScroll:{flexGrow:1,justifyContent:"center",paddingTop:42,paddingBottom:28},
   authContent:{width:"100%",maxWidth:440,alignSelf:"center",backgroundColor:"#FFFFFF",paddingHorizontal:8,paddingTop:20,paddingBottom:12},
   logoImage:{width:300,height:190,alignSelf:"center",marginTop:0,marginBottom:14},
