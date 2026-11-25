@@ -2,6 +2,15 @@ import React, { useCallback, useEffect, useState } from "react";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
 
+type SubscriptionMetrics = {
+  total_subscriptions:number;
+  active_pro:number;
+  pending_payments:number;
+  verified_payments:number;
+  rejected_payments:number;
+  verified_revenue_tzs:number;
+};
+
 type Metrics = {
   total_installs: number;
   installs_7d: number;
@@ -428,6 +437,7 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 
 export default function PlatformOwnerDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
+  const [subscriptionMetrics, setSubscriptionMetrics] = useState<SubscriptionMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("Inapakia takwimu za mfumo...");
   const [showNotice, setShowNotice] = useState(false);
@@ -442,20 +452,26 @@ export default function PlatformOwnerDashboard() {
       return;
     }
     setLoading(true);
-    const { data, error } = await supabase.rpc("get_platform_metrics");
-    if (error) {
+    const [platformResult, subscriptionResult] = await Promise.all([
+      supabase.rpc("get_platform_metrics"),
+      supabase.rpc("get_platform_subscription_metrics")
+    ]);
+    if (platformResult.error) {
       setMetrics(null);
-      setNotice("Takwimu hazijapatikana: " + error.message + ". Hakikisha migration 0018 imetumika na akaunti imepewa Platform Admin.");
+      setNotice("Takwimu hazijapatikana: " + platformResult.error.message + ". Hakikisha akaunti imepewa Platform Admin.");
     } else {
-      setMetrics(data as Metrics);
+      setMetrics(platformResult.data as Metrics);
       setNotice("Takwimu zimechukuliwa moja kwa moja kutoka Supabase.");
     }
+    if (subscriptionResult.error) setSubscriptionMetrics(null);
+    else setSubscriptionMetrics(subscriptionResult.data as SubscriptionMetrics);
     setLoading(false);
   }, []);
 
   useEffect(() => { void load(); }, [load]);
 
   const unavailable = "--";
+  const verifiedRevenue = subscriptionMetrics ? "TZS " + Number(subscriptionMetrics.verified_revenue_tzs || 0).toLocaleString("en-US") : loading ? "…" : unavailable;
   const openModule = (name: string) => setSelectedModule(name);
   const showBusinesses = () => setSelectedModule("All Businesses");
 
@@ -518,7 +534,7 @@ export default function PlatformOwnerDashboard() {
           <View style={s.statsGrid}>
             <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" onPress={() => openModule("All Businesses")}/>
             <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" onPress={() => openModule("Users")}/>
-            <StatCard icon="📈" label="Jumla ya Mapato" value={unavailable} tone="gold" onPress={() => openModule("Revenue")}/>
+            <StatCard icon="📈" label="Mapato Yaliyothibitishwa" value={verifiedRevenue} tone="gold" onPress={() => openModule("Revenue")}/>
             <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="green" onPress={() => openModule("Health")}/>
           </View>
           <Text style={s.metricFootnote}>
