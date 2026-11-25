@@ -142,7 +142,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     return () => { active = false; };
   }, [session]);
 
-  async function signOut() {\n    if (!supabase) return;\n    setBusy(true);\n    const { error } = await supabase.auth.signOut();\n    setBusy(false);\n    if (error) setMessage("Imeshindikana kutoka kwenye akaunti: " + error.message);\n  }\n\n  async function authenticate() {
+  async function signOut() {
+    if (!supabase) return;
+    setBusy(true);
+    const { error } = await supabase.auth.signOut();
+    setBusy(false);
+    if (error) setMessage("Imeshindikana kutoka kwenye akaunti: " + error.message);
+  }
+
+  async function authenticate() {
     if (!supabase) return;
     if (!email.trim() || password.length < 8) { setMessage("Weka email na password yenye angalau herufi 8."); return; }
     setBusy(true); setMessage("");
