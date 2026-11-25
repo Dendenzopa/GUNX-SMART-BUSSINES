@@ -96,6 +96,12 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
 
   useEffect(() => { void load(); }, [load]);
 
+  async function signOut() {
+    if (!supabase) return;
+    const { error: signOutError } = await supabase.auth.signOut();
+    if (signOutError) setError(signOutError.message);
+  }
+
   function renderOverview() {
     return <>
       <View style={s.hero}>
@@ -186,7 +192,7 @@ export default function SuperAdminDashboard({ onOpenBusiness }: { onOpenBusiness
         <Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={s.logo} resizeMode="contain" />
         <View style={s.brandCopy}><Text style={s.eyebrow}>GUNX PLATFORM</Text><Text style={s.brand}>SUPER ADMIN</Text><Text style={s.muted}>Platform Control Center</Text></View>
       </View>
-      <ActionButton label="Refresh" quiet onPress={() => void load()} />
+      <View style={s.headerActions}><ActionButton label="Refresh" quiet onPress={() => void load()} /><ActionButton label="Sign out" onPress={() => void signOut()} /></View>
     </View>
     <View style={s.privacy}><Text style={s.privacyTitle}>Your Business, Your Data, Your Privacy.</Text><Text style={s.privacyCopy}>Super Admin huona takwimu za jukwaa na taarifa za GUNX subscriptions pekee. Mauzo, faida, gharama na wateja wa biashara binafsi havionyeshwi.</Text></View>
     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={s.navScroll}><View style={s.nav}>{tabs.map(item => <Pressable key={item} onPress={() => { setTab(item); setError(""); }} style={[s.navItem, tab === item && s.navActive]}><Text style={[s.navText, tab === item && s.navTextActive]}>{item}</Text></Pressable>)}</View></ScrollView>
@@ -211,6 +217,7 @@ const s = StyleSheet.create({
   safe: { flex: 1, backgroundColor: "#081522" },
   header: { paddingHorizontal: 16, paddingTop: 12, paddingBottom: 10, flexDirection: "row", alignItems: "center", justifyContent: "space-between" },
   brandRow: { flexDirection: "row", alignItems: "center", gap: 10, flex: 1 },
+  headerActions: { gap: 6, alignItems: "flex-end" },
   logo: { width: 62, height: 52 },
   brandCopy: { flex: 1 },
   brand: { color: "#F4F7FA", fontSize: 19, fontWeight: "900", letterSpacing: 0.7 },
