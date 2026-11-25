@@ -11,6 +11,7 @@ import { readPendingSales, writePendingSales, readCachedProducts, writeCachedPro
 import { exportBusinessReportPdf, exportBusinessReportCsv } from "./src/services/reportExports";
 import StaffManagement from "./src/components/StaffManagement";
 import SubscriptionManagement from "./src/components/SubscriptionManagement";
+import SuperAdminDashboard from "./src/components/SuperAdminDashboard";
 type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Returns" | "Sync" | "Payments" | "Reports" | "Staff" | "Subscription";
 type CartLine = { productId: string; quantity: number };
 function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
@@ -328,4 +329,9 @@ const s=StyleSheet.create({
 });
 
 
-export default function App() { return <AuthGate><Dashboard /></AuthGate>; }
+function AppContent() {
+ const { isPlatformAdmin } = useShopContext();
+ return isPlatformAdmin ? <SuperAdminDashboard /> : <Dashboard />;
+}
+
+export default function App() { return <AuthGate><AppContent /></AuthGate>; }
