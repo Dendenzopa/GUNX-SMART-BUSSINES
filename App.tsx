@@ -30,12 +30,14 @@ function Dashboard() {
  const visibleScreens = [...allowedScreens[effectiveRole], ...(isPlatformAdmin ? ["Owner" as Screen] : [])];
  const [screen,setScreen]=useState<Screen>("Home");
  const [showMore,setShowMore]=useState(false);
+ const screenRef=useRef<Screen>("Home");
  const screenHistory=useRef<Screen[]>([]);
- const navigateTo=(next:Screen)=>{if(next===screen)return;screenHistory.current.push(screen);setScreen(next);setShowMore(false);};
- const goBack=()=>{const previous=screenHistory.current.pop();if(previous&&visibleScreens.includes(previous)){setScreen(previous);return true;}if(screen==="Owner"&&isPlatformAdmin){setScreen("Home");return true;}return false;};
- useEffect(()=>{const subscription=BackHandler.addEventListener("hardwareBackPress",()=>{if(showMore){setShowMore(false);return true;}return goBack();});return ()=>subscription.remove();},[screen,showMore,isPlatformAdmin,visibleScreens.join("|")]);
- useEffect(()=>{if(!visibleScreens.includes(screen))setScreen("Home");},[screen,shopRole,isPlatformAdmin]);
- useEffect(()=>{if(isPlatformAdmin)setScreen("Owner");},[isPlatformAdmin]);
+ const navigateTo=(next:Screen)=>{const current=screenRef.current;if(next===current)return;screenHistory.current.push(current);screenRef.current=next;setScreen(next);setShowMore(false);};
+ const resetToHome=()=>{screenHistory.current=[];screenRef.current="Home";setScreen("Home");setShowMore(false);};
+ const goBack=()=>{if(showMore){setShowMore(false);return true;}const current=screenRef.current;let previous:Screen|undefined;while(screenHistory.current.length){const candidate=screenHistory.current.pop()!;if(visibleScreens.includes(candidate)){previous=candidate;break;}}if(previous){screenRef.current=previous;setScreen(previous);return true;}if(current!=="Home"){screenRef.current="Home";setScreen("Home");return true;}return false;};
+ useEffect(()=>{const subscription=BackHandler.addEventListener("hardwareBackPress",()=>goBack());return ()=>subscription.remove();},[showMore,isPlatformAdmin,visibleScreens.join("|")]);
+ useEffect(()=>{if(!visibleScreens.includes(screen)){screenHistory.current=[];screenRef.current="Home";resetToHome();}},[screen,shopRole,isPlatformAdmin]);
+ useEffect(()=>{if(isPlatformAdmin){screenHistory.current=[];screenRef.current="Owner";setScreen("Owner");}},[isPlatformAdmin]);
  const [products,setProducts]=useState<Product[]>(supabaseConfigured ? [] : demoProducts);
  const [sales,setSales]=useState<Sale[]>(supabaseConfigured ? [] : demoSales);
  const [refundTotal,setRefundTotal]=useState(0);
@@ -300,7 +302,7 @@ function Dashboard() {
   setProducts(current=>current.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:Math.max(0,p.stockQuantity-line.quantity)}:p;}));
   setCart([]);setPendingCheckoutKey(null);
   setNotice("Mauzo yamehifadhiwa kwenye simu bila mtandao. Yatasawazishwa mtandao utakaporudi; bado hayajathibitishwa na server.");
-  setScreen("Home");
+  resetToHome();
  }
  async function checkout() {
   if(!cart.length){setNotice("Add a product before checkout.");return;}
@@ -316,7 +318,7 @@ function Dashboard() {
     const {data,error}=await supabase.from("products").select("id,name,sku,unit,cost_price,selling_price,stock_quantity,reorder_level,active").eq("shop_id",shopId).eq("active",true).order("name");
     if(!error&&data){const mapped=data.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);void writeCachedProducts(shopId,mapped);}
     setNotice("Mauzo yamehifadhiwa: "+result.receiptNumber+" · "+formatTZS(result.total));
-    setScreen("Home");
+    resetToHome();
    } catch(e) { const network=await NetInfo.fetch();if(!network.isConnected){try{await queueOfflineCheckout(key);}catch(queueError){setNotice("Mtandao umekatika na mauzo hayajahifadhiwa offline: "+(queueError instanceof Error?queueError.message:"hitilafu"));}}else{setNotice("Mauzo hayajakamilika: "+(e instanceof Error?e.message:"Hitilafu isiyojulikana")+". Hakikisha muamala haujakamilika kabla ya kujaribu tena.");} }
    finally { setCloudLoading(false); }
    return;
@@ -325,7 +327,7 @@ function Dashboard() {
   const lines=cart.map(x=>{const p=products.find(y=>y.id===x.productId)!;return {productId:p.id,productName:p.name,quantity:x.quantity,unitPrice:p.sellingPrice,unitCost:p.costPrice,lineTotal:p.sellingPrice*x.quantity};});
   const total=lines.reduce((a,x)=>a+x.lineTotal,0);
   const sale:Sale={id:"local-"+Date.now(),receiptNumber:"DEMO-"+String(sales.length+1).padStart(4,"0"),createdAt:new Date().toISOString(),lines,subtotal:total,discount:0,total,amountPaid:total,balance:0,paymentMethod:"cash",status:"completed"};
-  setSales(v=>[sale,...v]);setProducts(v=>v.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:p.stockQuantity-line.quantity}:p;}));setCart([]);setNotice("Demo checkout completed: "+sale.receiptNumber);setScreen("Home");
+  setSales(v=>[sale,...v]);setProducts(v=>v.map(p=>{const line=cart.find(x=>x.productId===p.id);return line?{...p,stockQuantity:p.stockQuantity-line.quantity}:p;}));setCart([]);setNotice("Demo checkout completed: "+sale.receiptNumber);resetToHome();
  }
  if (screen === "Owner" && isPlatformAdmin) {
   return (
