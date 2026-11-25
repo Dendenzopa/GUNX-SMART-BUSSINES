@@ -1,0 +1,32 @@
+name: Owner Dashboard Validation
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "App.tsx"
+      - "package.json"
+      - "app.json"
+      - "tsconfig.json"
+      - ".github/workflows/owner-dashboard-check.yml"
+  push:
+    branches: [preview/owner-dashboard-reference]
+
+jobs:
+  validate:
+    name: TypeScript and Expo web export
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+      - name: Install dependencies
+        run: npm install
+      - name: TypeScript validation
+        run: npm run typecheck
+      - name: Export Expo web build
+        run: npm run build:web
