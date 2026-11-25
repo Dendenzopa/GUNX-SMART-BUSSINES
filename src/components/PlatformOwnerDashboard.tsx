@@ -14,7 +14,7 @@ type Metrics = {
 
 function StatCard({ icon, label, value, tone }: { icon: string; label: string; value: string; tone: "blue" | "gold" | "green" }) {
   return (
-    <View style={s.statCard}>
+    <View style={[s.statCard, tone === "blue" ? s.statBlueCard : tone === "gold" ? s.statGoldCard : s.statGreenCard]}>
       <View style={[s.statIcon, tone === "blue" ? s.blueIcon : tone === "gold" ? s.goldIcon : s.greenIcon]}>
         <Text style={[s.statIconText, tone === "blue" ? s.blueText : tone === "gold" ? s.goldText : s.greenText]}>{icon}</Text>
       </View>
@@ -194,7 +194,7 @@ export default function PlatformOwnerDashboard() {
           onPress={() => setNotificationsOpen(value => !value)}
           style={s.bellButton}
         >
-          <Text style={s.bell}>♧</Text>
+          <Text style={s.bell}>🔔</Text>
           <View style={s.bellDot} />
         </Pressable>
       </View>
@@ -239,8 +239,8 @@ export default function PlatformOwnerDashboard() {
           <View style={s.statsGrid}>
             <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
             <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue"/>
-            <StatCard icon="📈" label="Jumla ya Mapato" value={unavailable} tone="blue"/>
-            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="blue"/>
+            <StatCard icon="📈" label="Jumla ya Mapato" value={unavailable} tone="gold"/>
+            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="green"/>
           </View>
           <Text style={s.metricFootnote}>
             Watumiaji hai: {metrics ? metrics.active_7d.toLocaleString("en-US") + " (siku 7) · " + metrics.active_30d.toLocaleString("en-US") + " (siku 30)" : "Takwimu za shughuli zitaonekana baada ya server kurudisha data."}
@@ -359,7 +359,10 @@ const s = StyleSheet.create({
   loading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, padding: 11, backgroundColor: "#D3E4F8", borderRadius: 10, marginBottom: 10 },
   loadingText: { color: "#1E293B", fontSize: 10 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  statCard: { width: "48%", minHeight: 154, padding: 16, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C7DCF4", justifyContent: "center" },
+  statCard: { width: "48%", minHeight: 154, padding: 16, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", justifyContent: "center" },
+  statBlueCard: { backgroundColor: "#C7DCF4" },
+  statGoldCard: { backgroundColor: "#FFFFFF", borderColor: "#D9B96F" },
+  statGreenCard: { backgroundColor: "#FFFFFF", borderColor: "#7CC9A5" },
   statIcon: { width: 62, height: 62, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 9, backgroundColor: "rgba(255,255,255,0.62)" },
   blueIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
   goldIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
