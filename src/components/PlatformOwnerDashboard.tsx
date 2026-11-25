@@ -588,7 +588,7 @@ export default function PlatformOwnerDashboard() {
 const s = StyleSheet.create({
    modulePage: { paddingBottom: 28 },
   logoutBar:{alignSelf:"flex-end",backgroundColor:"#173D36",borderWidth:1,borderColor:"#43C99A",borderRadius:10,paddingHorizontal:15,paddingVertical:10,marginBottom:12},
-  logoutBarText:{color:"#176B56",fontSize:14,fontWeight:"900"},
+  logoutBarText:{color:"#75E0B8",fontSize:14,fontWeight:"900"},
 
   dataToolbar:{flexDirection:"row",gap:8,marginBottom:10},
   dataCount:{color:"#52697C",fontSize: 14,fontWeight:"800",marginBottom:8},
