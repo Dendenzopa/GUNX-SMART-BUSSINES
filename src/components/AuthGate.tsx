@@ -220,7 +220,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (!session || mode === "reset") return <SafeAreaView style={a.safe}>
     <ScrollView contentContainerStyle={a.authScroll} keyboardShouldPersistTaps="handled">
     <View style={a.authContent}>
-      <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} style={a.logoImage} resizeMode="contain"/>
+      <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/1795472814228.jpg")} style={a.logoImage} resizeMode="contain"/>
       <Text style={a.title}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Umesahau password?" : mode === "reset" ? "Weka password mpya" : "Ingia kwenye akaunti yako"}</Text>
       {mode === "login" && <>
         <Pressable disabled={busy} onPress={signInWithGoogle} style={a.googleButton}>
