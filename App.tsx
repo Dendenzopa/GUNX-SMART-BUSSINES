@@ -21,14 +21,14 @@ function Metric({label,value}:{label:string;value:string}) { return <View style=
 function makeIdempotencyKey() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => { const r = Math.floor(Math.random()*16); return (ch==="x"?r:(r&3)|8).toString(16); }); }
 function Dashboard() {
  const { shopId, isPlatformAdmin, shopRole, userId, signOut } = useShopContext();
- const effectiveRole = shopRole ?? (supabaseConfigured ? "cashier" : "owner");
+ const effectiveRole = shopRole ?? "owner";
  const allowedScreens: Record<"owner"|"manager"|"cashier"|"stockkeeper", Screen[]> = {
   owner: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"],
   manager: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Reports"],
   cashier: ["Home","POS","Debts","Sync"],
   stockkeeper: ["Home","Stock"]
  };
- const visibleScreens = [...allowedScreens[effectiveRole], ...(isPlatformAdmin ? ["Owner" as Screen] : [])];
+ const visibleScreens = isPlatformAdmin ? ["Owner" as Screen] : allowedScreens[effectiveRole];
  const [screen,setScreen]=useState<Screen>("Home");
  const [showMore,setShowMore]=useState(false);
  const screenRef=useRef<Screen>("Home");
