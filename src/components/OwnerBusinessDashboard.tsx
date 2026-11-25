@@ -36,6 +36,27 @@ function profileFromUser(user: any) {
   };
 }
 
+
+function smoothLinePoints(points: Array<{ x: number; y: number }>) {
+  if (points.length < 3) return points;
+  const result = [points[0]];
+  for (let index = 0; index < points.length - 1; index += 1) {
+    const p0 = points[Math.max(0, index - 1)];
+    const p1 = points[index];
+    const p2 = points[index + 1];
+    const p3 = points[Math.min(points.length - 1, index + 2)];
+    for (let step = 1; step <= 5; step += 1) {
+      const t = step / 5;
+      const t2 = t * t;
+      const t3 = t2 * t;
+      const interpolate = (a: number, b: number, d: number, e: number) =>
+        0.5 * ((2 * b) + (-a + d) * t + (2 * a - 5 * b + 4 * d - e) * t2 + (-a + 3 * b - 3 * d + e) * t3);
+      result.push({ x: interpolate(p0.x, p1.x, p2.x, p3.x), y: interpolate(p0.y, p1.y, p2.y, p3.y) });
+    }
+  }
+  return result;
+}
+
 export default function OwnerBusinessDashboard({ shopId, sales, products, expenses, debts, pendingSales, notice, online, onNavigate }: Props) {
   const [businessName, setBusinessName] = useState("Biashara Yangu");
   const [ownerName, setOwnerName] = useState("Mmiliki wa Biashara");
@@ -140,7 +161,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
     y: 91 - (point.amount / chartMax) * 68,
   }));
 
-  const pickHeroMedia = async (type: HeroMediaType) => {
+  const smoothCoords = smoothLinePoints(chartCoords);\n\n  const pickHeroMedia = async (type: HeroMediaType) => {
     setMenuOpen(false);
     const permission = await ImagePicker.requestMediaLibraryPermissionsAsync();
     if (!permission.granted) return;
