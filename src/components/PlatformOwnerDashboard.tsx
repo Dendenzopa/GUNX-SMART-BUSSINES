@@ -1,6 +1,8 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { BackHandler } from "react-native";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import { supabase } from "../lib/supabase";
+import { useShopContext } from "./AuthGate";
 
 type SubscriptionMetrics = {
   total_subscriptions:number;
@@ -436,12 +438,21 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 }
 
 export default function PlatformOwnerDashboard() {
+  const { signOut } = useShopContext();
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [subscriptionMetrics, setSubscriptionMetrics] = useState<SubscriptionMetrics | null>(null);
   const [loading, setLoading] = useState(true);
   const [notice, setNotice] = useState("Inapakia takwimu za mfumo...");
   const [showNotice, setShowNotice] = useState(false);
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
+
+  useEffect(() => {
+    const subscription = BackHandler.addEventListener("hardwareBackPress", () => {
+      if (selectedModule) { setSelectedModule(null); return true; }
+      return false;
+    });
+    return () => subscription.remove();
+  }, [selectedModule]);
 
 
   const load = useCallback(async () => {
@@ -504,6 +515,9 @@ export default function PlatformOwnerDashboard() {
           <View style={s.bellDot} />
         </Pressable>
       </View>
+      <Pressable accessibilityRole="button" onPress={() => void signOut()} style={s.logoutBar}>
+        <Text style={s.logoutBarText}>⇥  TOKA KWENYE AKAUNTI</Text>
+      </Pressable>
 
       {selectedModule === "All Businesses" ? (
         <BusinessDirectory onBack={() => setSelectedModule(null)} />
@@ -573,6 +587,8 @@ export default function PlatformOwnerDashboard() {
 
 const s = StyleSheet.create({
    modulePage: { paddingBottom: 28 },
+  logoutBar:{alignSelf:"flex-end",backgroundColor:"#173D36",borderWidth:1,borderColor:"#43C99A",borderRadius:10,paddingHorizontal:15,paddingVertical:10,marginBottom:12},
+  logoutBarText:{color:"#176B56",fontSize:14,fontWeight:"900"},
 
   dataToolbar:{flexDirection:"row",gap:8,marginBottom:10},
   dataCount:{color:"#52697C",fontSize: 14,fontWeight:"800",marginBottom:8},
