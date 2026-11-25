@@ -239,6 +239,9 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable onPress={() => onNavigate("Staff")} style={[s.serviceTile, { backgroundColor: "#7C3AED" }]}>
           <Text style={s.serviceIcon}>👥</Text><Text style={s.serviceLabel}>Wafanyakazi</Text>
         </Pressable>
+        <Pressable onPress={() => onNavigate("Reports")} style={[s.serviceTile, { backgroundColor: "#D69E0B" }]}>
+          <Text style={s.serviceIcon}>📄</Text><Text style={s.serviceLabel}>Ripoti</Text>
+        </Pressable>
       </View>
 
       <View style={s.midSection}>
@@ -342,7 +345,11 @@ const s = StyleSheet.create({
   headerIconText: { color: "#FFFFFF", fontSize: 22, fontWeight: "900" },
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },
   heroIdentity: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, gap: 12 },
-  heroCopy: { flex: 1 },\n  ownerEmailText: { color: "#CBD5E1", fontSize: 8, marginTop: 2 },\n  verifiedPill: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", backgroundColor: "#15803D", borderRadius: 20, paddingHorizontal: 7, paddingVertical: 3, marginTop: 5, gap: 4 },\n  verifiedCheck: { color: "#15803D", backgroundColor: "#FFFFFF", width: 13, height: 13, borderRadius: 7, textAlign: "center", fontSize: 9, fontWeight: "900", overflow: "hidden" },\n  verifiedText: { color: "#FFFFFF", fontSize: 8, fontWeight: "900" },
+  heroCopy: { flex: 1 },
+  ownerEmailText: { color: "#CBD5E1", fontSize: 8, marginTop: 2 },
+  verifiedPill: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", backgroundColor: "#15803D", borderRadius: 20, paddingHorizontal: 7, paddingVertical: 3, marginTop: 5, gap: 4 },
+  verifiedCheck: { color: "#15803D", backgroundColor: "#FFFFFF", width: 13, height: 13, borderRadius: 7, textAlign: "center", fontSize: 9, fontWeight: "900", overflow: "hidden" },
+  verifiedText: { color: "#FFFFFF", fontSize: 8, fontWeight: "900" },
   businessName: { color: "#FFFFFF", fontSize: 20, fontWeight: "900" },
   heroTag: { color: "#E0F2FE", fontSize: 10, fontWeight: "800", marginTop: 4 },
   onlineText: { color: "#D1FAE5", fontSize: 9, fontWeight: "900", marginTop: 7 },
@@ -352,10 +359,10 @@ const s = StyleSheet.create({
   cameraBadge: { position: "absolute", right: -5, bottom: -5, width: 21, height: 21, borderRadius: 11, backgroundColor: "#15803D", alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "#FFFFFF" },
   cameraBadgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
   lowerContent: { backgroundColor: "#FFFFFF", paddingHorizontal: 11, paddingTop: 13, gap: 12 },
-  serviceGrid: { flexDirection: "row", flexWrap: "nowrap", gap: 8, justifyContent: "space-between" },
-  serviceTile: { width: "31.5%", minHeight: 94, borderRadius: 13, paddingHorizontal: 12, paddingVertical: 10, justifyContent: "center", elevation: 2 },
+  serviceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 10, justifyContent: "space-between" },
+  serviceTile: { width: "48%", aspectRatio: 1, borderRadius: 15, paddingHorizontal: 14, paddingVertical: 13, justifyContent: "center", alignItems: "center", elevation: 2 },
   serviceIcon: { color: "#FFFFFF", fontSize: 29, fontWeight: "900" },
-  serviceLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", marginTop: 5 },
+  serviceLabel: { color: "#FFFFFF", fontSize: 12, fontWeight: "900", marginTop: 8, textAlign: "center" },
   
   midSection: { flexDirection: "row", alignItems: "stretch", gap: 8 },
   splitCard: { flex: 1, minWidth: 0 },
@@ -396,7 +403,11 @@ const s = StyleSheet.create({
   alertTitle: { color: "#8A5A00", fontSize: 12, fontWeight: "900", marginBottom: 5 },
   alertText: { color: "#5B4826", fontSize: 11, paddingVertical: 3 },
   alertLink: { color: "#8A5A00", fontSize: 11, fontWeight: "900", marginTop: 5 },
-  bottomNav: { flexDirection: "row", gap: 7, justifyContent: "space-between" },\n  bottomNavItem: { flex: 1, minWidth: 0, minHeight: 68, borderRadius: 11, alignItems: "center", justifyContent: "center", paddingVertical: 7, paddingHorizontal: 3, elevation: 2 },\n  bottomNavIcon: { color: "#FFFFFF", fontSize: 23 },\n  bottomNavLabel: { color: "#FFFFFF", fontSize: 8, fontWeight: "900", textAlign: "center", marginTop: 3 },\n  footer: { backgroundColor: "#0B1F4A", borderRadius: 12, padding: 11, flexDirection: "row", alignItems: "center", gap: 9 },
+  bottomNav: { flexDirection: "row", gap: 7, justifyContent: "space-between" },
+  bottomNavItem: { flex: 1, minWidth: 0, minHeight: 68, borderRadius: 11, alignItems: "center", justifyContent: "center", paddingVertical: 7, paddingHorizontal: 3, elevation: 2 },
+  bottomNavIcon: { color: "#FFFFFF", fontSize: 23 },
+  bottomNavLabel: { color: "#FFFFFF", fontSize: 8, fontWeight: "900", textAlign: "center", marginTop: 3 },
+  footer: { backgroundColor: "#0B1F4A", borderRadius: 12, padding: 11, flexDirection: "row", alignItems: "center", gap: 9 },
   footerLogo: { color: "#F2D99F", fontSize: 23, fontWeight: "900" },
   footerCopy: { flex: 1 },
   footerName: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
