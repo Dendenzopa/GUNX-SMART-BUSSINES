@@ -39,6 +39,62 @@ create policy shop_subscriptions_owner_read on public.shop_subscriptions
 for select to authenticated
 using (public.has_shop_role(shop_id, array['owner']));
 
+
+-- The SECURITY DEFINER subscription helper must enforce the same owner-only boundary.
+create or replace function public.get_shop_subscription(p_shop_id uuid)
+returns jsonb
+language plpgsql
+stable
+security definer
+set search_path = public, pg_temp
+as $
+declare
+  v_sub public.shop_subscriptions%rowtype;
+  v_plan text;
+  v_status text;
+begin
+  if auth.uid() is null then raise exception 'Authentication required'; end if;
+  if not public.has_shop_role(p_shop_id, array['owner']) then
+    raise exception 'Only the shop owner can view subscription details';
+  end if;
+
+  select * into v_sub from public.shop_subscriptions where shop_id = p_shop_id;
+  if not found then
+    return jsonb_build_object(
+      'plan_code', 'free', 'status', 'free', 'price_tzs', 0,
+      'product_limit', 50, 'monthly_sales_limit', 100, 'debtor_limit', 10,
+      'expires_at', null, 'is_pro_active', false
+    );
+  end if;
+
+  if v_sub.plan_code = 'pro' and v_sub.status = 'active' and v_sub.expires_at <= now() then
+    v_plan := 'free'; v_status := 'expired';
+  elsif v_sub.plan_code = 'pro' and v_sub.status = 'active' then
+    v_plan := 'pro'; v_status := 'active';
+  elsif v_sub.plan_code = 'pro' and v_sub.status = 'pending' then
+    v_plan := 'free'; v_status := 'pending';
+  elsif v_sub.plan_code = 'pro' and v_sub.status = 'cancelled' then
+    v_plan := 'free'; v_status := 'cancelled';
+  else
+    v_plan := 'free'; v_status := 'free';
+  end if;
+
+  return jsonb_build_object(
+    'plan_code', v_plan,
+    'status', v_status,
+    'price_tzs', case when v_plan = 'pro' then 5000 else 0 end,
+    'product_limit', case when v_plan = 'pro' then null else 50 end,
+    'monthly_sales_limit', case when v_plan = 'pro' then null else 100 end,
+    'debtor_limit', case when v_plan = 'pro' then null else 10 end,
+    'expires_at', v_sub.expires_at,
+    'is_pro_active', (v_plan = 'pro' and v_sub.expires_at > now())
+  );
+end;
+$;
+
+revoke all on function public.get_shop_subscription(uuid) from public;
+grant execute on function public.get_shop_subscription(uuid) to authenticated;
+
 -- Employees may read payment rows attached to their own sales; management can read all shop payments.
 drop policy if exists payments_member_select on public.payments;
 create policy payments_management_or_own_sale_select on public.payments
