@@ -27,8 +27,11 @@ function Metric({ label, value, helper, tone = "light" }: { label: string; value
 
 export default function OwnerBusinessDashboard({ shopId, sales, products, expenses, debts, pendingSales, notice, online, onNavigate }: Props) {
   const [businessName, setBusinessName] = useState("Biashara Yangu");
+  const [ownerName, setOwnerName] = useState("Mmiliki wa Biashara");
+  const [period, setPeriod] = useState<"Leo" | "Wiki">("Leo");
   useEffect(() => {
     let active = true;
+    if (supabase) supabase.auth.getUser().then(({ data }) => { const m=data.user?.user_metadata ?? {}; const n=m.full_name || m.name || m.display_name || [m.given_name,m.family_name].filter(Boolean).join(" "); if(active && typeof n==="string" && n.trim()) setOwnerName(n.trim()); });
     if (!supabase || !shopId) return;
     supabase.from("shops").select("name").eq("id", shopId).maybeSingle().then(({ data }) => {
       if (active && data?.name) setBusinessName(data.name);
@@ -55,141 +58,85 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       return { label: date.toLocaleDateString("sw-TZ", { weekday: "short" }), amount };
     });
   }, [confirmedSales]);
-  const maxDay = Math.max(1, ...week.map(day => day.amount));
   const recentSales = confirmedSales.slice(0, 4);
-
+  const todayStart = new Date(); todayStart.setHours(0,0,0,0);
+  const todaySales = confirmedSales.filter(s => new Date(s.createdAt)>=todayStart);
+  const points = useMemo(() => Array.from({length:period==="Leo"?6:7},(_,i)=>{
+    const start=new Date();
+    if(period==="Leo") start.setHours(8+i*2,0,0,0);
+    else {start.setHours(0,0,0,0);start.setDate(start.getDate()-(6-i));}
+    const end=new Date(start); if(period==="Leo") end.setHours(end.getHours()+2); else end.setDate(end.getDate()+1);
+    const amount=confirmedSales.filter(s=>{const d=new Date(s.createdAt);return d>=start&&d<end;}).reduce((sum,s)=>sum+s.total,0);
+    return {label:period==="Leo"?(8+i*2)+":00":start.toLocaleDateString("sw-TZ",{weekday:"short"}),amount};
+  }),[confirmedSales,period]);
+  const max=Math.max(1,...points.map(p=>p.amount));
+  const coords=points.map((p,i)=>({x:8+i*(284/Math.max(1,points.length-1)),y:100-(p.amount/max)*76}));
+  const activeProducts=products.filter(p=>p.active).length;
   return <View style={s.container}>
     <View style={s.hero}>
-      <View style={s.heroTop}>
-        <View style={s.brandMark}><Text style={s.brandMarkText}>G</Text></View>
-        <View style={s.onlinePill}><View style={[s.onlineDot, online === false && s.offlineDot]}/><Text style={s.onlineText}>{online === false ? "OFFLINE" : online === true ? "ONLINE" : "INAANGALIA"}</Text></View>
-      </View>
-      <Text style={s.eyebrow}>DASHBOARD YA MMILIKI</Text>
-      <Text style={s.businessName}>{businessName}</Text>
-      <Text style={s.heroCopy}>Muhtasari wa biashara yako, mauzo, stock na fedha.</Text>
-      <View style={s.heroFooter}><Text style={s.heroFooterText}>TAARIFA ZA BIASHARA HII PEKEE</Text><Text style={s.heroFooterText}>{new Date().toLocaleDateString("sw-TZ")}</Text></View>
+      <View style={s.heroTop}><Text style={s.logoWord}>GUNX  SMART BUSINESS</Text><Text style={s.onlineText}>{online===false?"OFFLINE":online===true?"ONLINE":"INAANGALIA"}</Text></View>
+      <View style={s.identityRow}><View style={s.ownerMedia}><Text style={s.ownerInitial}>{ownerName.charAt(0).toUpperCase()}</Text></View><View style={s.identityCopy}><Text style={s.businessName}>{businessName}</Text><Text style={s.ownerName}>{ownerName}</Text><Text style={s.verified}>✓  Biashara Yako</Text></View></View>
+      <Text style={s.heroTag}>Biashara Yako, Mafanikio Yetu</Text>
     </View>
-
-    <View style={s.sectionHeading}><Text style={s.sectionTitle}>Muhtasari wa fedha</Text><Text style={s.sectionHint}>Mauzo yaliyothibitishwa</Text></View>
-    <View style={s.metricGrid}>
-      <Metric label="JUMLA YA MAUZO" value={formatTZS(revenue)} helper={confirmedSales.length + " miamala"} tone="green"/>
-      <Metric label="FAIDA YA MAKADIRIO" value={formatTZS(profit)} helper="Baada ya gharama zilizoingizwa" tone="gold"/>
-      <Metric label="GHARAMA" value={formatTZS(expenses.reduce((sum, item) => sum + item.amount, 0))}/>
-      <Metric label="MADENI YALIYOBAKI" value={formatTZS(outstanding)} helper={debts.length + " rekodi"}/>
+    <View style={s.summaryRow}>
+      <Pressable onPress={()=>onNavigate("POS")} style={[s.summaryCard,{backgroundColor:"#155EEF"}]}><Text style={s.summaryIcon}>🛒</Text><Text style={s.summaryLabel}>Mauzo ya Leo</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Stock")} style={[s.summaryCard,{backgroundColor:"#15803D"}]}><Text style={s.summaryIcon}>▣</Text><Text style={s.summaryLabel}>Stock Kuu</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Staff")} style={[s.summaryCard,{backgroundColor:"#6B21A8"}]}><Text style={s.summaryIcon}>♟</Text><Text style={s.summaryLabel}>Wafanyakazi</Text></Pressable>
     </View>
-
-    <View style={s.sectionHeading}><Text style={s.sectionTitle}>Mwenendo wa mauzo</Text><Text style={s.sectionHint}>Siku 7 zilizopita</Text></View>
     <View style={s.chartCard}>
-      <View style={s.chartTop}><Text style={s.chartTitle}>Mauzo kwa siku</Text><Text style={s.chartTotal}>{formatTZS(week.reduce((sum, day) => sum + day.amount, 0))}</Text></View>
-      <View style={s.bars}>
-        {week.map((day, index) => <View key={day.label + index} style={s.barColumn}>
-          <Text style={s.barValue}>{day.amount > 0 ? (day.amount >= 1000000 ? (day.amount / 1000000).toFixed(1) + "M" : day.amount >= 1000 ? Math.round(day.amount / 1000) + "k" : String(day.amount)) : "—"}</Text>
-          <View style={s.barTrack}><View style={[s.barFill, { height: Math.max(day.amount > 0 ? 7 : 3, day.amount / maxDay * 86) }]}/></View>
-          <Text style={s.barLabel}>{day.label}</Text>
-        </View>)}
-      </View>
+      <View style={s.sectionHead}><Text style={s.sectionTitle}>▥  Muhtasari wa Mauzo</Text><View style={s.period}><Pressable onPress={()=>setPeriod("Leo")} style={[s.periodBtn,period==="Leo"&&s.periodActive]}><Text style={s.periodText}>Leo</Text></Pressable><Pressable onPress={()=>setPeriod("Wiki")} style={[s.periodBtn,period==="Wiki"&&s.periodActive]}><Text style={s.periodText}>Wiki</Text></Pressable></View></View>
+      <Text style={s.chartTotal}>{formatTZS(period==="Leo"?totalSales(todaySales):week.reduce((sum,d)=>sum+d.amount,0))}</Text>
+      <View style={s.lineChart}><View style={[s.gridLine,{top:24}]}/><View style={[s.gridLine,{top:62}]}/>{coords.slice(1).map((p,i)=>{const q=coords[i],dx=p.x-q.x,dy=p.y-q.y;return <View key={i} style={[s.lineSegment,{left:q.x,top:q.y,width:Math.sqrt(dx*dx+dy*dy),transform:[{rotate:(Math.atan2(dy,dx)*180/Math.PI)+"deg"}]}]}/>;})}{coords.map((p,i)=><View key={i} style={[s.dot,{left:p.x-4,top:p.y-4}]}/>)}</View>
+      <View style={s.axis}>{points.map((p,i)=><Text key={i} style={s.axisText}>{p.label}</Text>)}</View>
+      <Text style={s.helper}>Grafu husasishwa mauzo mapya yanapoingia.</Text>
     </View>
-
-    <View style={s.sectionHeading}><Text style={s.sectionTitle}>Hali ya biashara</Text></View>
-    <View style={s.statusGrid}>
-      <Pressable onPress={() => onNavigate("Stock")} style={s.statusCard}><Text style={s.statusIcon}>▦</Text><Text style={s.statusValue}>{products.filter(item => item.active).length}</Text><Text style={s.statusLabel}>Bidhaa hai</Text><Text style={s.statusSub}>{lowStock.length} stock ndogo</Text></Pressable>
-      <Pressable onPress={() => onNavigate("Staff")} style={s.statusCard}><Text style={s.statusIcon}>♙</Text><Text style={s.statusValue}>Wafanyakazi</Text><Text style={s.statusLabel}>Usimamizi wa timu</Text><Text style={s.statusSub}>Angalia ruhusa na majukumu</Text></Pressable>
-      <Pressable onPress={() => onNavigate("Debts")} style={s.statusCard}><Text style={s.statusIcon}>▤</Text><Text style={s.statusValue}>{debts.length}</Text><Text style={s.statusLabel}>Rekodi za madeni</Text><Text style={s.statusSub}>{formatTZS(outstanding)} bado</Text></Pressable>
-      <Pressable onPress={() => onNavigate("Subscription")} style={s.statusCard}><Text style={s.statusIcon}>✦</Text><Text style={s.statusValue}>GUNX PRO</Text><Text style={s.statusLabel}>Mpango wa biashara</Text><Text style={s.statusSub}>Angalia usajili</Text></Pressable>
+    <View style={s.quickCard}><Text style={s.sectionTitle}>⚡  Vitendo vya Haraka</Text>
+      <Pressable onPress={()=>onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickIcon,{backgroundColor:"#16A34A"}]}>＋</Text><Text style={s.quickText}>Ongeza Bidhaa</Text><Text style={s.chevron}>›</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Staff")} style={s.quickRow}><Text style={[s.quickIcon,{backgroundColor:"#2563EB"}]}>♟</Text><Text style={s.quickText}>Ongeza Mfanyakazi</Text><Text style={s.chevron}>›</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Reports")} style={s.quickRow}><Text style={[s.quickIcon,{backgroundColor:"#D69E0B"}]}>▥</Text><Text style={s.quickText}>Angalia Ripoti</Text><Text style={s.chevron}>›</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickIcon,{backgroundColor:"#2563EB"}]}>↓</Text><Text style={s.quickText}>Dhibiti Stock</Text><Text style={s.chevron}>›</Text></Pressable>
     </View>
-
-    {lowStock.length > 0 && <View style={s.alertCard}>
-      <View style={s.alertHeader}><Text style={s.alertTitle}>Tahadhari ya stock</Text><Text style={s.alertCount}>{lowStock.length}</Text></View>
-      {lowStock.slice(0, 4).map(product => <View key={product.id} style={s.lowStockRow}><Text style={s.lowStockName}>{product.name}</Text><Text style={s.lowStockQty}>{product.stockQuantity} {product.unit} · kiwango {product.reorderLevel}</Text></View>)}
-      <Pressable onPress={() => onNavigate("Stock")}><Text style={s.alertAction}>Fungua usimamizi wa stock →</Text></Pressable>
-    </View>}
-
-    <View style={s.sectionHeading}><Text style={s.sectionTitle}>Miamala ya hivi karibuni</Text><Pressable onPress={() => onNavigate("Reports")}><Text style={s.link}>Ripoti zote →</Text></Pressable></View>
-    <View style={s.recentCard}>
-      {recentSales.length === 0 ? <Text style={s.emptyText}>Bado hakuna mauzo yaliyothibitishwa kwenye kipindi hiki.</Text> : recentSales.map(sale => <View key={sale.id} style={s.saleRow}>
-        <View style={s.saleIcon}><Text style={s.saleIconText}>↗</Text></View>
-        <View style={s.saleCopy}><Text style={s.saleReceipt}>{sale.receiptNumber}</Text><Text style={s.saleDate}>{new Date(sale.createdAt).toLocaleString("sw-TZ")}</Text></View>
-        <Text style={s.saleAmount}>{formatTZS(sale.total)}</Text>
-      </View>)}
+    <View style={s.sectionHead}><Text style={s.sectionTitle}>Hali ya Biashara</Text><Text style={s.helper}>{activeProducts} bidhaa hai</Text></View>
+    {lowStock.length>0&&<View style={s.alert}><Text style={s.alertTitle}>Tahadhari ya stock · {lowStock.length}</Text>{lowStock.slice(0,3).map(p=><Text key={p.id} style={s.alertText}>{p.name} — {p.stockQuantity} {p.unit}</Text>)}<Pressable onPress={()=>onNavigate("Stock")}><Text style={s.alertLink}>Fungua Stock →</Text></Pressable></View>}
+    <View style={s.bottomActions}>
+      <Pressable onPress={()=>onNavigate("POS")} style={[s.bottomBtn,{backgroundColor:"#155EEF"}]}><Text style={s.bottomIcon}>🛒</Text><Text style={s.bottomText}>Mauzo</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Stock")} style={[s.bottomBtn,{backgroundColor:"#15803D"}]}><Text style={s.bottomIcon}>▣</Text><Text style={s.bottomText}>Stock</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Staff")} style={[s.bottomBtn,{backgroundColor:"#6B21A8"}]}><Text style={s.bottomIcon}>♟</Text><Text style={s.bottomText}>Wafanyakazi</Text></Pressable>
+      <Pressable onPress={()=>onNavigate("Reports")} style={[s.bottomBtn,{backgroundColor:"#D69E0B"}]}><Text style={s.bottomIcon}>▤</Text><Text style={s.bottomText}>Ripoti</Text></Pressable>
     </View>
-
-    <View style={s.quickActions}>
-      <Pressable onPress={() => onNavigate("POS")} style={s.primaryAction}><Text style={s.primaryActionText}>＋  Anza mauzo</Text></Pressable>
-      <Pressable onPress={() => onNavigate("Reports")} style={s.secondaryAction}><Text style={s.secondaryActionText}>Ripoti za biashara</Text></Pressable>
-      <Pressable onPress={() => onNavigate("Expenses")} style={s.secondaryAction}><Text style={s.secondaryActionText}>Ongeza gharama</Text></Pressable>
-    </View>
-    {!!pendingSales.length && <View style={s.syncNotice}><Text style={s.syncNoticeText}>{pendingSales.length} mauzo yanasubiri kusawazishwa. Hayajahesabiwa kama mauzo yaliyothibitishwa.</Text></View>}
-    {!!notice && <Text style={s.notice}>{notice}</Text>}
-    <Text style={s.disclaimer}>Faida ni makadirio kutokana na mauzo na gharama zilizopakiwa. Hakiki ripoti kabla ya maamuzi rasmi ya fedha.</Text>
+    <View style={s.footer}><Text style={s.crown}>♛</Text><View><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Biashara Yako, Mafanikio Yetu</Text></View></View>
+    {!!pendingSales.length&&<Text style={s.helper}>{pendingSales.length} mauzo yanasubiri kusawazishwa.</Text>}
+    {!!notice&&<Text style={s.notice}>{notice}</Text>}
   </View>;
 }
 
-const s = StyleSheet.create({
-  container: { gap: 12, paddingBottom: 20 },
-  hero: { backgroundColor: "#102438", borderColor: "#D7B56D", borderWidth: 1, borderRadius: 19, padding: 18, marginBottom: 3 },
-  heroTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 14 },
-  brandMark: { width: 40, height: 40, borderRadius: 12, backgroundColor: "#173D36", borderWidth: 1, borderColor: "#43C99A", alignItems: "center", justifyContent: "center" },
-  brandMarkText: { color: "#F2D99F", fontSize: 23, fontWeight: "900" },
-  onlinePill: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#173D36", paddingHorizontal: 10, paddingVertical: 7, borderRadius: 20 },
-  onlineDot: { width: 7, height: 7, borderRadius: 5, backgroundColor: "#43C99A" },
-  offlineDot: { backgroundColor: "#E4A34A" },
-  onlineText: { color: "#CFF7E8", fontSize: 10, fontWeight: "900" },
-  eyebrow: { color: "#75E0B8", fontSize: 10, fontWeight: "900", letterSpacing: 1.5 },
-  businessName: { color: "#FFFFFF", fontSize: 25, fontWeight: "900", marginTop: 7 },
-  heroCopy: { color: "#C1CED8", fontSize: 14, lineHeight: 21, marginTop: 6 },
-  heroFooter: { borderTopWidth: 1, borderTopColor: "#2B4B61", marginTop: 17, paddingTop: 11, flexDirection: "row", justifyContent: "space-between", flexWrap: "wrap", gap: 6 },
-  heroFooterText: { color: "#D7B56D", fontSize: 9, fontWeight: "900", letterSpacing: .5 },
-  sectionHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 7 },
-  sectionTitle: { color: "#FFFFFF", fontSize: 17, fontWeight: "900" },
-  sectionHint: { color: "#C1CED8", fontSize: 11, fontWeight: "700" },
-  metricGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  metric: { width: "48.5%", minHeight: 102, borderRadius: 14, borderWidth: 1, borderColor: "#24445A", backgroundColor: "#102438", padding: 13, justifyContent: "center" },
-  metricGreen: { borderColor: "#278B6A", backgroundColor: "#10352F" },
-  metricGold: { borderColor: "#8B7549", backgroundColor: "#302A1C" },
-  metricLabel: { color: "#C1CED8", fontSize: 10, fontWeight: "900" },
-  metricValue: { color: "#FFFFFF", fontSize: 16, fontWeight: "900", marginTop: 8 },
-  metricHelper: { color: "#B7C5D0", fontSize: 10, lineHeight: 15, marginTop: 5 },
-  chartCard: { backgroundColor: "#102438", borderColor: "#24445A", borderWidth: 1, borderRadius: 15, padding: 14 },
-  chartTop: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap", gap: 5 },
-  chartTitle: { color: "#F4F7FA", fontSize: 13, fontWeight: "800" },
-  chartTotal: { color: "#F2D99F", fontSize: 13, fontWeight: "900" },
-  bars: { height: 126, flexDirection: "row", alignItems: "flex-end", justifyContent: "space-between", marginTop: 12, gap: 5 },
-  barColumn: { flex: 1, alignItems: "center", justifyContent: "flex-end", height: "100%" },
-  barValue: { color: "#B7C5D0", fontSize: 8, marginBottom: 5 },
-  barTrack: { width: "65%", height: 88, justifyContent: "flex-end", backgroundColor: "#0B1B2A", borderRadius: 7, overflow: "hidden" },
-  barFill: { width: "100%", backgroundColor: "#43C99A", borderRadius: 7 },
-  barLabel: { color: "#C1CED8", fontSize: 9, marginTop: 6, textTransform: "capitalize" },
-  statusGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  statusCard: { width: "48.5%", minHeight: 115, backgroundColor: "#102438", borderColor: "#24445A", borderWidth: 1, borderRadius: 14, padding: 13 },
-  statusIcon: { color: "#D7B56D", fontSize: 20, fontWeight: "900" },
-  statusValue: { color: "#FFFFFF", fontSize: 17, fontWeight: "900", marginTop: 5 },
-  statusLabel: { color: "#C1CED8", fontSize: 11, fontWeight: "800", marginTop: 3 },
-  statusSub: { color: "#91A4B5", fontSize: 10, marginTop: 5, lineHeight: 14 },
-  alertCard: { backgroundColor: "#2C2519", borderColor: "#8B7549", borderWidth: 1, borderRadius: 14, padding: 14, marginTop: 2 },
-  alertHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginBottom: 8 },
-  alertTitle: { color: "#F2D99F", fontSize: 14, fontWeight: "900" },
-  alertCount: { color: "#1D1A13", backgroundColor: "#D7B56D", overflow: "hidden", borderRadius: 12, paddingHorizontal: 8, paddingVertical: 3, fontWeight: "900", fontSize: 11 },
-  lowStockRow: { paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#55462A", gap: 3 },
-  lowStockName: { color: "#FFFFFF", fontSize: 13, fontWeight: "800" },
-  lowStockQty: { color: "#E3D2AD", fontSize: 11 },
-  alertAction: { color: "#F2D99F", fontSize: 12, fontWeight: "900", marginTop: 11 },
-  link: { color: "#75E0B8", fontSize: 12, fontWeight: "900" },
-  recentCard: { backgroundColor: "#102438", borderColor: "#24445A", borderWidth: 1, borderRadius: 14, paddingHorizontal: 13 },
-  saleRow: { minHeight: 62, flexDirection: "row", alignItems: "center", gap: 10, borderBottomWidth: 1, borderBottomColor: "#24445A" },
-  saleIcon: { width: 34, height: 34, borderRadius: 10, backgroundColor: "#173D36", alignItems: "center", justifyContent: "center" },
-  saleIconText: { color: "#75E0B8", fontSize: 17, fontWeight: "900" },
-  saleCopy: { flex: 1 },
-  saleReceipt: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
-  saleDate: { color: "#B7C5D0", fontSize: 10, marginTop: 4 },
-  saleAmount: { color: "#F2D99F", fontSize: 12, fontWeight: "900" },
-  emptyText: { color: "#C1CED8", fontSize: 13, paddingVertical: 18, lineHeight: 20 },
-  quickActions: { gap: 8, marginTop: 4 },
-  primaryAction: { backgroundColor: "#16785C", borderRadius: 12, padding: 14, alignItems: "center" },
-  primaryActionText: { color: "#FFFFFF", fontSize: 13, fontWeight: "900" },
-  secondaryAction: { backgroundColor: "#173247", borderColor: "#2B4B61", borderWidth: 1, borderRadius: 12, padding: 13, alignItems: "center" },
-  secondaryActionText: { color: "#EAF2F7", fontSize: 12, fontWeight: "800" },
-  syncNotice: { backgroundColor: "#2C2519", borderColor: "#8B7549", borderWidth: 1, borderRadius: 11, padding: 11 },
-  syncNoticeText: { color: "#F2D99F", fontSize: 11, lineHeight: 17 },
-  notice: { color: "#75E0B8", backgroundColor: "#102D2C", padding: 12, borderRadius: 10, fontSize: 12, lineHeight: 18 },
-  disclaimer: { color: "#B7C5D0", fontSize: 11, lineHeight: 17, marginTop: 2 }
+const s=StyleSheet.create({
+ container:{gap:11,paddingBottom:18,backgroundColor:"#F8FAFC"},
+ hero:{backgroundColor:"#0B1F4A",borderRadius:18,padding:16,borderWidth:1,borderColor:"#D7B56D",elevation:3},
+ heroTop:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:13},
+ logoWord:{color:"#F2D99F",fontSize:13,fontWeight:"900",letterSpacing:.6},
+ onlineText:{color:"#75E0B8",fontSize:10,fontWeight:"900"},
+ identityRow:{flexDirection:"row",alignItems:"center",gap:12},
+ ownerMedia:{width:66,height:66,borderRadius:15,backgroundColor:"#173D36",borderWidth:2,borderColor:"#D7B56D",alignItems:"center",justifyContent:"center"},
+ ownerInitial:{color:"#FFFFFF",fontSize:28,fontWeight:"900"},
+ identityCopy:{flex:1},businessName:{color:"#FFFFFF",fontSize:20,fontWeight:"900"},ownerName:{color:"#E5EDF5",fontSize:13,fontWeight:"700",marginTop:5},
+ verified:{alignSelf:"flex-start",color:"#FFFFFF",backgroundColor:"#168653",paddingHorizontal:10,paddingVertical:5,borderRadius:20,overflow:"hidden",fontSize:10,fontWeight:"900",marginTop:7},
+ heroTag:{color:"#D7B56D",fontSize:11,fontWeight:"800",marginTop:12},
+ summaryRow:{flexDirection:"row",gap:8},summaryCard:{flex:1,minHeight:92,borderRadius:13,padding:11,justifyContent:"space-between",elevation:2},
+ summaryIcon:{fontSize:26,color:"#FFFFFF"},summaryLabel:{fontSize:11,color:"#FFFFFF",fontWeight:"900"},
+ chartCard:{backgroundColor:"#FFFFFF",borderRadius:15,padding:13,borderWidth:1,borderColor:"#E2E8F0",elevation:2},
+ sectionHead:{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginBottom:8},sectionTitle:{color:"#0B1F4A",fontSize:14,fontWeight:"900"},
+ period:{flexDirection:"row",backgroundColor:"#F1F5F9",padding:3,borderRadius:8},periodBtn:{paddingHorizontal:9,paddingVertical:5,borderRadius:6},periodActive:{backgroundColor:"#155EEF"},periodText:{color:"#334155",fontSize:10,fontWeight:"800"},
+ chartTotal:{color:"#155EEF",fontSize:15,fontWeight:"900"},lineChart:{height:116,marginTop:8,position:"relative",overflow:"hidden"},
+ gridLine:{position:"absolute",left:0,right:0,borderTopWidth:1,borderColor:"#E8EEF5",borderStyle:"dashed"},
+ lineSegment:{position:"absolute",height:3,backgroundColor:"#155EEF",borderRadius:3},dot:{position:"absolute",width:8,height:8,borderRadius:5,backgroundColor:"#FFFFFF",borderWidth:2,borderColor:"#155EEF",zIndex:2},
+ axis:{flexDirection:"row",justifyContent:"space-between"},axisText:{fontSize:9,color:"#64748B"},helper:{fontSize:10,color:"#64748B",marginTop:8},
+ quickCard:{backgroundColor:"#FFFFFF",borderRadius:15,padding:13,borderWidth:1,borderColor:"#E2E8F0",elevation:2},
+ quickRow:{flexDirection:"row",alignItems:"center",gap:10,paddingVertical:10,borderBottomWidth:1,borderBottomColor:"#F1F5F9"},
+ quickIcon:{width:27,height:27,borderRadius:14,textAlign:"center",textAlignVertical:"center",overflow:"hidden",color:"#FFFFFF",fontWeight:"900",fontSize:16},
+ quickText:{flex:1,color:"#243B53",fontSize:12,fontWeight:"800"},chevron:{color:"#94A3B8",fontSize:22},
+ alert:{backgroundColor:"#FFF8E8",borderColor:"#F4D58A",borderWidth:1,borderRadius:13,padding:13},alertTitle:{color:"#8A5A00",fontSize:13,fontWeight:"900",marginBottom:6},alertText:{color:"#5B4826",fontSize:12,paddingVertical:4},alertLink:{color:"#8A5A00",fontSize:12,fontWeight:"900",marginTop:6},
+ bottomActions:{flexDirection:"row",gap:7},bottomBtn:{flex:1,minHeight:68,borderRadius:11,alignItems:"center",justifyContent:"center",gap:4},bottomIcon:{color:"#FFFFFF",fontSize:22},bottomText:{color:"#FFFFFF",fontSize:10,fontWeight:"900"},
+ footer:{backgroundColor:"#0B1F4A",borderRadius:12,padding:13,flexDirection:"row",alignItems:"center",gap:12},crown:{color:"#EAB308",fontSize:24},footerName:{color:"#FFFFFF",fontSize:12,fontWeight:"900"},footerTag:{color:"#D7B56D",fontSize:10,marginTop:3},
+ notice:{color:"#166534",backgroundColor:"#DCFCE7",padding:11,borderRadius:9,fontSize:12}
 });
