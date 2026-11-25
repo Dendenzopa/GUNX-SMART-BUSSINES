@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useState } from "react";
 import { BackHandler } from "react-native";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import { useShopContext } from "./AuthGate";
 
@@ -106,7 +107,7 @@ function BusinessDirectory({ onBack }: { onBack: () => void }) {
           value={search}
           onChangeText={setSearch}
           placeholder="Tafuta jina la biashara au email ya mmiliki"
-          placeholderTextColor="#8298AA"
+          placeholderTextColor="#526A7E"
           autoCapitalize="none"
           style={s.searchInput}
           onSubmitEditing={() => void loadBusinesses(search)}
@@ -260,6 +261,9 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
   const [health,setHealth]=useState<PlatformHealthRow[]>([]);
   const [userSearch,setUserSearch]=useState("");
   const [settingDrafts,setSettingDrafts]=useState<Record<string,string>>({});
+  const [selectedLanguage,setSelectedLanguage]=useState<"sw"|"en">("sw");
+  useEffect(()=>{ void AsyncStorage.getItem("@gunx/interface-language").then(value=>{if(value==="sw"||value==="en")setSelectedLanguage(value);}).catch(()=>{}); },[]);
+  const chooseLanguage=async (language:"sw"|"en")=>{setSelectedLanguage(language);try{await AsyncStorage.setItem("@gunx/interface-language",language);}catch{setError("Chaguo la lugha halikuweza kuhifadhiwa kwenye kifaa.");}};
   const loadPage = async () => {
     if (!supabase) { setError("Supabase haijaunganishwa."); return; }
     setBusy(true); setError("");
@@ -336,7 +340,7 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 
       {moduleKey==="Users" && <>
         <View style={s.dataToolbar}>
-          <TextInput value={userSearch} onChangeText={setUserSearch} placeholder="Tafuta kwa email au User ID" placeholderTextColor="#8298AA" style={s.searchInput} autoCapitalize="none"/>
+          <TextInput value={userSearch} onChangeText={setUserSearch} placeholder="Tafuta kwa email au User ID" placeholderTextColor="#526A7E" style={s.searchInput} autoCapitalize="none"/>
           <Pressable onPress={()=>void loadPage()} style={s.searchButton}><Text style={s.searchButtonText}>TAFUTA</Text></Pressable>
         </View>
         <Text style={s.dataCount}>Watumiaji: {users.length ? Number(users[0].total_count).toLocaleString("en-US") : "0"}</Text>
@@ -378,7 +382,7 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
         {settings.map(setting=><View key={setting.key} style={s.dataCard}>
           <Text style={s.dataTitle}>{setting.key}</Text>
           {!!setting.description&&<Text style={s.dataSub}>{setting.description}</Text>}
-          <TextInput value={settingDrafts[setting.key]??JSON.stringify(setting.value)} onChangeText={value=>setSettingDrafts(prev=>({...prev,[setting.key]:value}))} style={s.searchInput} placeholder="Thamani ya JSON au maandishi" placeholderTextColor="#8298AA" autoCapitalize="none"/>
+          <TextInput value={settingDrafts[setting.key]??JSON.stringify(setting.value)} onChangeText={value=>setSettingDrafts(prev=>({...prev,[setting.key]:value}))} style={s.searchInput} placeholder="Thamani ya JSON au maandishi" placeholderTextColor="#526A7E" autoCapitalize="none"/>
           <Pressable onPress={()=>void saveSetting(setting.key)} style={s.searchButton}><Text style={s.searchButtonText}>HIFADHI MABADILIKO</Text></Pressable>
           <Text style={s.dataSub}>Ilisasishwa: {new Date(setting.updated_at).toLocaleString("sw-TZ")}</Text>
         </View>)}
@@ -625,7 +629,7 @@ export default function PlatformOwnerDashboard() {
 }
 
 const s = StyleSheet.create({
-   modulePage: { paddingBottom: 28 },
+   languageCard:{backgroundColor:"#F0F7F5",borderColor:"#8BCDB5",borderWidth:1.5,borderRadius:16,padding:15,marginBottom:18},\n   languageTitle:{color:"#102A43",fontSize:19,fontWeight:"900"},\n   languageHint:{color:"#40566B",fontSize:15,lineHeight:22,marginTop:5,marginBottom:12},\n   languageOption:{flexDirection:"row",alignItems:"center",backgroundColor:"#FFFFFF",borderWidth:1.5,borderColor:"#D2DEE7",borderRadius:13,padding:13,marginTop:9,minHeight:70},\n   languageOptionSelected:{borderColor:"#16835F",backgroundColor:"#E8F7F0"},\n   languageFlag:{fontSize:26,marginRight:12},\n   languageCopy:{flex:1},\n   languageOptionTitle:{color:"#142D42",fontSize:17,fontWeight:"900"},\n   languageOptionSubtitle:{color:"#40566B",fontSize:14,marginTop:3},\n   languageCheck:{width:27,height:27,borderRadius:14,borderWidth:2,borderColor:"#91A4B5",alignItems:"center",justifyContent:"center"},\n   languageCheckSelected:{backgroundColor:"#16835F",borderColor:"#16835F"},\n   languageCheckMark:{color:"#FFFFFF",fontSize:17,fontWeight:"900"},\n   languageSaved:{color:"#126347",fontSize:14,fontWeight:"900",marginTop:13},\n   modulePage: { paddingBottom: 28 },
   logoutBar:{alignSelf:"flex-end",backgroundColor:"#173D36",borderWidth:1,borderColor:"#43C99A",borderRadius:10,paddingHorizontal:15,paddingVertical:10,marginBottom:12},
   logoutBarText:{color:"#75E0B8",fontSize:14,fontWeight:"900"},
 
@@ -633,7 +637,7 @@ const s = StyleSheet.create({
   dataCount:{color:"#52697C",fontSize: 14,fontWeight:"800",marginBottom:8},
   dataCard:{padding:13,borderRadius:13,backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#DCE5EC",marginBottom:9,gap:6},
   dataTitle:{color:"#172B3D",fontSize: 16,fontWeight:"900"},
-  dataSub:{color:"#65798B",fontSize: 13,lineHeight: 18},
+  dataSub:{color:"#334B61",fontSize: 15,lineHeight: 22},
   dataMetaRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8},
   dataMeta:{color:"#425A70",fontSize: 13,fontWeight:"800",flex:1},
   dataSectionTitle:{color:"#163D63",fontSize: 18,fontWeight:"900",marginTop:9,marginBottom:9},
@@ -648,17 +652,17 @@ const s = StyleSheet.create({
    moduleHeroIconText: { fontSize: 34 },
    moduleEyebrow: { color: "#315F91", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
    moduleTitle: { color: "#102A43", fontSize: 22, fontWeight: "900", marginTop: 5 },
-   moduleSubtitle: { color: "#38556F", fontSize: 14, lineHeight: 21, marginTop: 6 },
+   moduleSubtitle: { color: "#29465F", fontSize: 16, lineHeight: 24, marginTop: 7 },
    moduleMetrics: { flexDirection: "row", gap: 8, marginBottom: 12 },
    moduleMetric: { flex: 1, minWidth: 0, padding: 11, borderRadius: 12, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E5EF" },
    moduleMetricValue: { color: "#163D63", fontSize: 22, fontWeight: "900" },
-   moduleMetricLabel: { color: "#65798B", fontSize: 12, fontWeight: "800", marginTop: 4 },
+   moduleMetricLabel: { color: "#40566B", fontSize: 12, fontWeight: "800", marginTop: 4 },
    moduleSection: { padding: 15, borderRadius: 14, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5EC", marginBottom: 10 },
    moduleSectionTitle: { color: "#163D63", fontSize: 18, fontWeight: "900" },
-   moduleBody: { color: "#617487", fontSize: 14, lineHeight: 19, marginTop: 5, marginBottom: 9 },
+   moduleBody: { color: "#334B61", fontSize: 16, lineHeight: 23, marginTop: 6, marginBottom: 10 },
    moduleItem: { flexDirection: "row", alignItems: "flex-start", gap: 8, paddingVertical: 6, borderTopWidth: 1, borderTopColor: "#EEF2F6" },
    moduleBullet: { color: "#16835F", fontSize: 16, fontWeight: "900" },
-   moduleItemText: { flex: 1, color: "#243B50", fontSize: 14, lineHeight: 19 },
+   moduleItemText: { flex: 1, color: "#243B50", fontSize: 16, lineHeight: 23 },
    moduleStatus: { padding: 13, borderRadius: 12, backgroundColor: "#FFF8E8", borderWidth: 1, borderColor: "#E7D5A8", marginTop: 2 },
    moduleStatusTitle: { color: "#8A6415", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
    moduleStatusText: { color: "#66532E", fontSize: 13, lineHeight: 18, marginTop: 5 },
@@ -691,7 +695,7 @@ const s = StyleSheet.create({
   drawerIcon: { width: 44, height: 44, borderRadius: 13, backgroundColor: "#E6EFF8", borderWidth: 1, alignItems: "center", justifyContent: "center" },
   drawerCrown: { fontSize: 23, fontWeight: "900" },
   drawerHeadingCopy: { flex: 1 },
-  drawerEyebrow: { color: "#64748B", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
+  drawerEyebrow: { color: "#40566B", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
   drawerTitle: { color: "#0F172A", fontSize: 20, fontWeight: "900", marginTop: 3 },
   drawerClose: { paddingHorizontal: 12, paddingVertical: 9, borderRadius: 10, backgroundColor: "#F1F5F9" },
   drawerCloseText: { color: "#334155", fontSize: 14, fontWeight: "800" },
@@ -725,7 +729,7 @@ const s = StyleSheet.create({
   sectionHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-end", marginTop: 4, marginBottom: 7 },
   sectionEyebrow: { color: "#16845D", fontSize: 12, fontWeight: "900", letterSpacing: 1.6 },
   sectionTitle: { color: "#0F172A", fontSize: 22, fontWeight: "900", marginTop: 3 },
-  sectionCopy: { color: "#687B8D", fontSize: 14, lineHeight: 21, marginBottom: 12 },
+  sectionCopy: { color: "#40566B", fontSize: 14, lineHeight: 21, marginBottom: 12 },
   liveBadge: { flexDirection: "row", alignItems: "center", gap: 5, backgroundColor: "#123A34", borderRadius: 18, paddingHorizontal: 9, paddingVertical: 6, marginBottom: 3 },
   liveDot: { width: 6, height: 6, borderRadius: 3, backgroundColor: "#51D8A4" },
   liveText: { color: "#7DE0BC", fontSize: 12, fontWeight: "900", letterSpacing: 0.8 },
@@ -746,7 +750,7 @@ const s = StyleSheet.create({
   greenText: { color: "#1D4ED8" },
   statLabel: { color: "#1E293B", fontSize: 14, fontWeight: "700", letterSpacing: 0 },
   statValue: { color: "#0F172A", fontSize: 25, fontWeight: "900", marginTop: 7 },
-  metricFootnote: { color: "#6B7D8E", fontSize: 13, lineHeight: 19, marginTop: 9, marginBottom: 17 },
+  metricFootnote: { color: "#334B61", fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: 18 },
   toolCount: { color: "#D9B96F", fontSize: 12, fontWeight: "900", letterSpacing: 1, marginBottom: 3 },
   managementGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 5 },
   managementCard: { width: "47%", minHeight: 170, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
@@ -754,7 +758,7 @@ const s = StyleSheet.create({
   managementTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
   managementIcon: { width: 66, height: 66, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
   managementIconText: { color: "#1D4ED8", fontSize: 44, fontWeight: "900" },
-  chevron: { color: "#718B9E", fontSize: 23, marginTop: -4 },
+  chevron: { color: "#526A7E", fontSize: 23, marginTop: -4 },
   managementTitle: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
   managementDescription: { color: "#1E293B", fontSize: 12, lineHeight: 15, marginTop: 5 },
   panelButton: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 10, backgroundColor: "#E7B51C", borderWidth: 1.5, borderColor: "#B45309", borderRadius: 16, paddingVertical: 15, paddingHorizontal: 14, marginTop: 19, shadowColor: "#CA8A04", shadowOpacity: 0.2, shadowRadius: 10, elevation: 3 },
@@ -768,7 +772,7 @@ const s = StyleSheet.create({
   refresh: { alignItems: "center", padding: 11, marginTop: 9 },
   refreshText: { color: "#1D4ED8", fontSize: 14, fontWeight: "800" },
   footer: { color: "#8A6415", fontSize: 13, fontWeight: "900", letterSpacing: 1, textAlign: "center", marginTop: 13, padding: 10, borderRadius: 9, backgroundColor: "#FFF8E8", borderWidth: 1, borderColor: "#E8D6A8" },
-  footerNote: { color: "#758596", fontSize: 12, lineHeight: 16, textAlign: "center", marginTop: 7 },
+  footerNote: { color: "#40566B", fontSize: 14, lineHeight: 21, textAlign: "center", marginTop: 8 },
   directory: { marginTop: 5 },
   backButton: { alignSelf: "flex-start", paddingVertical: 9, paddingHorizontal: 12, borderRadius: 9, backgroundColor: "#EDF4F8", borderWidth: 1, borderColor: "#D5E0E8", marginBottom: 17 },
   backText: { color: "#176D54", fontSize: 14, fontWeight: "900" },
@@ -779,20 +783,20 @@ const s = StyleSheet.create({
   directorySummary: { padding: 13, borderRadius: 12, backgroundColor: "#F1F7FC", borderWidth: 1, borderColor: "#D8E5EF", marginBottom: 10 },
   directorySummaryLabel: { color: "#63788B", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
   directorySummaryValue: { color: "#8A6415", fontSize: 23, fontWeight: "900", marginTop: 4 },
-  directorySummaryHint: { color: "#758596", fontSize: 12, marginTop: 3 },
+  directorySummaryHint: { color: "#526A7E", fontSize: 12, marginTop: 3 },
   businessCard: { padding: 13, borderRadius: 13, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5EC", marginBottom: 9 },
   businessHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   businessIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: "#153D60", alignItems: "center", justifyContent: "center" },
   businessIconText: { color: "#62B9F5", fontSize: 20 },
   businessIdentity: { flex: 1 },
   businessName: { color: "#172B3D", fontSize: 17, fontWeight: "900" },
-  businessEmail: { color: "#6B7D8E", fontSize: 13, marginTop: 3 },
+  businessEmail: { color: "#40566B", fontSize: 13, marginTop: 3 },
   businessMeta: { flexDirection: "row", gap: 8, marginTop: 12 },
   metaItem: { flex: 1, backgroundColor: "#F2F6F9", padding: 8, borderRadius: 8 },
-  metaLabel: { color: "#718397", fontSize: 12, fontWeight: "900" },
+  metaLabel: { color: "#40566B", fontSize: 12, fontWeight: "900" },
   metaValue: { color: "#8A6415", fontSize: 14, fontWeight: "900", marginTop: 4 },
-  businessDate: { color: "#687B8D", fontSize: 13, marginTop: 10 },
-  businessId: { color: "#8191A0", fontSize: 12, marginTop: 5 },
+  businessDate: { color: "#40566B", fontSize: 13, marginTop: 10 },
+  businessId: { color: "#526A7E", fontSize: 12, marginTop: 5 },
   emptyBox: { padding: 20, borderRadius: 12, backgroundColor: "#F7FAFC", borderWidth: 1, borderColor: "#DCE5EC", alignItems: "center" },
   emptyTitle: { color: "#172B3D", fontSize: 17, fontWeight: "900", marginBottom: 5 },
   errorBox: { padding: 12, borderRadius: 10, backgroundColor: "#3A2025", borderWidth: 1, borderColor: "#8A4148", marginBottom: 10 },
