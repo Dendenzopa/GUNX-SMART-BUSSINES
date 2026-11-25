@@ -213,14 +213,14 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
           <Text style={s.serviceIcon}>🛒</Text><Text style={s.serviceLabel}>Mauzo (POS)</Text>
         </Pressable>
         <Pressable onPress={() => onNavigate("Stock")} style={[s.serviceTile, { backgroundColor: "#15803D" }]}>
-          <Text style={s.serviceIcon}>▣</Text><Text style={s.serviceLabel}>Stock</Text>
+          <Text style={s.serviceIcon}>📦</Text><Text style={s.serviceLabel}>Stock</Text>
         </Pressable>
         <Pressable onPress={() => onNavigate("Staff")} style={[s.serviceTile, { backgroundColor: "#7C3AED" }]}>
-          <Text style={s.serviceIcon}>♟</Text><Text style={s.serviceLabel}>Wafanyakazi</Text>
+          <Text style={s.serviceIcon}>👥</Text><Text style={s.serviceLabel}>Wafanyakazi</Text>
           <Text style={s.serviceCount}>{staffCount === null ? "—" : staffCount.toLocaleString("sw-TZ")}</Text>
         </Pressable>
         <Pressable onPress={() => onNavigate("Reports")} style={[s.serviceTile, { backgroundColor: "#D69E0B" }]}>
-          <Text style={s.serviceIcon}>▤</Text><Text style={s.serviceLabel}>Ripoti</Text>
+          <Text style={s.serviceIcon}>📄</Text><Text style={s.serviceLabel}>Ripoti</Text>
         </Pressable>
       </View>
 
