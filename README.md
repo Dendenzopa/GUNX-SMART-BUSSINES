@@ -39,3 +39,10 @@ Install Node.js, then:
 GUNX must protect each business tenant's private sales, profit/loss, expenses, customers, customer contact details and transaction history from routine Super Admin access. Super Admin is limited to privacy-preserving platform metrics and GUNX subscription/billing information. Exceptional support or investigation access must be purpose-limited, explicitly authorized, time-bound, disclosed to the business owner when possible, and fully audited. Tenant isolation must be enforced by database Row Level Security, not just by hiding UI controls.
 
 See [docs/SUPER_ADMIN_PRIVACY_SPEC.md](docs/SUPER_ADMIN_PRIVACY_SPEC.md) for the approved Super Admin modules, security requirements and acceptance criteria.
+
+
+## Super Admin implementation status
+
+The privacy-first Super Admin interface is being added in a separate reviewed branch. It reads platform-level metrics, tenant directory metadata, platform user metadata, GUNX subscription payment requests, audit logs, health checks and settings through administrator-guarded RPCs. It does not query tenant sales, profit/loss, expenses, customer records or tenant transaction ledgers.
+
+Before a clean-environment or production release, reconcile the platform tables/RPCs already present in the connected Supabase project with the checked-in migration history. See [docs/PLATFORM_SCHEMA_RECONCILIATION.md](docs/PLATFORM_SCHEMA_RECONCILIATION.md). Do not tighten employee read policies until the employee UI and role permissions are updated and tested together.
