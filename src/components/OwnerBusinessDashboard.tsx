@@ -213,13 +213,6 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
           <Pressable accessibilityLabel="Arifa za biashara" onPress={() => setNotificationsOpen(true)} style={s.headerIcon}>
             <Text style={s.headerIconText}>♧</Text>{(lowStock.length > 0 || pendingSales.length > 0) && <View style={s.notificationDot} />}
           </Pressable>
-          <View accessibilityLabel={"Akaunti ya Google: " + ownerName} style={s.googleProfile}>
-            {googlePhoto ? <Image source={{ uri: googlePhoto }} style={s.googleAvatar} /> : <View style={s.googleAvatarFallback}><Text style={s.googleAvatarInitial}>{(ownerName.trim()[0] || "M").toUpperCase()}</Text></View>}
-            <View style={s.googleProfileCopy}>
-              <Text numberOfLines={1} style={s.googleProfileName}>{ownerName}</Text>
-              {!!ownerEmail && <Text numberOfLines={1} style={s.googleProfileEmail}>{ownerEmail}</Text>}
-            </View>
-          </View>
         </View>
       </View>
       <View style={s.heroIdentity}>
@@ -229,6 +222,20 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Text numberOfLines={1} style={s.businessName}>{businessName}</Text>
         <View style={s.verifiedPill}><Text style={s.verifiedCheck}>✓</Text><Text style={s.verifiedText}>Biashara Yako</Text></View>
         <Text style={s.onlineText}>{online === false ? "● OFFLINE" : online === true ? "● ONLINE" : "● INAANGALIA MUUNGANISHO"}</Text>
+      </View>
+      <View style={s.ownerWelcomeBanner}>
+        <View accessibilityLabel={"Picha ya akaunti ya Google: " + ownerName} style={s.ownerAvatarPicker}>
+          <View style={s.ownerWelcomeAvatar}>
+            {googlePhoto ? <Image source={{ uri: googlePhoto }} style={s.ownerAvatarPhoto} /> : <Text style={s.ownerWelcomeAvatarIcon}>{(ownerName.trim()[0] || "M").toUpperCase()}</Text>}
+            <View style={s.ownerCrownBadge}><Text style={s.ownerCrownBadgeText}>♛</Text></View>
+          </View>
+        </View>
+        <View style={s.ownerWelcomeCopy}>
+          <Text style={s.ownerWelcome}>Karibu Tena!</Text>
+          <Text numberOfLines={1} style={s.ownerProfileName}>{ownerName}</Text>
+          {!!ownerEmail && <Text numberOfLines={1} style={s.ownerProfileEmail}>{ownerEmail}</Text>}
+          <View style={s.ownerRoleBadge}><View style={s.ownerRoleDot}/><Text style={s.ownerRoleText}>BUSINESS OWNER</Text></View>
+        </View>
       </View>
     </View>
 
@@ -370,6 +377,20 @@ const s = StyleSheet.create({
   hero: { backgroundColor: "#FFFFFF", paddingHorizontal: 13, paddingTop: 4, paddingBottom: 15 },
   topBar: { flexDirection: "row", flexWrap: "nowrap", alignItems: "center", justifyContent: "space-between", minHeight: 44, gap: 5 },
   topBarRight: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 9, flex: 1, minWidth: 0 },
+  ownerWelcomeBanner: { flexDirection: "row", alignItems: "center", gap: 16, padding: 19, minHeight: 142, borderRadius: 22, borderWidth: 1.5, borderColor: "#C6A64A", backgroundColor: "#102A4C", marginTop: 12, marginBottom: 4, elevation: 4, shadowColor: "#102A4C", shadowOpacity: 0.2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 } },
+  ownerAvatarPicker: { position: "relative" },
+  ownerAvatarPhoto: { width: 76, height: 76, borderRadius: 38 },
+  ownerWelcomeAvatar: { width: 82, height: 82, borderRadius: 41, overflow: "visible", backgroundColor: "#173F70", borderWidth: 3, borderColor: "#D8B65A", alignItems: "center", justifyContent: "center" },
+  ownerWelcomeAvatarIcon: { color: "#FFFFFF", fontSize: 34, fontWeight: "900" },
+  ownerCrownBadge: { position: "absolute", top: -5, right: -5, width: 25, height: 25, borderRadius: 13, backgroundColor: "#EAB308", borderWidth: 2, borderColor: "#FFFFFF", alignItems: "center", justifyContent: "center" },
+  ownerCrownBadgeText: { color: "#0F172A", fontSize: 18, fontWeight: "900" },
+  ownerWelcomeCopy: { flex: 1, minWidth: 0 },
+  ownerWelcome: { color: "#E9C96D", fontSize: 17, fontWeight: "900", letterSpacing: 0.5 },
+  ownerProfileName: { color: "#FFFFFF", fontSize: 21, fontWeight: "900", marginTop: 4, letterSpacing: 0.2 },
+  ownerProfileEmail: { color: "#DCE8F5", fontSize: 11, marginTop: 3 },
+  ownerRoleBadge: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", gap: 6, backgroundColor: "#0B6B55", borderColor: "#41D5A2", borderWidth: 1, borderRadius: 20, paddingHorizontal: 13, paddingVertical: 6, marginTop: 9 },
+  ownerRoleDot: { width: 7, height: 7, borderRadius: 4, backgroundColor: "#4ADE80" },
+  ownerRoleText: { color: "#D9FFEF", fontSize: 13, fontWeight: "900", letterSpacing: 1.1 },
   googleProfile: { flexDirection: "row", alignItems: "center", gap: 7, maxWidth: 190, minWidth: 0 },
   googleAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: "#D7B56D", backgroundColor: "#E2E8F0" },
   googleAvatarFallback: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: "#D7B56D", backgroundColor: "#102438", alignItems: "center", justifyContent: "center" },
