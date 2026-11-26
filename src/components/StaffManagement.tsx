@@ -165,7 +165,7 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Orodha ya wanachama ({members.length})</Text>
     {members.map(member => <View key={member.user_id} style={[s.member, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
       <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{member.role === "owner" ? "Mmiliki" : roles.find(r => r.id === member.role)?.label ?? member.role}</Text>
-      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>ID: {member.user_id}</Text>
+      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Utambulisho: ••••{member.user_id.slice(-6)}</Text>
       {owner && member.role !== "owner" && <View style={s.actions}>
         {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>{r.label}</Text></Pressable>)}
         {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ruhusa</Text></Pressable>}
@@ -174,7 +174,7 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     </View>)}
     {owner && permissionTarget && <View style={[s.panel, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
       <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Ruhusa za Meneja</Text>
-      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Meneja: {permissionTarget.user_id}. Chagua kazi anazoweza kufanya. Bila ruhusa, taarifa na vitendo vinabaki vimefungwa.</Text>
+      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Meneja ••••{permissionTarget.user_id.slice(-6)}. Chagua kazi anazoweza kufanya. Bila ruhusa, taarifa na vitendo vinabaki vimefungwa.</Text>
       {permissionOptions.map(item => <Pressable key={item.id} disabled={busy} onPress={() => togglePermission(item.id)} style={[s.role, permissions.includes(item.id) && s.selected]}>
         <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{permissions.includes(item.id) ? "✓ " : "○ "}{item.label}</Text>
         <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{item.detail}</Text>
