@@ -463,7 +463,7 @@ const a = StyleSheet.create({
   onboardingSafe:{flex:1,backgroundColor:"#FFFFFF"},
   onboardingScroll:{flexGrow:1,paddingBottom:30,backgroundColor:"#FFFFFF"},
   onboardingTop:{width:"100%",alignItems:"center",justifyContent:"center",paddingTop:18,paddingBottom:4},
-  onboardingLogo:{width:340,height:179,alignSelf:"center"},
+  onboardingLogo:{width:390,height:250,alignSelf:"center"},
   onboardingContent:{width:"100%",maxWidth:480,alignSelf:"center",paddingHorizontal:22,paddingTop:27},
   welcome:{color:"#0B1F4A",fontSize:22,lineHeight:31,fontWeight:"900",textAlign:"center"},
   tagline:{color:"#0B1F4A",fontSize:14,fontWeight:"800",letterSpacing:.4,textAlign:"center",marginTop:11,marginBottom:27},
