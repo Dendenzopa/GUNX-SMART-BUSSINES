@@ -215,17 +215,18 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         </Pressable>
       </View>
       <View style={s.heroIdentity}>
-        <Pressable accessibilityLabel="Badili picha ya mmiliki au logo ya biashara" onPress={() => setMenuOpen(true)} style={s.heroMedia}>
-          {heroMediaUrl ? <Image source={{ uri: heroMediaUrl }} style={s.heroImage} resizeMode="cover" /> : <Text style={s.heroPlaceholder}>G</Text>}
-          <View style={s.cameraBadge}><Text style={s.cameraBadgeText}>✎</Text></View>
-        </Pressable>
-        <View style={s.heroCopy}>
-          <Text numberOfLines={1} style={s.businessName}>{businessName}</Text>
-          <Text numberOfLines={1} style={s.heroTag}>{ownerName}</Text>
-          <Text numberOfLines={1} style={s.ownerEmailText}>{ownerEmail || "Google / Gmail account"}</Text>
+        <Pressable accessibilityLabel="Ongeza nembo ya biashara" onPress={() => void pickHeroMedia("business_logo")} style={s.logoUploadBanner}>
+          <View style={s.logoPreview}>
+            {heroMediaUrl && heroMediaType === "business_logo" ? <Image source={{ uri: heroMediaUrl }} style={s.heroImage} resizeMode="contain" /> : <Text style={s.heroPlaceholder}>＋</Text>}
+          </View>
+          <View style={s.logoUploadCopy}>
+            <Text style={s.logoUploadTitle}>{mediaBusy ? "Inahifadhi..." : "Add Photo"}</Text>
+            <Text style={s.logoUploadSubtitle}>(Your Business Logo)</Text>
+            <Text numberOfLines={1} style={s.businessName}>{businessName}</Text>
+          </View>
           <View style={s.verifiedPill}><Text style={s.verifiedCheck}>✓</Text><Text style={s.verifiedText}>Biashara Yako</Text></View>
-          <Text style={s.onlineText}>{online === false ? "● OFFLINE" : online === true ? "● ONLINE" : "● INAANGALIA MUUNGANISHO"}</Text>
-        </View>
+        </Pressable>
+        <Text style={s.onlineText}>{online === false ? "● OFFLINE" : online === true ? "● ONLINE" : "● INAANGALIA MUUNGANISHO"}</Text>
       </View>
     </View>
 
@@ -298,6 +299,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable onPress={() => onNavigate("Staff")} style={[s.bottomNavItem, { backgroundColor: "#7C3AED" }]}><Text style={s.bottomNavIcon}>👥</Text><Text style={s.bottomNavLabel}>Wafanyakazi</Text></Pressable>
         <Pressable onPress={() => onNavigate("Reports")} style={[s.bottomNavItem, { backgroundColor: "#D69E0B" }]}><Text style={s.bottomNavIcon}>📄</Text><Text style={s.bottomNavLabel}>Ripoti</Text></Pressable>
       </View>
+      <View style={s.footer}><Text style={s.footerLogo}>G</Text><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
       <View style={s.goalCard}>
         <View style={s.goalHeading}><Text style={s.goalIcon}>◎</Text><Text style={s.goalTitle}>Malengo ya Biashara</Text></View>
         <Text style={s.goalMessage}>Pamoja Tunaijenga Biashara Yako</Text>
@@ -312,7 +314,6 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
           </View>
         </View>
       </View>
-      <View style={s.footer}><Text style={s.footerLogo}>G</Text><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
       {!!pendingSales.length && <Text style={s.notice}>{pendingSales.length} mauzo yanasubiri kusawazishwa.</Text>}
       {!!notice && <Text style={s.notice}>{notice}</Text>}
     </View>
@@ -321,8 +322,8 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       <Pressable style={s.modalBackdrop} onPress={() => setMenuOpen(false)}>
         <Pressable style={s.drawer} onPress={() => {}}>
           <View style={s.drawerHandle} /><View style={s.drawerHeader}><Text style={s.drawerTitle}>Menyu ya Mmiliki</Text><Pressable onPress={() => setMenuOpen(false)}><Text style={s.closeText}>✕</Text></Pressable></View>
-          <Text style={s.drawerBusiness}>{businessName}</Text><Text style={s.drawerSection}>PICHA YA DASHBOARD</Text>
-          <Pressable style={s.drawerRow} disabled={mediaBusy} onPress={() => void pickHeroMedia("owner_photo")}><Text style={s.drawerRowText}>Weka picha ya mmiliki</Text><Text style={s.drawerChevron}>›</Text></Pressable>
+          <Text style={s.drawerBusiness}>{businessName}</Text><Text style={s.drawerSection}>NEMBO YA BIASHARA</Text>
+          
           <Pressable style={s.drawerRow} disabled={mediaBusy} onPress={() => void pickHeroMedia("business_logo")}><Text style={s.drawerRowText}>Weka logo ya biashara</Text><Text style={s.drawerChevron}>›</Text></Pressable>
           {!!heroMediaUrl && <Pressable style={s.drawerRow} onPress={() => void clearHeroMedia()}><Text style={s.drawerRowText}>Ondoa picha ya banner</Text><Text style={s.drawerChevron}>›</Text></Pressable>}
           <Text style={s.drawerFoot}>{mediaBusy ? "Inahifadhi picha..." : "Picha huhifadhiwa kwenye mipangilio ya biashara."}</Text>
@@ -355,11 +356,16 @@ const s = StyleSheet.create({
   
   
   
-  brandLogo: { width: 400, height: 250 },
+  brandLogo: { width: 116, height: 73 },
   headerIcon: { width: 34, height: 34, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
   headerIconText: { color: "#FFFFFF", fontSize: 22, fontWeight: "900" },
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },
-  heroIdentity: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, gap: 12 },
+  heroIdentity: { flexDirection: "column", alignItems: "stretch", marginTop: 12, gap: 7 },
+  logoUploadBanner: { width: "100%", minHeight: 82, flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 13, borderWidth: 1, borderStyle: "dashed", borderColor: "rgba(255,255,255,0.8)", backgroundColor: "rgba(37,99,235,0.42)" },
+  logoPreview: { width: 58, height: 58, borderRadius: 10, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center", overflow: "hidden" },
+  logoUploadCopy: { flex: 1, minWidth: 0 },
+  logoUploadTitle: { color: "#FFFFFF", fontSize: 14, fontWeight: "900" },
+  logoUploadSubtitle: { color: "#DBEAFE", fontSize: 9, marginTop: 2 },
   heroCopy: { flex: 1 },
   ownerEmailText: { color: "#CBD5E1", fontSize: 8, marginTop: 2 },
   verifiedPill: { flexDirection: "row", alignItems: "center", alignSelf: "flex-start", backgroundColor: "#15803D", borderRadius: 20, paddingHorizontal: 7, paddingVertical: 3, marginTop: 5, gap: 4 },
@@ -379,8 +385,8 @@ const s = StyleSheet.create({
   serviceIcon: { color: "#FFFFFF", fontSize: 23, fontWeight: "900" },
   serviceLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", marginTop: 5, textAlign: "center" },
   
-  midSection: { flexDirection: "row", alignItems: "stretch", gap: 8 },
-  splitCard: { flex: 1, minWidth: 0 },
+  midSection: { flexDirection: "column", alignItems: "stretch", gap: 10 },
+  splitCard: { width: "100%", minWidth: 0 },
   chartCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 9, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1 },
   quickCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 9, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1 },
   cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 3 },
