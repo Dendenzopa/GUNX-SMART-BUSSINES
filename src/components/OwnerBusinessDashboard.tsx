@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -208,7 +209,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable accessibilityLabel="Fungua menyu ya mmiliki" onPress={() => setMenuOpen(true)} style={s.headerIcon}>
           <Text style={s.headerIconText}>☰</Text>
         </Pressable>
-        <Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} resizeMode="contain" style={s.brandLogo} />
+        <Image source={GUNX_OFFICIAL_LOGO} resizeMode="contain" style={s.brandLogo} />
         <Pressable accessibilityLabel="Arifa za biashara" onPress={() => setNotificationsOpen(true)} style={s.headerIcon}>
           <Text style={s.headerIconText}>♧</Text>{(lowStock.length > 0 || pendingSales.length > 0) && <View style={s.notificationDot} />}
         </Pressable>
@@ -340,7 +341,7 @@ const s = StyleSheet.create({
   
   
   
-  brandLogo: { width: 145, height: 58 },
+  brandLogo: { width: 200, height: 80 },
   headerIcon: { width: 34, height: 34, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
   headerIconText: { color: "#FFFFFF", fontSize: 22, fontWeight: "900" },
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },

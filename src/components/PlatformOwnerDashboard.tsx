@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { BackHandler } from "react-native";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -551,7 +552,7 @@ export default function PlatformOwnerDashboard() {
         <View style={s.brandBlock}>
           <Image
             accessibilityLabel="GUNX SMART BUSINESS official logo"
-            source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")}
+            source={GUNX_OFFICIAL_LOGO}
             style={s.brandLogo}
             resizeMode="contain"
           />
@@ -731,7 +732,7 @@ const s = StyleSheet.create({
   glowBottom: { position: "absolute", bottom: 140, left: -130, width: 250, height: 250, borderRadius: 130, backgroundColor: "#FFFFFF", opacity: 0 },
   header: { position: "relative", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 20, minHeight: 112, paddingVertical: 12, backgroundColor: "#FFFFFF" },
   brandBlock: { flex: 1, minWidth: 0, alignItems: "center", justifyContent: "center", backgroundColor: "transparent", padding: 0 },
-  brandLogo: { width: 250, height: 96 },
+  brandLogo: { width: 320, height: 123 },
   bellButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#93B8E4", backgroundColor: "#D2E3F7", alignItems: "center", justifyContent: "center" },
   bell: { color: "#1E3A8A", fontSize: 23, fontWeight: "800" },
   bellDot: { position: "absolute", width: 9, height: 9, borderRadius: 5, backgroundColor: "#DC2626", top: 8, right: 9, borderWidth: 1, borderColor: "#D2E3F7" },

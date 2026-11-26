@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { Session } from "@supabase/supabase-js";
@@ -384,7 +385,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (!session || mode === "reset") return <SafeAreaView style={a.safe}>
     <ScrollView contentContainerStyle={a.authScroll} keyboardShouldPersistTaps="handled">
     <View style={a.authContent}>
-      <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/Gunx smart business.jpg")} style={a.logoImage} resizeMode="contain"/>
+      <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={GUNX_OFFICIAL_LOGO} style={a.logoImage} resizeMode="contain"/>
       <Text style={a.title}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Umesahau password?" : mode === "reset" ? "Weka password mpya" : "Ingia kwenye akaunti yako"}</Text>
       {mode === "login" && !phoneLogin && !inviteToken && <>
         <Pressable disabled={busy} onPress={signInWithGoogle} style={a.googleButton}>
@@ -431,7 +432,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (needsShop) return <SafeAreaView style={a.onboardingSafe}>
     <ScrollView contentContainerStyle={a.onboardingScroll} keyboardShouldPersistTaps="handled">
       <View style={a.onboardingTop}>
-        <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/Gunx smart business.jpg")} style={a.onboardingLogo} resizeMode="contain"/>
+        <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={GUNX_OFFICIAL_LOGO} style={a.onboardingLogo} resizeMode="contain"/>
       </View>
       <View style={a.onboardingContent}>
         <Text style={a.welcome}>Karibu {ownerDisplayName}, Ahsante kwa kuchagua GUNX SMART BUSINESS</Text>
@@ -462,7 +463,7 @@ const a = StyleSheet.create({
   onboardingSafe:{flex:1,backgroundColor:"#FFFFFF"},
   onboardingScroll:{flexGrow:1,paddingBottom:30,backgroundColor:"#FFFFFF"},
   onboardingTop:{width:"100%",alignItems:"center",justifyContent:"center",paddingTop:18,paddingBottom:4},
-  onboardingLogo:{width:270,height:142,alignSelf:"center"},
+  onboardingLogo:{width:340,height:179,alignSelf:"center"},
   onboardingContent:{width:"100%",maxWidth:480,alignSelf:"center",paddingHorizontal:22,paddingTop:27},
   welcome:{color:"#0B1F4A",fontSize:22,lineHeight:31,fontWeight:"900",textAlign:"center"},
   tagline:{color:"#0B1F4A",fontSize:14,fontWeight:"800",letterSpacing:.4,textAlign:"center",marginTop:11,marginBottom:27},
@@ -479,7 +480,7 @@ const a = StyleSheet.create({
   onboardingMessage:{color:"#8A5B00",fontSize:12,lineHeight:18,marginTop:14,textAlign:"center"},
   authScroll:{flexGrow:1,justifyContent:"flex-start",paddingTop:16,paddingBottom:28},
   authContent:{width:"100%",maxWidth:440,alignSelf:"center",backgroundColor:"transparent",paddingHorizontal:8,paddingTop:4,paddingBottom:12},
-  logoImage:{width:320,height:202,alignSelf:"center",marginTop:0,marginBottom:8,backgroundColor:"transparent"},
+  logoImage:{width:380,height:240,alignSelf:"center",marginTop:0,marginBottom:8,backgroundColor:"transparent"},
   title:{color:"#102B63",fontWeight:"900",fontSize:25,textAlign:"center",marginTop:4,marginBottom:24,letterSpacing:-.35},
   inputWrap:{minHeight:56,flexDirection:"row",alignItems:"center",borderWidth:1.2,borderColor:"#AEBED8",borderRadius:13,backgroundColor:"#FFFFFF",marginTop:13,paddingHorizontal:14},
   emailIcon:{width:22,height:17,borderWidth:1.8,borderColor:"#102B63",borderRadius:3,marginHorizontal:4,marginRight:8,position:"relative",overflow:"hidden"},
