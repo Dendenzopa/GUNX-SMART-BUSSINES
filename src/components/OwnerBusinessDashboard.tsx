@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useState } from "react";
-import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -217,7 +216,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       </View>
       <View style={s.heroIdentity}>
         <Pressable accessibilityLabel="Badili nembo ya biashara" onPress={() => void pickHeroMedia("business_logo")} style={s.singleLogoWrap}>
-          <Image source={heroMediaUrl && heroMediaType === "business_logo" ? { uri: heroMediaUrl } : GUNX_OFFICIAL_LOGO} resizeMode="contain" style={s.singleLogo} />
+          {heroMediaUrl && heroMediaType === "business_logo" ? <Image source={{ uri: heroMediaUrl }} resizeMode="contain" style={s.singleLogo} /> : <View style={s.logoEmpty}><Text style={s.logoCamera}>▣</Text><Text style={s.logoAdd}>ADD YOUR LOGO</Text><Text style={s.logoHint}>Bonyeza hapa kuweka nembo ya biashara</Text></View> }
         </Pressable>
         <Text numberOfLines={1} style={s.businessName}>{businessName}</Text>
         <View style={s.verifiedPill}><Text style={s.verifiedCheck}>✓</Text><Text style={s.verifiedText}>Biashara Yako</Text></View>
@@ -411,6 +410,10 @@ const s = StyleSheet.create({
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },
   heroIdentity: { flexDirection: "column", alignItems: "center", marginTop: 0, gap: 5 },
   singleLogoWrap: { width: "100%", height: 250, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
+  logoEmpty: { width: "100%", maxWidth: 400, height: 250, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC", borderWidth: 2, borderStyle: "dashed", borderColor: "#94A3B8", borderRadius: 16 },
+  logoCamera: { color: "#64748B", fontSize: 52, fontWeight: "800" },
+  logoAdd: { color: "#0B1F4A", fontSize: 18, fontWeight: "900", letterSpacing: 1, marginTop: 10 },
+  logoHint: { color: "#64748B", fontSize: 11, marginTop: 6 },
   singleLogo: { width: "100%", maxWidth: 400, height: 250 },
   logoUploadBanner: { width: "100%", minHeight: 82, flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 13, borderWidth: 1, borderStyle: "dashed", borderColor: "#60A5FA", backgroundColor: "#FFFFFF" },
   logoPreview: { width: 58, height: 58, borderRadius: 10, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center", overflow: "hidden" },
