@@ -216,7 +216,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       </View>
       <View style={s.heroIdentity}>
         <Pressable accessibilityLabel="Badili nembo ya biashara" onPress={() => void pickHeroMedia("business_logo")} style={s.singleLogoWrap}>
-          {heroMediaUrl && heroMediaType === "business_logo" ? <Image source={{ uri: heroMediaUrl }} resizeMode="contain" style={s.singleLogo} /> : <View style={s.logoEmpty}><Text style={s.logoCamera}>▣</Text><Text style={s.logoAdd}>ADD YOUR LOGO</Text><Text style={s.logoHint}>Bonyeza hapa kuweka nembo ya biashara</Text></View> }
+          {heroMediaUrl && (heroMediaType === "business_logo" || heroMediaType === "owner_photo") ? <Image source={{ uri: heroMediaUrl }} resizeMode="contain" style={s.singleLogo} /> : <View style={s.logoEmpty}><Text style={s.logoCamera}>▣</Text><Text style={s.logoAdd}>ADD YOUR LOGO</Text><Text style={s.logoHint}>Bonyeza hapa kuweka nembo au picha ya biashara</Text></View> }
         </Pressable>
         <Text numberOfLines={1} style={s.businessName}>{businessName}</Text>
         <View style={s.verifiedPill}><Text style={s.verifiedCheck}>✓</Text><Text style={s.verifiedText}>Biashara Yako</Text></View>
@@ -351,7 +351,8 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
           <Text style={s.drawerBusiness}>{businessName}</Text><Text style={s.drawerSection}>NEMBO YA BIASHARA</Text>
           
           <Pressable style={s.drawerRow} disabled={mediaBusy} onPress={() => void pickHeroMedia("business_logo")}><Text style={s.drawerRowText}>Weka logo ya biashara</Text><Text style={s.drawerChevron}>›</Text></Pressable>
-          {!!heroMediaUrl && <Pressable style={s.drawerRow} onPress={() => void clearHeroMedia()}><Text style={s.drawerRowText}>Ondoa picha ya banner</Text><Text style={s.drawerChevron}>›</Text></Pressable>}
+          <Pressable style={s.drawerRow} disabled={mediaBusy} onPress={() => void pickHeroMedia("owner_photo")}><Text style={s.drawerRowText}>Weka picha ya mmiliki</Text><Text style={s.drawerChevron}>›</Text></Pressable>
+          {!!heroMediaUrl && <Pressable style={s.drawerRow} onPress={() => void clearHeroMedia()}><Text style={s.drawerRowText}>Ondoa logo/picha</Text><Text style={s.drawerChevron}>›</Text></Pressable>}
           <Text style={s.drawerFoot}>{mediaBusy ? "Inahifadhi picha..." : "Picha huhifadhiwa kwenye mipangilio ya biashara."}</Text>
         </Pressable>
       </Pressable>
