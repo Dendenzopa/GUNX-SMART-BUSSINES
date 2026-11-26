@@ -1,5 +1,4 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { Session } from "@supabase/supabase-js";
@@ -362,8 +361,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       const blob = await response.blob();
       const extension = (uri.split(".").pop()?.split("?")[0] || "jpg").toLowerCase();
       const contentType = blob.type || (extension === "png" ? "image/png" : "image/jpeg");
-      const path = shopId + "/" + session.user.id + "/business-" + Date.now() + "." + (extension === "png" ? "png" : "jpg");
-      const { error: uploadError } = await supabase.storage.from("business-assets").upload(path, blob, { contentType, upsert: false, cacheControl: "3600" });
+      const path = shopId + "/business_logo-" + Date.now() + "." + (extension === "png" ? "png" : "jpg");
+      const { error: uploadError } = await supabase.storage.from("shop-branding").upload(path, blob, { contentType, upsert: true, cacheControl: "3600" });
       if (uploadError) throw uploadError;
       const { data: publicUrl } = supabase.storage.from("business-assets").getPublicUrl(path);
       const { error: updateError } = await supabase.from("shops").update({ hero_media_type: "business_logo", hero_media_url: publicUrl.publicUrl }).eq("id", shopId);
@@ -432,7 +431,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (needsShop) return <SafeAreaView style={a.onboardingSafe}>
     <ScrollView contentContainerStyle={a.onboardingScroll} keyboardShouldPersistTaps="handled">
       <View style={a.onboardingTop}>
-        <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={GUNX_OFFICIAL_LOGO} style={a.onboardingLogo} resizeMode="contain"/>
+        
       </View>
       <View style={a.onboardingContent}>
         <Text style={a.welcome}>Karibu {ownerDisplayName}, Ahsante kwa kuchagua GUNX SMART BUSINESS</Text>
