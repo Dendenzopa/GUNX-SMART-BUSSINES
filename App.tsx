@@ -85,6 +85,18 @@ function Dashboard() {
  const [isConnected,setIsConnected]=useState<boolean | null>(null);
  const [hasShopProductCache,setHasShopProductCache]=useState(false);
  const [pendingOutbox,setPendingOutbox]=useState<PendingSale[]>([]);
+ useEffect(()=>{
+  if(!supabaseConfigured)return;
+  setProducts([]);
+  setSales([]);
+  setExpenses([]);
+  setDebts([]);
+  setRefundTotal(0);
+  setRefunds([]);
+  setRefundsLoaded(false);
+  setPendingOutbox([]);
+  setHasShopProductCache(false);
+ },[shopId,userId]);
  const syncingOutboxRef=useRef(false);
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
  const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
