@@ -1,5 +1,4 @@
 import React, { useEffect, useMemo, useRef, useState } from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import NetInfo from "@react-native-community/netinfo";
 import { SafeAreaView, ScrollView, StatusBar, StyleSheet, Text, View, Pressable, TextInput, Image, BackHandler } from "react-native";
 import { demoProducts, demoSales, demoExpenses } from "./src/data/demoData";
@@ -21,13 +20,7 @@ function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet
 function Metric({label,value,darkMode=true}:{label:string;value:string;darkMode?:boolean}) { return <View style={[s.metric,!darkMode&&{backgroundColor:"#F1F5F9",borderColor:"#DCE5EC"}]}><Text style={[s.label,!darkMode&&{color:"#334155"}]}>{label}</Text><Text style={[s.value,!darkMode&&{color:"#142D42"}]}>{value}</Text></View>; }
 function makeIdempotencyKey() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".replace(/[xy]/g, ch => { const r = Math.floor(Math.random()*16); return (ch==="x"?r:(r&3)|8).toString(16); }); }
 function Dashboard() {
- const { shopId, isPlatformAdmin, shopRole, userId, signOut } = useShopContext();
- const [darkMode,setDarkMode]=useState(true);
- const [themeLoaded,setThemeLoaded]=useState(false);
- const [themeOwner,setThemeOwner]=useState<string|null>(null);
- useEffect(()=>{let active=true;setThemeLoaded(false);void AsyncStorage.getItem("@gunx-theme-mode:"+userId).then(value=>{if(active){setDarkMode(value==="dark");setThemeOwner(userId);setThemeLoaded(true);}}).catch(()=>{if(active){setThemeOwner(userId);setThemeLoaded(true);}});return()=>{active=false;};},[userId]);
- useEffect(()=>{if(themeLoaded&&themeOwner===userId)void AsyncStorage.setItem("@gunx-theme-mode:"+userId,darkMode?"dark":"light").catch(()=>{});},[darkMode,themeLoaded,themeOwner,userId]);
- const toggleTheme=()=>setDarkMode(current=>!current);
+ const { shopId, isPlatformAdmin, shopRole, userId, signOut, darkMode, toggleTheme } = useShopContext();
  const effectiveRole = shopRole ?? "owner";
  const allowedScreens: Record<"owner"|"manager"|"cashier"|"stockkeeper", Screen[]> = {
   owner: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"],
