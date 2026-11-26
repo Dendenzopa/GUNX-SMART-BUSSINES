@@ -163,13 +163,14 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
   if (period === "Wiki") chartCurrentStart.setDate(chartCurrentStart.getDate() - 6);
   const chartPreviousStart = new Date(chartCurrentStart);
   chartPreviousStart.setDate(chartPreviousStart.getDate() - (period === "Leo" ? 1 : 7));
+  const chartPreviousEnd = new Date(chartPreviousStart.getTime() + (now.getTime() - chartCurrentStart.getTime()));
   const currentPeriodSales = chartSales.filter(item => {
     const date = new Date(item.createdAt);
     return date >= chartCurrentStart && date <= now;
   });
   const previousPeriodSales = chartSales.filter(item => {
     const date = new Date(item.createdAt);
-    return date >= chartPreviousStart && date < chartCurrentStart;
+    return date >= chartPreviousStart && date < chartPreviousEnd;
   });
   const chartTotal = currentPeriodSales.reduce((sum, item) => sum + item.total, 0);
   const previousPeriodTotal = previousPeriodSales.reduce((sum, item) => sum + item.total, 0);
@@ -207,7 +208,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
       }).reduce((sum, item) => sum + item.total, 0);
       return { label: start.toLocaleDateString("sw-TZ", { weekday: "short" }), amount };
     });
-  }, [chartSales, period]);
+  }, [chartSales, period, now]);
   const chartMax = Math.max(1, ...chartPoints.map(point => point.amount));
   const chartCoords = chartPoints.map((point, index) => ({
     x: 7 + index * (126 / Math.max(1, chartPoints.length - 1)),
