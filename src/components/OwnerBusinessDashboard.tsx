@@ -298,7 +298,21 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable onPress={() => onNavigate("Staff")} style={[s.bottomNavItem, { backgroundColor: "#7C3AED" }]}><Text style={s.bottomNavIcon}>👥</Text><Text style={s.bottomNavLabel}>Wafanyakazi</Text></Pressable>
         <Pressable onPress={() => onNavigate("Reports")} style={[s.bottomNavItem, { backgroundColor: "#D69E0B" }]}><Text style={s.bottomNavIcon}>📄</Text><Text style={s.bottomNavLabel}>Ripoti</Text></Pressable>
       </View>
-      <View style={s.footer}><Text style={s.footerLogo}>G</Text><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>GUNX SMART BUSINESS · Biashara Yako, Mafanikio Yetu</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
+      <View style={s.goalCard}>
+        <View style={s.goalHeading}><Text style={s.goalIcon}>◎</Text><Text style={s.goalTitle}>Malengo ya Biashara</Text></View>
+        <Text style={s.goalMessage}>Pamoja Tunaijenga Biashara Yako</Text>
+        <View style={s.goalBottom}>
+          <Pressable onPress={() => onNavigate("Reports")} style={s.goalButton}><Text style={s.goalButtonText}>Anza Sasa →</Text></Pressable>
+          <View style={s.goalChart} accessibilityLabel="Grafu ya ukuaji wa biashara">
+            <View style={[s.goalBar,{height:22,backgroundColor:"#2563EB"}]}/>
+            <View style={[s.goalBar,{height:34,backgroundColor:"#1D8CE0"}]}/>
+            <View style={[s.goalBar,{height:47,backgroundColor:"#16A085"}]}/>
+            <View style={[s.goalBar,{height:62,backgroundColor:"#16A34A"}]}/>
+            <Text style={s.goalArrow}>↗</Text>
+          </View>
+        </View>
+      </View>
+      <View style={s.footer}><Text style={s.footerLogo}>G</Text><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
       {!!pendingSales.length && <Text style={s.notice}>{pendingSales.length} mauzo yanasubiri kusawazishwa.</Text>}
       {!!notice && <Text style={s.notice}>{notice}</Text>}
     </View>
@@ -414,6 +428,19 @@ const s = StyleSheet.create({
   footerName: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
   footerTag: { color: "#D7B56D", fontSize: 8, marginTop: 3 },
   footerValue: { color: "#F2D99F", fontSize: 9, fontWeight: "900" },
+  goalCard: { width: "100%", backgroundColor: "#F8FBFF", borderRadius: 16, padding: 15, borderWidth: 1, borderColor: "#BFDBFE", elevation: 3, overflow: "hidden" },
+  goalHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
+  goalIcon: { color: "#155EEF", fontSize: 25, fontWeight: "900" },
+  goalTitle: { color: "#0B1F4A", fontSize: 15, fontWeight: "900" },
+  goalMessage: { color: "#0B1F4A", fontSize: 17, fontWeight: "900", marginTop: 9 },
+  goalBottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, minHeight: 76 },
+  goalButton: { backgroundColor: "#159A70", borderRadius: 22, paddingHorizontal: 19, paddingVertical: 10, elevation: 2 },
+  goalButtonText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
+  goalChart: { flexDirection: "row", alignItems: "flex-end", gap: 6, height: 72, paddingRight: 15 },
+  goalBar: { width: 13, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
+  goalArrow: { position: "absolute", right: -2, top: -2, color: "#159A70", fontSize: 25, fontWeight: "900" },
+  footerPrivacy: { color: "#FFFFFF", fontSize: 7, marginTop: 3 },
+
   notice: { color: "#166534", backgroundColor: "#DCFCE7", padding: 10, borderRadius: 9, fontSize: 10 },
   modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(5,15,35,0.58)" },
   drawer: { backgroundColor: "#FFFFFF", borderTopLeftRadius: 23, borderTopRightRadius: 23, padding: 19, paddingBottom: 30, borderTopWidth: 3, borderColor: "#D7B56D" },
