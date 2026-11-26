@@ -451,7 +451,7 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
   );
 }
 
-export default function PlatformOwnerDashboard() {
+export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { darkMode: boolean; onToggleTheme: () => void }) {
   const { signOut } = useShopContext();
   const [accountName, setAccountName] = useState("Super Admin");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -539,8 +539,8 @@ export default function PlatformOwnerDashboard() {
   const showBusinesses = () => setSelectedModule("All Businesses");
 
   return (
-    <View style={s.screen}>
-      <View style={s.header}>
+    <View style={[s.screen,darkMode&&{backgroundColor:"#081522"}]}>
+      <View style={[s.header,darkMode&&{backgroundColor:"#081522"}]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Akaunti ya Mmiliki"
@@ -557,6 +557,7 @@ export default function PlatformOwnerDashboard() {
             resizeMode="contain"
           />
         </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={darkMode?"Washa Light Mode":"Washa Dark Mode"} onPress={onToggleTheme} style={[s.accountButton,{marginLeft:8,backgroundColor:darkMode?"#173D36":"#E8EEF5"}]}><Text style={[s.accountIcon,{color:darkMode?"#75E0B8":"#173247"}]}>{darkMode?"☀":"☾"}</Text></Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Taarifa za Mfumo"
@@ -577,7 +578,7 @@ export default function PlatformOwnerDashboard() {
         <ModulePage moduleKey={selectedModule} metrics={metrics} onBack={() => setSelectedModule(null)} />
       ) : (
         <>
-          <View style={s.welcomeBanner}>
+          <View style={[s.welcomeBanner,darkMode&&{backgroundColor:"#102438",borderColor:"#D7B56D"}]}>
             <Pressable accessibilityRole="button" accessibilityLabel="Badilisha picha ya wasifu" onPress={() => void changeProfilePhoto()} style={s.avatarPicker}>
               <View style={s.welcomeAvatar}>
                 {avatarUri ? <Image source={{ uri: avatarUri }} style={s.avatarPhoto} /> : <Text style={s.welcomeAvatarIcon}>👤</Text>}
@@ -671,7 +672,7 @@ const s = StyleSheet.create({
 
    moduleHero: { padding: 19, borderRadius: 18, backgroundColor: "#DCEBFA", borderWidth: 1, borderColor: "#A9C9EB", marginBottom: 13 },
    moduleHeroIcon: { width: 58, height: 58, borderRadius: 17, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", marginBottom: 12 },
-   moduleHeroIconText: { fontSize: 34 },
+   moduleHeroIconText: { fontSize: 68 },
    moduleEyebrow: { color: "#315F91", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
    moduleTitle: { color: "#102A43", fontSize: 22, fontWeight: "900", marginTop: 5 },
    moduleSubtitle: { color: "#29465F", fontSize: 16, lineHeight: 24, marginTop: 7 },
@@ -690,7 +691,7 @@ const s = StyleSheet.create({
    moduleStatusText: { color: "#66532E", fontSize: 13, lineHeight: 18, marginTop: 5 },
 
   accountButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#1E3A8A", borderWidth: 2, borderColor: "#D4AF37", alignItems: "center", justifyContent: "center", elevation: 3 },
-  accountIcon: { color: "#FFFFFF", fontSize: 25, fontWeight: "800" },
+  accountIcon: { color: "#FFFFFF", fontSize: 50, fontWeight: "800" },
   notificationStrip: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: "#8FB5E3", backgroundColor: "#D3E4F8", marginBottom: 14 },
   notificationIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.7)", alignItems: "center", justifyContent: "center" },
   notificationIconText: { color: "#1D4ED8", fontSize: 22, fontWeight: "900" },
@@ -734,7 +735,7 @@ const s = StyleSheet.create({
   brandBlock: { flex: 1, flexBasis: "100%", minWidth: 0, alignItems: "center", justifyContent: "center", backgroundColor: "transparent", padding: 0 },
   brandLogo: { width: 400, height: 250 },
   bellButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#93B8E4", backgroundColor: "#D2E3F7", alignItems: "center", justifyContent: "center" },
-  bell: { color: "#1E3A8A", fontSize: 23, fontWeight: "800" },
+  bell: { color: "#1E3A8A", fontSize: 46, fontWeight: "800" },
   bellDot: { position: "absolute", width: 9, height: 9, borderRadius: 5, backgroundColor: "#DC2626", top: 8, right: 9, borderWidth: 1, borderColor: "#D2E3F7" },
   profileCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: "#DCE5EC", backgroundColor: "#F7FAFC", marginBottom: 22 },
   avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: "#183C42", borderWidth: 2, borderColor: "#D8B86F", alignItems: "center", justifyContent: "center" },
@@ -758,15 +759,15 @@ const s = StyleSheet.create({
   loading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, padding: 11, backgroundColor: "#D3E4F8", borderRadius: 10, marginBottom: 10 },
   loadingText: { color: "#1E293B", fontSize: 14 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  statCard: { width: "48%", minHeight: 154, padding: 16, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", justifyContent: "center" },
+  statCard: { width: "48%", minHeight: 188, padding: 16, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", justifyContent: "center" },
   statBlueCard: { backgroundColor: "#C7DCF4" },
   statGoldCard: { backgroundColor: "#FFFFFF", borderColor: "#D9B96F" },
   statGreenCard: { backgroundColor: "#FFFFFF", borderColor: "#7CC9A5" },
-  statIcon: { width: 62, height: 62, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 9, backgroundColor: "rgba(255,255,255,0.62)" },
+  statIcon: { width: 92, height: 92, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 9, backgroundColor: "rgba(255,255,255,0.62)" },
   blueIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
   goldIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
   greenIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
-  statIconText: { fontSize: 42, fontWeight: "900" },
+  statIconText: { fontSize: 84, fontWeight: "900" },
   blueText: { color: "#1D4ED8" },
   goldText: { color: "#1D4ED8" },
   greenText: { color: "#1D4ED8" },
@@ -775,11 +776,11 @@ const s = StyleSheet.create({
   metricFootnote: { color: "#334B61", fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: 18 },
   toolCount: { color: "#D9B96F", fontSize: 12, fontWeight: "900", letterSpacing: 1, marginBottom: 3 },
   managementGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 5 },
-  managementCard: { width: "47%", minHeight: 170, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
+  managementCard: { width: "47%", minHeight: 210, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
   pressed: { opacity: 0.75, borderColor: "#D8B86F" },
   managementTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
-  managementIcon: { width: 66, height: 66, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
-  managementIconText: { color: "#1D4ED8", fontSize: 44, fontWeight: "900" },
+  managementIcon: { width: 96, height: 96, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
+  managementIconText: { color: "#1D4ED8", fontSize: 88, fontWeight: "900" },
   chevron: { color: "#526A7E", fontSize: 23, marginTop: -4 },
   managementTitle: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
   managementDescription: { color: "#1E293B", fontSize: 12, lineHeight: 15, marginTop: 5 },
@@ -809,7 +810,7 @@ const s = StyleSheet.create({
   businessCard: { padding: 13, borderRadius: 13, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5EC", marginBottom: 9 },
   businessHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   businessIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: "#153D60", alignItems: "center", justifyContent: "center" },
-  businessIconText: { color: "#62B9F5", fontSize: 20 },
+  businessIconText: { color: "#62B9F5", fontSize: 40 },
   businessIdentity: { flex: 1 },
   businessName: { color: "#172B3D", fontSize: 17, fontWeight: "900" },
   businessEmail: { color: "#40566B", fontSize: 13, marginTop: 3 },
