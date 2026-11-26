@@ -209,9 +209,18 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable accessibilityLabel="Fungua menyu ya mmiliki" onPress={() => setMenuOpen(true)} style={s.headerIcon}>
           <Text style={s.headerIconText}>☰</Text>
         </Pressable>
-        <Pressable accessibilityLabel="Arifa za biashara" onPress={() => setNotificationsOpen(true)} style={s.headerIcon}>
-          <Text style={s.headerIconText}>♧</Text>{(lowStock.length > 0 || pendingSales.length > 0) && <View style={s.notificationDot} />}
-        </Pressable>
+        <View style={s.topBarRight}>
+          <Pressable accessibilityLabel="Arifa za biashara" onPress={() => setNotificationsOpen(true)} style={s.headerIcon}>
+            <Text style={s.headerIconText}>♧</Text>{(lowStock.length > 0 || pendingSales.length > 0) && <View style={s.notificationDot} />}
+          </Pressable>
+          <View accessibilityLabel={"Akaunti ya Google: " + ownerName} style={s.googleProfile}>
+            {googlePhoto ? <Image source={{ uri: googlePhoto }} style={s.googleAvatar} /> : <View style={s.googleAvatarFallback}><Text style={s.googleAvatarInitial}>{(ownerName.trim()[0] || "M").toUpperCase()}</Text></View>}
+            <View style={s.googleProfileCopy}>
+              <Text numberOfLines={1} style={s.googleProfileName}>{ownerName}</Text>
+              {!!ownerEmail && <Text numberOfLines={1} style={s.googleProfileEmail}>{ownerEmail}</Text>}
+            </View>
+          </View>
+        </View>
       </View>
       <View style={s.heroIdentity}>
         <Pressable accessibilityLabel="Badili nembo ya biashara" onPress={() => void pickHeroMedia("business_logo")} style={s.singleLogoWrap}>
@@ -358,8 +367,16 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
 
 const s = StyleSheet.create({
   container: { backgroundColor: "#FFFFFF", paddingBottom: 20, gap: 0 },
-  hero: { backgroundColor: "#FFFFFF", paddingHorizontal: 13, paddingTop: 13, paddingBottom: 15 },
-  topBar: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", minHeight: 56, gap: 5 },
+  hero: { backgroundColor: "#FFFFFF", paddingHorizontal: 13, paddingTop: 4, paddingBottom: 15 },
+  topBar: { flexDirection: "row", flexWrap: "nowrap", alignItems: "center", justifyContent: "space-between", minHeight: 44, gap: 5 },
+  topBarRight: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 9, flex: 1, minWidth: 0 },
+  googleProfile: { flexDirection: "row", alignItems: "center", gap: 7, maxWidth: 190, minWidth: 0 },
+  googleAvatar: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: "#D7B56D", backgroundColor: "#E2E8F0" },
+  googleAvatarFallback: { width: 36, height: 36, borderRadius: 18, borderWidth: 1.5, borderColor: "#D7B56D", backgroundColor: "#102438", alignItems: "center", justifyContent: "center" },
+  googleAvatarInitial: { color: "#F2D99F", fontSize: 16, fontWeight: "900" },
+  googleProfileCopy: { flexShrink: 1, minWidth: 0 },
+  googleProfileName: { color: "#0B1F4A", fontSize: 11, fontWeight: "900" },
+  googleProfileEmail: { color: "#64748B", fontSize: 8, marginTop: 1 },
   
   
   
@@ -371,7 +388,7 @@ const s = StyleSheet.create({
   headerIcon: { width: 34, height: 34, borderRadius: 18, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
   headerIconText: { color: "#0B1F4A", fontSize: 22, fontWeight: "900" },
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },
-  heroIdentity: { flexDirection: "column", alignItems: "center", marginTop: 8, gap: 5 },
+  heroIdentity: { flexDirection: "column", alignItems: "center", marginTop: 0, gap: 5 },
   singleLogoWrap: { width: "100%", height: 250, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
   singleLogo: { width: "100%", maxWidth: 400, height: 250 },
   logoUploadBanner: { width: "100%", minHeight: 82, flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 13, borderWidth: 1, borderStyle: "dashed", borderColor: "#60A5FA", backgroundColor: "#FFFFFF" },
