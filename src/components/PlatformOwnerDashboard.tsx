@@ -26,24 +26,24 @@ type Metrics = {
   total_shops: number;
 };
 
-function StatCard({ icon, label, value, tone, onPress }: { icon: string; label: string; value: string; tone: "blue" | "gold" | "green"; onPress: () => void }) {
+function StatCard({ icon, label, value, tone, onPress, darkMode }: { icon: string; label: string; value: string; tone: "blue" | "gold" | "green"; onPress: () => void; darkMode: boolean }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [[s.statCard, tone === "blue" ? s.statBlueCard : tone === "gold" ? s.statGoldCard : s.statGreenCard], pressed && s.pressed]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [[s.statCard, tone === "blue" ? s.statBlueCard : tone === "gold" ? s.statGoldCard : s.statGreenCard, darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}], pressed && s.pressed]}>
       <View style={[s.statIcon, tone === "blue" ? s.blueIcon : tone === "gold" ? s.goldIcon : s.greenIcon]}>
         <Text style={[s.statIconText, tone === "blue" ? s.blueText : tone === "gold" ? s.goldText : s.greenText]}>{icon}</Text>
       </View>
-      <Text style={s.statValue}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
+      <Text style={[s.statValue,darkMode&&{color:"#F4F7FA"}]}>{value}</Text>
+      <Text style={[s.statLabel,darkMode&&{color:"#C1CED8"}]}>{label}</Text>
     </Pressable>
   );
 }
 
-function ManagementCard({ icon, title, description, onPress }: { icon: string; title: string; description: string; onPress: () => void }) {
+function ManagementCard({ icon, title, description, onPress, darkMode }: { icon: string; title: string; description: string; onPress: () => void; darkMode: boolean }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [s.managementCard, pressed && s.pressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [s.managementCard, darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}, pressed && s.pressed]}>
       <View style={s.managementIcon}><Text style={s.managementIconText}>{icon}</Text></View>
-      <Text style={s.managementTitle}>{title}</Text>
-      <Text style={s.managementDescription}>{description}</Text>
+      <Text style={[s.managementTitle,darkMode&&{color:"#F4F7FA"}]}>{title}</Text>
+      <Text style={[s.managementDescription,darkMode&&{color:"#C1CED8"}]}>{description}</Text>
     </Pressable>
   );
 }
@@ -62,7 +62,7 @@ type BusinessRow = {
   total_count: number;
 };
 
-function BusinessDirectory({ onBack }: { onBack: () => void }) {
+function BusinessDirectory({ onBack, darkMode }: { onBack: () => void; darkMode: boolean }) {
   const [rows, setRows] = useState<BusinessRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -98,7 +98,7 @@ function BusinessDirectory({ onBack }: { onBack: () => void }) {
   useEffect(() => { void loadBusinesses(""); }, [loadBusinesses]);
 
   return (
-    <View style={s.directory}>
+    <View style={[s.directory,darkMode&&{backgroundColor:"#081522"}]}>
       <Pressable onPress={onBack} style={s.backButton}><Text style={s.backText}>‹  Rudi Platform Overview</Text></Pressable>
       <Text style={s.sectionEyebrow}>PLATFORM DIRECTORY</Text>
       <Text style={s.sectionTitle}>All Businesses</Text>
@@ -125,12 +125,12 @@ function BusinessDirectory({ onBack }: { onBack: () => void }) {
       {!!error && <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>}
       {!loading && !error && rows.length === 0 && <View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna biashara iliyopatikana</Text><Text style={s.managementDescription}>Biashara mpya zitaonekana hapa baada ya kusajiliwa.</Text></View>}
       {rows.map((business) => (
-        <View key={business.shop_id} style={s.businessCard}>
+        <View key={business.shop_id} style={[s.businessCard,darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}]}>
           <View style={s.businessHeading}>
             <View style={s.businessIcon}><Text style={s.businessIconText}>▣</Text></View>
             <View style={s.businessIdentity}>
-              <Text style={s.businessName}>{business.business_name}</Text>
-              <Text style={s.businessEmail}>{business.owner_email || "Email ya mmiliki haipo"}</Text>
+              <Text style={[s.businessName,darkMode&&{color:"#F4F7FA"}]}>{business.business_name}</Text>
+              <Text style={[s.businessEmail,darkMode&&{color:"#C1CED8"}]}>{business.owner_email || "Email ya mmiliki haipo"}</Text>
             </View>
           </View>
           <View style={s.businessMeta}>
@@ -249,7 +249,7 @@ type PlatformAuditRow = { id:string; actor_id:string|null; action:string; target
 type PlatformNotificationRow = { id:string; title:string; message:string; severity:string; source:string; read_at:string|null; created_at:string };
 type PlatformHealthRow = { id:string; service:string; status:string; response_time_ms:number|null; details:any; checked_at:string };
 
-function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics: Metrics | null; onBack: () => void }) {
+function ModulePage({ moduleKey, metrics, onBack, darkMode }: { moduleKey: string; metrics: Metrics | null; onBack: () => void; darkMode: boolean }) {
   const page = MODULE_PAGES[moduleKey];
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
@@ -328,13 +328,13 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 
     const money=(value:number)=>"TZS "+Number(value||0).toLocaleString("en-US");
   return (
-    <View style={s.modulePage}>
+    <View style={[s.modulePage,darkMode&&{backgroundColor:"#081522"}]}>
       <Pressable onPress={onBack} style={s.backButton}><Text style={s.backText}>‹  Rudi Dashboard</Text></Pressable>
-      <View style={s.moduleHero}>
+      <View style={[s.moduleHero,darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}]}>
         <View style={s.moduleHeroIcon}><Text style={s.moduleHeroIconText}>{page.icon}</Text></View>
         <Text style={s.moduleEyebrow}>GUNX SMART BUSINESS · SUPER ADMIN</Text>
-        <Text style={s.moduleTitle}>{page.title}</Text>
-        <Text style={s.moduleSubtitle}>{page.subtitle}</Text>
+        <Text style={[s.moduleTitle,darkMode&&{color:"#F4F7FA"}]}>{page.title}</Text>
+        <Text style={[s.moduleSubtitle,darkMode&&{color:"#C1CED8"}]}>{page.subtitle}</Text>
       </View>
       {busy && <View style={s.loading}><ActivityIndicator color="#176B56"/><Text style={s.loadingText}>Inapakia taarifa halisi...</Text></View>}
       {!!error && <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>}
@@ -437,9 +437,9 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 
       {page.sections.map(section => (
         <View key={section.heading} style={s.moduleSection}>
-          <Text style={s.moduleSectionTitle}>{section.heading}</Text>
-          <Text style={s.moduleBody}>{section.body}</Text>
-          {section.items.map(item => <View key={item} style={s.moduleItem}><Text style={s.moduleBullet}>✓</Text><Text style={s.moduleItemText}>{item}</Text></View>)}
+          <Text style={[s.moduleSectionTitle,darkMode&&{color:"#F4F7FA"}]}>{section.heading}</Text>
+          <Text style={[s.moduleBody,darkMode&&{color:"#C1CED8"}]}>{section.body}</Text>
+          {section.items.map(item => <View key={item} style={s.moduleItem}><Text style={s.moduleBullet}>✓</Text><Text style={[s.moduleItemText,darkMode&&{color:"#DCE6EF"}]}>{item}</Text></View>)}
         </View>
       ))}
       <Pressable onPress={()=>void loadPage()} style={s.refresh}><Text style={s.refreshText}>↻  Sasisha taarifa</Text></Pressable>
@@ -573,9 +573,9 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
       </Pressable>
 
       {selectedModule === "All Businesses" ? (
-        <BusinessDirectory onBack={() => setSelectedModule(null)} />
+        <BusinessDirectory darkMode={darkMode} onBack={() => setSelectedModule(null)} />
       ) : selectedModule ? (
-        <ModulePage moduleKey={selectedModule} metrics={metrics} onBack={() => setSelectedModule(null)} />
+        <ModulePage moduleKey={selectedModule} metrics={metrics} darkMode={darkMode} onBack={() => setSelectedModule(null)} />
       ) : (
         <>
           <View style={[s.welcomeBanner,darkMode&&{backgroundColor:"#102438",borderColor:"#D7B56D"}]}>
@@ -599,10 +599,10 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
           {loading && <View style={s.loading}><ActivityIndicator color="#1D4ED8"/><Text style={s.loadingText}>Inasoma taarifa kutoka server...</Text></View>}
 
           <View style={s.statsGrid}>
-            <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" onPress={() => openModule("All Businesses")}/>
-            <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" onPress={() => openModule("Users")}/>
-            <StatCard icon="📈" label="Mapato Yaliyothibitishwa" value={verifiedRevenue} tone="gold" onPress={() => openModule("Revenue")}/>
-            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="green" onPress={() => openModule("Health")}/>
+            <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" darkMode={darkMode} onPress={() => openModule("All Businesses")}/>
+            <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" darkMode={darkMode} onPress={() => openModule("Users")}/>
+            <StatCard icon="📈" label="Mapato Yaliyothibitishwa" value={verifiedRevenue} tone="gold" darkMode={darkMode} onPress={() => openModule("Revenue")}/>
+            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="green" darkMode={darkMode} onPress={() => openModule("Health")}/>
           </View>
           <Text style={s.metricFootnote}>
             Watumiaji hai: {metrics ? metrics.active_7d.toLocaleString("en-US") + " (siku 7) · " + metrics.active_30d.toLocaleString("en-US") + " (siku 30)" : "Takwimu za shughuli zitaonekana baada ya server kurudisha data."}
@@ -616,8 +616,8 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
             <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Users")}/>
             <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." onPress={() => openModule("Subscriptions")}/>
             <ManagementCard icon="⚙️" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." onPress={() => openModule("Settings")}/>
-            <ManagementCard icon="🛡️" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." onPress={() => openModule("Security")}/>
-            <ManagementCard icon="📄" title="Ripoti" description="Ukuaji, mapato na matumizi." onPress={() => openModule("Reports")}/>
+            <ManagementCard icon="🛡️" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." darkMode={darkMode} onPress={() => openModule("Security")}/>
+            <ManagementCard icon="📄" title="Ripoti" description="Ukuaji, mapato na matumizi." darkMode={darkMode} onPress={() => openModule("Reports")}/>
           </View>
 
           <Pressable
