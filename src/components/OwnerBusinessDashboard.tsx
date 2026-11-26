@@ -246,6 +246,16 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         </Pressable>
       </View>
 
+      <View style={s.summarySection}>
+        <View style={s.summaryHeading}><Text style={s.summaryIcon}>▥</Text><Text style={s.summaryTitle}>Muhtasari wa Biashara</Text><Text style={s.summaryPeriod}>Leo</Text></View>
+        <View style={s.summaryGrid}>
+          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>🛒</Text><Text style={s.summaryTileLabel}>Mauzo ya Leo</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(totalSales(todaySales))}</Text></View>
+          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>📦</Text><Text style={s.summaryTileLabel}>Bidhaa Hai</Text><Text style={s.summaryTileValue}>{activeProducts}</Text></View>
+          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>👛</Text><Text style={s.summaryTileLabel}>Madeni</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(debts.reduce((sum, item) => sum + item.balance, 0))}</Text></View>
+          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>💰</Text><Text style={s.summaryTileLabel}>Thamani ya Stock</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(stockValue)}</Text></View>
+        </View>
+      </View>
+
       <View style={s.midSection}>
         <View style={[s.chartCard, s.splitCard]}>
           <View style={s.cardHeader}>
@@ -288,6 +298,14 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         </View>
       </View>
 
+      <View style={s.systemCard}>
+        <View style={s.systemHeading}><Text style={s.systemBell}>♧</Text><Text style={s.cardTitle}>Taarifa za Mfumo</Text></View>
+        {lowStock.length > 0 && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#F59E0B"}]}/><Text style={s.systemText}>{lowStock.length} bidhaa zinahitaji kuongezewa stock</Text><Text style={s.chevron}>›</Text></View>}
+        {pendingSales.length > 0 && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#2563EB"}]}/><Text style={s.systemText}>{pendingSales.length} mauzo yanasubiri kusawazishwa</Text><Text style={s.chevron}>›</Text></View>}
+        {online === false && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#EA580C"}]}/><Text style={s.systemText}>Hakuna muunganisho wa intaneti kwa sasa</Text><Text style={s.chevron}>›</Text></View>}
+        {lowStock.length === 0 && pendingSales.length === 0 && online !== false && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#16A34A"}]}/><Text style={s.systemText}>Biashara yako iko tayari — hakuna tahadhari mpya</Text><Text style={s.chevron}>›</Text></View>}
+        {!!notice && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#7C3AED"}]}/><Text style={s.systemText}>{notice}</Text><Text style={s.chevron}>›</Text></View>}
+      </View>
       {lowStock.length > 0 && <View style={s.stockAlert}>
         <Text style={s.alertTitle}>Tahadhari ya Stock · {lowStock.length}</Text>
         {lowStock.slice(0, 3).map(item => <Text key={item.id} style={s.alertText}>{item.name} — {item.stockQuantity} {item.unit}</Text>)}
@@ -385,6 +403,22 @@ const s = StyleSheet.create({
   serviceIcon: { color: "#FFFFFF", fontSize: 23, fontWeight: "900" },
   serviceLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", marginTop: 5, textAlign: "center" },
   
+  summarySection: { gap: 8 },
+  summaryHeading: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#155EEF", paddingHorizontal: 11, paddingVertical: 9, borderRadius: 10 },
+  summaryIcon: { color: "#FFFFFF", fontSize: 17, fontWeight: "900" },
+  summaryTitle: { color: "#FFFFFF", fontSize: 12, fontWeight: "900", flex: 1 },
+  summaryPeriod: { color: "#155EEF", backgroundColor: "#FFFFFF", borderRadius: 14, overflow: "hidden", paddingHorizontal: 10, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
+  summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
+  summaryTile: { width: "48%", minHeight: 78, backgroundColor: "#F0F7FF", borderRadius: 11, borderWidth: 1, borderColor: "#DBEAFE", padding: 9, justifyContent: "center" },
+  summaryTileIcon: { fontSize: 17 },
+  summaryTileLabel: { color: "#64748B", fontSize: 9, fontWeight: "800", marginTop: 3 },
+  summaryTileValue: { color: "#0B1F4A", fontSize: 11, fontWeight: "900", marginTop: 3 },
+  systemCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 11, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1, gap: 2 },
+  systemHeading: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 3 },
+  systemBell: { color: "#155EEF", fontSize: 18, fontWeight: "900" },
+  systemRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 9, borderTopWidth: 1, borderTopColor: "#F1F5F9" },
+  systemDot: { width: 8, height: 8, borderRadius: 5 },
+  systemText: { flex: 1, color: "#334155", fontSize: 10, fontWeight: "700" },
   midSection: { flexDirection: "column", alignItems: "stretch", gap: 10 },
   splitCard: { width: "100%", minWidth: 0 },
   chartCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 9, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1 },
