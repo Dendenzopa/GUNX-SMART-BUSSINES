@@ -363,8 +363,9 @@ function Dashboard() {
    </SafeAreaView>
   );
  }
- return <SafeAreaView style={s.safe}><StatusBar barStyle="light-content" backgroundColor="#081522"/>
-  <View style={s.header}><Image source={GUNX_OFFICIAL_LOGO} style={s.logoImage} resizeMode="contain"/><View style={s.headerText}><Text style={s.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={s.brand}>GUNX <Text style={s.gold}>SMART</Text> BUSINESS</Text><Text style={s.muted}>Sales · Stock · Finance</Text></View><Pressable accessibilityRole="button" accessibilityLabel="Toka kwenye akaunti" onPress={()=>void signOut()} style={s.logoutButton}><Text style={s.logoutText}>Toka</Text></Pressable></View>
+ const ownerHome=screen==="Home"&&effectiveRole==="owner";
+ return <SafeAreaView style={[s.safe,ownerHome&&{backgroundColor:"#FFFFFF"}]}><StatusBar barStyle={ownerHome?"dark-content":"light-content"} backgroundColor={ownerHome?"#FFFFFF":"#081522"}/>
+  <View style={[s.header,ownerHome&&{backgroundColor:"#FFFFFF",paddingTop:6,paddingBottom:6,minHeight:44}]}>{!ownerHome&&<><Image source={GUNX_OFFICIAL_LOGO} style={s.logoImage} resizeMode="contain"/><View style={s.headerText}><Text style={s.eyebrow}>GUNX BUSINESS SUITE</Text><Text style={s.brand}>GUNX <Text style={s.gold}>SMART</Text> BUSINESS</Text><Text style={s.muted}>Sales · Stock · Finance</Text></View></>}<Pressable accessibilityRole="button" accessibilityLabel="Toka kwenye akaunti" onPress={()=>void signOut()} style={s.logoutButton}><Text style={s.logoutText}>Toka</Text></Pressable></View>
 {showMore&&<View style={s.morePanel}>{visibleScreens.filter(x=>!["Home","POS","Stock"].includes(x)).map(x=><Pressable key={x} onPress={()=>navigateTo(x)} style={s.moreItem}><Text style={s.moreText}>{({Debts:"Madeni",Expenses:"Gharama",Returns:"Marejesho",Sync:"Offline Sync",Payments:"Malipo",Reports:"Ripoti",Staff:"Wafanyakazi",Subscription:"Subscription",Owner:"Super Admin"} as Partial<Record<Screen,string>>)[x]??x}</Text></Pressable>)}</View>}
   <ScrollView contentContainerStyle={s.content}>
     {screen==="Home"&&effectiveRole==="owner"&&<OwnerBusinessDashboard shopId={shopId} sales={sales} products={products} expenses={expenses} debts={debts} pendingSales={pendingOutbox} notice={notice} online={isConnected} onNavigate={navigateTo}/>}
