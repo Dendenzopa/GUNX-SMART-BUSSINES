@@ -226,7 +226,7 @@ function Dashboard() {
   try {
    const labels={today:"Leo", "7d":"Siku 7", "30d":"Siku 30", year:"Mwaka huu", all:"Tangu mwanzo"};
    if(reportRefundTotal===null){setNotice("Taarifa za refunds za kipindi hiki hazijapakiwa. Unganisha mtandao kisha ujaribu tena; sitatumia jumla ya historia kama takwimu za kipindi.");return;}
-   const input={businessName:"GUNX SMART BUSINESS",periodLabel:labels[reportRange],sales:reportSales,expenses:reportExpenses,refundTotal:reportRefundTotal};
+   const input={businessName:businessBrand.name?.trim()||"GUNX SMART BUSINESS",periodLabel:labels[reportRange],sales:reportSales,expenses:reportExpenses,refundTotal:reportRefundTotal};
    if(kind==="pdf")await exportBusinessReportPdf(input);else await exportBusinessReportCsv(input);
    setNotice(kind==="pdf"?"Ripoti ya PDF imeandaliwa kwa kushirikishwa.":"Ripoti ya CSV inayofunguka kwenye Excel imeandaliwa.");
   }catch(error){setNotice("Imeshindikana kutoa ripoti: "+(error instanceof Error?error.message:"Hitilafu isiyojulikana"));}
