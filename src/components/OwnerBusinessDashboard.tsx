@@ -221,7 +221,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
         <Pressable accessibilityLabel="Badili nembo ya biashara" onPress={() => void pickHeroMedia("business_logo")} style={s.singleLogoWrap}>
           {heroMediaUrl && (heroMediaType === "business_logo" || heroMediaType === "owner_photo") ? <Image source={{ uri: heroMediaUrl }} resizeMode="contain" style={s.singleLogo} /> : <View style={s.logoEmpty}><Text style={s.logoCamera}>▣</Text><Text style={s.logoAdd}>ADD YOUR LOGO</Text><Text style={s.logoHint}>Bonyeza hapa kuweka nembo au picha ya biashara</Text></View> }
         </Pressable>
-        <Text numberOfLines={1} style={s.businessName}>{businessName}</Text>
+        <Text numberOfLines={1} style={[s.businessName,darkMode&&{color:"#F4F7FA"}]}>{businessName}</Text>
         <View style={s.verifiedPill}><Text style={s.verifiedCheck}>✓</Text><Text style={s.verifiedText}>Biashara Yako</Text></View>
         <Text style={s.onlineText}>{online === false ? "● OFFLINE" : online === true ? "● ONLINE" : "● INAANGALIA MUUNGANISHO"}</Text>
       </View>
@@ -258,19 +258,19 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
       </View>
 
       <View style={[s.summarySection,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
-        <View style={s.summaryHeading}><Text style={s.summaryIcon}>▥</Text><Text style={s.summaryTitle}>Muhtasari wa Biashara</Text><Text style={s.summaryPeriod}>Leo</Text></View>
+        <View style={s.summaryHeading}><Text style={s.summaryIcon}>▥</Text><Text style={[s.summaryTitle,darkMode&&{color:"#F4F7FA"}]}>Muhtasari wa Biashara</Text><Text style={s.summaryPeriod}>Leo</Text></View>
         <View style={s.summaryGrid}>
-          <View style={[s.summaryTile,darkMode&&{backgroundColor:"#173247",borderColor:"#2B4B61"}]}><Text style={s.summaryTileIcon}>🛒</Text><Text style={s.summaryTileLabel}>Mauzo ya Leo</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(todaySales.reduce((sum, item) => sum + item.total, 0))}</Text></View>
-          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>📦</Text><Text style={s.summaryTileLabel}>Bidhaa Hai</Text><Text style={s.summaryTileValue}>{activeProducts}</Text></View>
-          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>👛</Text><Text style={s.summaryTileLabel}>Madeni</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(debts.reduce((sum, item) => sum + item.balance, 0))}</Text></View>
-          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>💰</Text><Text style={s.summaryTileLabel}>Thamani ya Stock</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(stockValue)}</Text></View>
+          <View style={[s.summaryTile,darkMode&&{backgroundColor:"#173247",borderColor:"#2B4B61"}]}><Text style={s.summaryTileIcon}>🛒</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Mauzo ya Leo</Text><Text numberOfLines={1} style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(todaySales.reduce((sum, item) => sum + item.total, 0))}</Text></View>
+          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>📦</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Bidhaa Hai</Text><Text style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{activeProducts}</Text></View>
+          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>👛</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Madeni</Text><Text numberOfLines={1} style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(debts.reduce((sum, item) => sum + item.balance, 0))}</Text></View>
+          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>💰</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Thamani ya Stock</Text><Text numberOfLines={1} style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(stockValue)}</Text></View>
         </View>
       </View>
 
       <View style={s.midSection}>
         <View style={[s.chartCard, s.splitCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
           <View style={s.cardHeader}>
-            <View style={s.chartTitleRow}><Text style={s.chartTitleIcon}>▥</Text><Text style={s.cardTitle}>Muhtasari wa Mauzo</Text></View>
+            <View style={s.chartTitleRow}><Text style={s.chartTitleIcon}>▥</Text><Text style={[s.cardTitle,darkMode&&{color:"#F4F7FA"}]}>Muhtasari wa Mauzo</Text></View>
             <Pressable onPress={() => setPeriodMenu(value => !value)} style={s.periodSelect}>
               <Text style={s.periodSelectText}>{period}⌄</Text>
             </Pressable>
@@ -278,8 +278,8 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
           {periodMenu && <View style={s.periodOptions}>
             {(["Leo", "Wiki"] as const).map(option => <Pressable key={option} onPress={() => { setPeriod(option); setPeriodMenu(false); }} style={s.periodOption}><Text style={s.periodOptionText}>{option}</Text></Pressable>)}
           </View>}
-          <Text numberOfLines={1} style={s.chartTotal}>{formatTZS(chartTotal)}</Text>
-          <View style={s.chartLegend}><Text style={s.chartSubLabel}>Mauzo {period.toLowerCase()}</Text><Text style={[s.trendPill, { color: chartColor }]}>{growing ? "↗ Mwenendo chanya" : "↘ Mwelekeo umeshuka"}</Text></View>
+          <Text numberOfLines={1} style={[s.chartTotal,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(chartTotal)}</Text>
+          <View style={s.chartLegend}><Text style={[s.chartSubLabel,darkMode&&{color:"#F4F7FA"}]}>Mauzo {period.toLowerCase()}</Text><Text style={[s.trendPill, { color: chartColor }]}>{growing ? "↗ Mwenendo chanya" : "↘ Mwelekeo umeshuka"}</Text></View>
           <View style={s.chartPlot}>
             <View style={[s.chartGridLine, { top: 22 }]} /><View style={[s.chartGridLine, { top: 57 }]} />
             <View style={s.chartYAxis}><Text style={s.axisSmall}>{formatTZS(chartMax)}</Text><Text style={s.axisSmall}>0</Text></View>
@@ -301,21 +301,21 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
         </View>
 
         <View style={[s.quickCard, s.splitCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
-          <View style={s.quickTitleRow}><Text style={s.quickBolt}>ϟ</Text><Text style={s.cardTitle}>Vitendo vya Haraka</Text></View>
-          <Pressable onPress={() => onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#16A34A" }]}>＋</Text><Text style={s.quickLabel}>Ongeza Bidhaa</Text><Text style={s.chevron}>›</Text></Pressable>
-          <Pressable onPress={() => onNavigate("Staff")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#2563EB" }]}>♟</Text><Text style={s.quickLabel}>Ongeza Mfanyakazi</Text><Text style={s.chevron}>›</Text></Pressable>
-          <Pressable onPress={() => onNavigate("Reports")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#D69E0B" }]}>▥</Text><Text style={s.quickLabel}>Angalia Ripoti</Text><Text style={s.chevron}>›</Text></Pressable>
-          <Pressable onPress={() => onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#2563EB" }]}>↓</Text><Text style={s.quickLabel}>Dhibiti Stock</Text><Text style={s.chevron}>›</Text></Pressable>
+          <View style={s.quickTitleRow}><Text style={s.quickBolt}>ϟ</Text><Text style={[s.cardTitle,darkMode&&{color:"#F4F7FA"}]}>Vitendo vya Haraka</Text></View>
+          <Pressable onPress={() => onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#16A34A" }]}>＋</Text><Text style={[s.quickLabel,darkMode&&{color:"#F4F7FA"}]}>Ongeza Bidhaa</Text><Text style={s.chevron}>›</Text></Pressable>
+          <Pressable onPress={() => onNavigate("Staff")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#2563EB" }]}>♟</Text><Text style={[s.quickLabel,darkMode&&{color:"#F4F7FA"}]}>Ongeza Mfanyakazi</Text><Text style={s.chevron}>›</Text></Pressable>
+          <Pressable onPress={() => onNavigate("Reports")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#D69E0B" }]}>▥</Text><Text style={[s.quickLabel,darkMode&&{color:"#F4F7FA"}]}>Angalia Ripoti</Text><Text style={s.chevron}>›</Text></Pressable>
+          <Pressable onPress={() => onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#2563EB" }]}>↓</Text><Text style={[s.quickLabel,darkMode&&{color:"#F4F7FA"}]}>Dhibiti Stock</Text><Text style={s.chevron}>›</Text></Pressable>
         </View>
       </View>
 
       <View style={[s.systemCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
-        <View style={s.systemHeading}><Text style={s.systemBell}>♧</Text><Text style={s.cardTitle}>Taarifa za Mfumo</Text></View>
-        {lowStock.length > 0 && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#F59E0B"}]}/><Text style={s.systemText}>{lowStock.length} bidhaa zinahitaji kuongezewa stock</Text><Text style={s.chevron}>›</Text></View>}
-        {pendingSales.length > 0 && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#2563EB"}]}/><Text style={s.systemText}>{pendingSales.length} mauzo yanasubiri kusawazishwa</Text><Text style={s.chevron}>›</Text></View>}
-        {online === false && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#EA580C"}]}/><Text style={s.systemText}>Hakuna muunganisho wa intaneti kwa sasa</Text><Text style={s.chevron}>›</Text></View>}
-        {lowStock.length === 0 && pendingSales.length === 0 && online !== false && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#16A34A"}]}/><Text style={s.systemText}>Biashara yako iko tayari — hakuna tahadhari mpya</Text><Text style={s.chevron}>›</Text></View>}
-        {!!notice && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#7C3AED"}]}/><Text style={s.systemText}>{notice}</Text><Text style={s.chevron}>›</Text></View>}
+        <View style={s.systemHeading}><Text style={s.systemBell}>♧</Text><Text style={[s.cardTitle,darkMode&&{color:"#F4F7FA"}]}>Taarifa za Mfumo</Text></View>
+        {lowStock.length > 0 && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#F59E0B"}]}/><Text style={[s.systemText,darkMode&&{color:"#F4F7FA"}]}>{lowStock.length} bidhaa zinahitaji kuongezewa stock</Text><Text style={s.chevron}>›</Text></View>}
+        {pendingSales.length > 0 && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#2563EB"}]}/><Text style={[s.systemText,darkMode&&{color:"#F4F7FA"}]}>{pendingSales.length} mauzo yanasubiri kusawazishwa</Text><Text style={s.chevron}>›</Text></View>}
+        {online === false && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#EA580C"}]}/><Text style={[s.systemText,darkMode&&{color:"#F4F7FA"}]}>Hakuna muunganisho wa intaneti kwa sasa</Text><Text style={s.chevron}>›</Text></View>}
+        {lowStock.length === 0 && pendingSales.length === 0 && online !== false && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#16A34A"}]}/><Text style={[s.systemText,darkMode&&{color:"#F4F7FA"}]}>Biashara yako iko tayari — hakuna tahadhari mpya</Text><Text style={s.chevron}>›</Text></View>}
+        {!!notice && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#7C3AED"}]}/><Text style={[s.systemText,darkMode&&{color:"#F4F7FA"}]}>{notice}</Text><Text style={s.chevron}>›</Text></View>}
       </View>
       {lowStock.length > 0 && <View style={s.stockAlert}>
         <Text style={s.alertTitle}>Tahadhari ya Stock · {lowStock.length}</Text>
@@ -328,10 +328,10 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
         <Pressable onPress={() => onNavigate("Staff")} style={[s.bottomNavItem, { backgroundColor: "#7C3AED" }]}><Text style={s.bottomNavIcon}>👥</Text><Text style={s.bottomNavLabel}>Wafanyakazi</Text></Pressable>
         <Pressable onPress={() => onNavigate("Reports")} style={[s.bottomNavItem, { backgroundColor: "#D69E0B" }]}><Text style={s.bottomNavIcon}>📄</Text><Text style={s.bottomNavLabel}>Ripoti</Text></Pressable>
       </View>
-      <View style={[s.footer,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
+      <View style={[s.footer,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}><View style={s.footerCopy}><Text style={[s.footerName,darkMode&&{color:"#F4F7FA"}]}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
       <View style={[s.goalCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
-        <View style={s.goalHeading}><Text style={s.goalIcon}>◎</Text><Text style={s.goalTitle}>Malengo ya Biashara</Text></View>
-        <Text style={s.goalMessage}>Pamoja Tunaijenga Biashara Yako</Text>
+        <View style={s.goalHeading}><Text style={s.goalIcon}>◎</Text><Text style={[s.goalTitle,darkMode&&{color:"#F4F7FA"}]}>Malengo ya Biashara</Text></View>
+        <Text style={[s.goalMessage,darkMode&&{color:"#F4F7FA"}]}>Pamoja Tunaijenga Biashara Yako</Text>
         <View style={s.goalBottom}>
           <Pressable onPress={() => onNavigate("Reports")} style={s.goalButton}><Text style={s.goalButtonText}>Anza Sasa →</Text></Pressable>
           <View style={s.goalChart} accessibilityLabel="Grafu ya ukuaji wa biashara">
@@ -350,24 +350,24 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
     <Modal visible={menuOpen} transparent animationType="slide" onRequestClose={() => setMenuOpen(false)}>
       <Pressable style={s.modalBackdrop} onPress={() => setMenuOpen(false)}>
         <Pressable style={[s.drawer,darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}]} onPress={() => {}}>
-          <View style={s.drawerHandle} /><View style={s.drawerHeader}><Text style={s.drawerTitle}>Menyu ya Mmiliki</Text><Pressable onPress={() => setMenuOpen(false)}><Text style={s.closeText}>✕</Text></Pressable></View>
-          <Text style={s.drawerBusiness}>{businessName}</Text><Text style={s.drawerSection}>NEMBO YA BIASHARA</Text>
+          <View style={s.drawerHandle} /><View style={s.drawerHeader}><Text style={[s.drawerTitle,darkMode&&{color:"#F4F7FA"}]}>Menyu ya Mmiliki</Text><Pressable onPress={() => setMenuOpen(false)}><Text style={s.closeText}>✕</Text></Pressable></View>
+          <Text style={[s.drawerBusiness,darkMode&&{color:"#F4F7FA"}]}>{businessName}</Text><Text style={[s.drawerSection,darkMode&&{color:"#F4F7FA"}]}>NEMBO YA BIASHARA</Text>
           
-          <Pressable style={s.drawerRow} disabled={mediaBusy} onPress={() => void pickHeroMedia("business_logo")}><Text style={s.drawerRowText}>Weka logo ya biashara</Text><Text style={s.drawerChevron}>›</Text></Pressable>
-          <Pressable style={s.drawerRow} disabled={mediaBusy} onPress={() => void pickHeroMedia("owner_photo")}><Text style={s.drawerRowText}>Weka picha ya mmiliki</Text><Text style={s.drawerChevron}>›</Text></Pressable>
-          {!!heroMediaUrl && <Pressable style={s.drawerRow} onPress={() => void clearHeroMedia()}><Text style={s.drawerRowText}>Ondoa logo/picha</Text><Text style={s.drawerChevron}>›</Text></Pressable>}
+          <Pressable style={s.drawerRow} disabled={mediaBusy} onPress={() => void pickHeroMedia("business_logo")}><Text style={[s.drawerRowText,darkMode&&{color:"#F4F7FA"}]}>Weka logo ya biashara</Text><Text style={s.drawerChevron}>›</Text></Pressable>
+          <Pressable style={s.drawerRow} disabled={mediaBusy} onPress={() => void pickHeroMedia("owner_photo")}><Text style={[s.drawerRowText,darkMode&&{color:"#F4F7FA"}]}>Weka picha ya mmiliki</Text><Text style={s.drawerChevron}>›</Text></Pressable>
+          {!!heroMediaUrl && <Pressable style={s.drawerRow} onPress={() => void clearHeroMedia()}><Text style={[s.drawerRowText,darkMode&&{color:"#F4F7FA"}]}>Ondoa logo/picha</Text><Text style={s.drawerChevron}>›</Text></Pressable>}
           <Text style={s.drawerFoot}>{mediaBusy ? "Inahifadhi picha..." : "Picha huhifadhiwa kwenye mipangilio ya biashara."}</Text>
         </Pressable>
       </Pressable>
     </Modal>
     <Modal visible={notificationsOpen} transparent animationType="fade" onRequestClose={() => setNotificationsOpen(false)}>
       <Pressable style={s.modalBackdrop} onPress={() => setNotificationsOpen(false)}>
-        <Pressable style={s.notificationPanel} onPress={() => {}}>
-          <View style={s.drawerHeader}><Text style={s.drawerTitle}>Arifa za Biashara</Text><Pressable onPress={() => setNotificationsOpen(false)}><Text style={s.closeText}>✕</Text></Pressable></View>
-          {lowStock.length === 0 && pendingSales.length === 0 && !notice ? <Text style={s.emptyNotice}>Hakuna arifa mpya kwa sasa.</Text> : <>
-            {lowStock.length > 0 && <Pressable onPress={() => { setNotificationsOpen(false); onNavigate("Stock"); }} style={s.noticeRow}><Text style={s.noticeHeading}>Stock inakaribia kuisha</Text><Text style={s.noticeBody}>{lowStock.length} bidhaa ziko chini ya kiwango cha kuagiza.</Text></Pressable>}
-            {pendingSales.length > 0 && <View style={s.noticeRow}><Text style={s.noticeHeading}>Mauzo yanasubiri kusawazishwa</Text><Text style={s.noticeBody}>{pendingSales.length} mauzo yanasubiri muunganisho wa mtandao.</Text></View>}
-            {!!notice && <View style={s.noticeRow}><Text style={s.noticeHeading}>Taarifa ya mfumo</Text><Text style={s.noticeBody}>{notice}</Text></View>}
+        <Pressable style={[s.notificationPanel,darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}]} onPress={() => {}}>
+          <View style={s.drawerHeader}><Text style={[s.drawerTitle,darkMode&&{color:"#F4F7FA"}]}>Arifa za Biashara</Text><Pressable onPress={() => setNotificationsOpen(false)}><Text style={s.closeText}>✕</Text></Pressable></View>
+          {lowStock.length === 0 && pendingSales.length === 0 && !notice ? <Text style={[s.emptyNotice,darkMode&&{color:"#F4F7FA"}]}>Hakuna arifa mpya kwa sasa.</Text> : <>
+            {lowStock.length > 0 && <Pressable onPress={() => { setNotificationsOpen(false); onNavigate("Stock"); }} style={[s.noticeRow,darkMode&&{backgroundColor:"#173247",borderColor:"#2B4B61"}]}><Text style={[s.noticeHeading,darkMode&&{color:"#F4F7FA"}]}>Stock inakaribia kuisha</Text><Text style={[s.noticeBody,darkMode&&{color:"#F4F7FA"}]}>{lowStock.length} bidhaa ziko chini ya kiwango cha kuagiza.</Text></Pressable>}
+            {pendingSales.length > 0 && <View style={[s.noticeRow,darkMode&&{backgroundColor:"#173247",borderColor:"#2B4B61"}]}><Text style={[s.noticeHeading,darkMode&&{color:"#F4F7FA"}]}>Mauzo yanasubiri kusawazishwa</Text><Text style={[s.noticeBody,darkMode&&{color:"#F4F7FA"}]}>{pendingSales.length} mauzo yanasubiri muunganisho wa mtandao.</Text></View>}
+            {!!notice && <View style={s.noticeRow}><Text style={[s.noticeHeading,darkMode&&{color:"#F4F7FA"}]}>Taarifa ya mfumo</Text><Text style={[s.noticeBody,darkMode&&{color:"#F4F7FA"}]}>{notice}</Text></View>}
           </>}
         </Pressable>
       </Pressable>
