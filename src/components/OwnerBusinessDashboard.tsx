@@ -449,7 +449,7 @@ const s = StyleSheet.create({
   summaryTitle: { color: "#0B1F4A", fontSize: 14, fontWeight: "900", flex: 1 },
   summaryPeriod: { color: "#155EEF", backgroundColor: "#FFFFFF", borderRadius: 14, overflow: "hidden", paddingHorizontal: 10, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
   summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
-  summaryTile: { width: "48%", minHeight: 70, backgroundColor: "#F0F7FF", borderRadius: 10, borderWidth: 1, borderColor: "#DBEAFE", padding: 7, justifyContent: "center" },
+  summaryTile: { width: "48%", minHeight: 112, backgroundColor: "#F0F7FF", borderRadius: 10, borderWidth: 1, borderColor: "#DBEAFE", padding: 7, justifyContent: "center" },
   summaryTileIcon: { fontSize: 54 },
   summaryTileLabel: { color: "#64748B", fontSize: 13, fontWeight: "800", marginTop: 3 },
   summaryTileValue: { color: "#0B1F4A", fontSize: 16, fontWeight: "900", marginTop: 3 },
