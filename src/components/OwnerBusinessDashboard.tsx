@@ -1,4 +1,5 @@
 import React, { useEffect, useMemo, useState } from "react";
+import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { Image, Modal, Pressable, StyleSheet, Text, View } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as ImagePicker from "expo-image-picker";
@@ -208,7 +209,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable accessibilityLabel="Fungua menyu ya mmiliki" onPress={() => setMenuOpen(true)} style={s.headerIcon}>
           <Text style={s.headerIconText}>☰</Text>
         </Pressable>
-        <Image source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")} resizeMode="contain" style={s.brandLogo} />
+        <Image source={GUNX_OFFICIAL_LOGO} resizeMode="contain" style={s.brandLogo} />
         <Pressable accessibilityLabel="Arifa za biashara" onPress={() => setNotificationsOpen(true)} style={s.headerIcon}>
           <Text style={s.headerIconText}>♧</Text>{(lowStock.length > 0 || pendingSales.length > 0) && <View style={s.notificationDot} />}
         </Pressable>
