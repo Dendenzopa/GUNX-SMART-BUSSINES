@@ -21,6 +21,16 @@
    - `supabase/migrations/0015_restrict_direct_ledger_writes.sql`
    - `supabase/migrations/0016_require_audited_opening_stock.sql`
    - `supabase/migrations/0017_product_catalogue_management_only.sql`
+   - `supabase/migrations/0018_platform_owner_analytics.sql`
+   - `supabase/migrations/0019_harden_installation_analytics.sql`
+   - `supabase/migrations/0020_restrict_product_catalogue_edits.sql`
+   - `supabase/migrations/0021_role_scoped_dashboard_reads.sql`
+   - `supabase/migrations/0022_platform_business_directory.sql`
+   - `supabase/migrations/20261125003941_platform_admin_management_foundation.sql`
+   - `supabase/migrations/20261125004042_platform_admin_read_write_rpcs.sql`
+   - `supabase/migrations/20261125004143_seed_platform_default_settings.sql`
+   - `supabase/migrations/20261125004226_revoke_direct_trigger_function_execution.sql`
+   - `supabase/migrations/0023_owner_dashboard_branding.sql`
 3. Copy `.env.example` to `.env.local` and set the Supabase project URL and anon/publishable key.
 4. Deploy the staff invitation Edge Function: `supabase functions deploy invite-staff` (keep JWT verification enabled).
 5. Deploy the trusted Pro activation Edge Function: `supabase functions deploy activate-pro --no-verify-jwt`. This endpoint uses its own `x-gunx-admin-token` check; generate a long random secret and set it with `supabase secrets set GUNX_PRO_ADMIN_TOKEN=...`.
@@ -32,6 +42,7 @@
 
 - Apply migrations `0015_restrict_direct_ledger_writes.sql`, `0016_require_audited_opening_stock.sql`, and `0017_product_catalogue_management_only.sql` after `0014`. Authenticated clients can no longer insert sales, sale items, payments, stock movements, debts, debt repayments or refunds directly; use the atomic RPC workflows. Direct stock-quantity edits and non-zero opening stock on direct product inserts are blocked; opening stock must be recorded through `receive_stock`. Product creation/deletion and cost/selling-price edits are restricted to owners/managers; stockkeepers receive stock for existing products through audited workflows.
 
+- Apply `0023_owner_dashboard_branding.sql` to add the owner-selected hero media fields and public image bucket. Upload, update and delete permissions are restricted to the authenticated shop owner and paths under that owner's shop ID.
 - Only use the Supabase anon/publishable key in the app.
 - Never embed or commit the Supabase `service_role` key.
 - Configure email confirmation and password reset before production.
@@ -71,6 +82,9 @@ For managed EAS builds, `eas.json` includes:
 - `production`: Android App Bundle (AAB) profile for a release build.
 
 An EAS build still requires an Expo account/project setup and the appropriate build credentials. No release signing credentials are stored in this repository.
+
+- Google/Gmail display name and avatar are read from the current Supabase Google OAuth identity and refreshed when the auth session changes. Google OAuth must already be enabled in the Supabase Auth provider settings.
+- The owner dashboard branding fields and image bucket are added by migration `0023_owner_dashboard_branding.sql`; apply that migration before using cloud hero image uploads.
 
 ## Current limitations — not production certification
 
