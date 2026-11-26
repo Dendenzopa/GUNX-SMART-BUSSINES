@@ -341,7 +341,7 @@ const s = StyleSheet.create({
   
   
   
-  brandLogo: { width: 145, height: 58 },
+  brandLogo: { width: 200, height: 80 },
   headerIcon: { width: 34, height: 34, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
   headerIconText: { color: "#FFFFFF", fontSize: 22, fontWeight: "900" },
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },
