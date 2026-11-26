@@ -1,10 +1,26 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { useShopContext } from "./AuthGate";
 import { supabase } from "../lib/supabase";
 
 type Role = "manager" | "cashier" | "stockkeeper";
 type Member = { user_id: string; role: string };
+const permissionOptions = [
+  { id: "products.read", label: "Kuona bidhaa", detail: "Kuona katalogi na bei za kuuza" },
+  { id: "products.manage", label: "Kusimamia bidhaa", detail: "Kuongeza, kuhariri na kuficha bidhaa" },
+  { id: "pos.use", label: "POS / Mauzo", detail: "Kufanya mauzo na checkout" },
+  { id: "sales.view", label: "Historia ya mauzo", detail: "Kuona risiti na rekodi za mauzo" },
+  { id: "payments.view", label: "Malipo", detail: "Kuona rekodi za malipo" },
+  { id: "customers.read", label: "Wateja", detail: "Kuona na kusimamia taarifa za wateja" },
+  { id: "debts.manage", label: "Madeni", detail: "Kuona madeni na kurekodi marejesho" },
+  { id: "stock.manage", label: "Stock", detail: "Kupokea stock na kuona movement" },
+  { id: "expenses.manage", label: "Gharama", detail: "Kuona na kurekodi gharama" },
+  { id: "refunds.manage", label: "Refunds", detail: "Kurejesha bidhaa na fedha" },
+  { id: "reports.view", label: "Ripoti", detail: "Kuona ripoti za biashara" },
+  { id: "reports.profit", label: "Faida na gharama za bidhaa", detail: "Kuona gharama ya bidhaa na makadirio ya faida" },
+  { id: "costs.view", label: "Bei za kununua", detail: "Kuona cost price ya bidhaa" },
+  { id: "sync.manage", label: "Offline sync", detail: "Kusimamia mauzo yanayosubiri kusawazishwa" },
+];
 const roles: { id: Role; label: string; detail: string }[] = [
   { id: "manager", label: "Meneja", detail: "Usimamizi wa shughuli za duka" },
   { id: "cashier", label: "Cashier", detail: "Mauzo na malipo" },
@@ -14,9 +30,12 @@ const roles: { id: Role; label: string; detail: string }[] = [
 export default function StaffManagement() {
   const { shopId } = useShopContext();
   const [members, setMembers] = useState<Member[]>([]);
-  const [email, setEmail] = useState("");
+  const [phone, setPhone] = useState("");
+  const [inviteLink, setInviteLink] = useState("");
   const [role, setRole] = useState<Role>("cashier");
   const [owner, setOwner] = useState(false);
+  const [permissionTarget, setPermissionTarget] = useState<Member | null>(null);
+  const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("Inapakia wanachama wa duka...");
@@ -37,20 +56,39 @@ export default function StaffManagement() {
 
   useEffect(() => { void load(); }, [load]);
 
-  async function addMember() {
-    const target = email.trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(target) || target.length > 254) {
-      setNotice("Weka email sahihi ya mfanyakazi.");
-      return;
+  function normalizeTanzaniaPhone(value: string) {
+    const digits = value.replace(/\D/g, "");
+    if (digits.startsWith("255") && digits.length === 12) return "+" + digits;
+    if (digits.startsWith("0") && digits.length === 10) return "+255" + digits.slice(1);
+    if (/^[67]\d{8}$/.test(digits)) return "+255" + digits;
+    return null;
+  }
+
+  async function shareInvitation(link: string) {
+    try {
+      await Share.share({ message: "Jiunge na biashara yangu kwenye GUNX SMART BUSINESS kupitia link hii: " + link });
+    } catch {
+      setNotice("Link ya mwaliko imetengenezwa. Nakili link iliyoonyeshwa hapa chini na umtumie mfanyakazi.");
     }
+  }
+
+  async function addMember() {
+    const target = normalizeTanzaniaPhone(phone);
+    if (!target) { setNotice("Weka namba sahihi ya Tanzania, mfano 07XXXXXXXX au +2557XXXXXXXX."); return; }
     if (!supabase || !shopId || !owner) return;
     setBusy(true);
-    const { error } = await supabase.functions.invoke("invite-staff", { body: { shopId, email: target, role } });
+    const { data: token, error } = await supabase.rpc("create_shop_invitation", {
+      p_shop_id: shopId, p_phone_e164: target, p_role: role
+    });
     setBusy(false);
-    if (error) { setNotice("Mwaliko haujatumwa: " + error.message + ". Hakikisha Edge Function invite-staff imedeployiwa."); return; }
-    setEmail("");
-    setNotice("Mwaliko umetumwa kwa " + target + ". Mfanyakazi ataweza kuingia baada ya kukamilisha usajili wa email.");
-    await load();
+    if (error || !token) { setNotice("Mwaliko haukutengenezwa: " + (error?.message ?? "Jaribu tena.")); return; }
+    const link = Platform.OS === "web" && typeof window !== "undefined"
+      ? window.location.origin + "/?invite=" + encodeURIComponent(String(token))
+      : "gunxsmartbusiness://auth/callback?invite=" + encodeURIComponent(String(token));
+    setPhone("");
+    setInviteLink(link);
+    setNotice("Mwaliko wa " + target + " umetengenezwa. Mfanyakazi lazima athibitishe namba hii kwa SMS.");
+    await shareInvitation(link);
   }
 
   async function changeRole(member: Member, nextRole: Role) {
@@ -59,6 +97,39 @@ export default function StaffManagement() {
     const { error } = await supabase.rpc("update_shop_member_role", { p_shop_id: shopId, p_user_id: member.user_id, p_role: nextRole });
     setBusy(false);
     setNotice(error ? "Jukumu halijabadilishwa: " + error.message : "Jukumu limebadilishwa.");
+    await load();
+  }
+
+  async function openPermissions(member: Member) {
+    if (!supabase || !shopId || !owner || member.role !== "manager") return;
+    setBusy(true);
+    const { data, error } = await supabase.rpc("get_shop_member_permissions", { p_shop_id: shopId, p_user_id: member.user_id });
+    setBusy(false);
+    if (error) { setNotice("Ruhusa hazijapakiwa: " + error.message); return; }
+    setPermissionTarget(member);
+    setPermissions(Array.isArray(data) ? data : []);
+    setNotice("Badilisha ruhusa za meneja kisha uhifadhi. Ruhusa ambazo hazijachaguliwa zitafungwa.");
+  }
+
+  function togglePermission(permission: string) {
+    setPermissions(current => current.includes(permission)
+      ? current.filter(item => item !== permission)
+      : [...current, permission]);
+  }
+
+  async function savePermissions() {
+    if (!supabase || !shopId || !owner || !permissionTarget) return;
+    const next = new Set(permissions);
+    if (next.has("pos.use") || next.has("stock.manage") || next.has("products.manage")) next.add("products.read");
+    setBusy(true);
+    const { error } = await supabase.rpc("set_manager_permissions", {
+      p_shop_id: shopId, p_user_id: permissionTarget.user_id, p_permissions: [...next]
+    });
+    setBusy(false);
+    if (error) { setNotice("Ruhusa hazijahifadhiwa: " + error.message); return; }
+    setPermissions([...next]);
+    setNotice("Ruhusa za meneja zimehifadhiwa na kuanza kutumika.");
+    setPermissionTarget(null);
     await load();
   }
 
@@ -73,18 +144,23 @@ export default function StaffManagement() {
 
   return <ScrollView contentContainerStyle={s.wrap}>
     <Text style={s.title}>Wafanyakazi wa Duka</Text>
-    <Text style={s.copy}>Simamia nafasi za watumiaji waliokwisha sajiliwa kwenye GUNX SMART BUSINESS.</Text>
+    <Text style={s.copy}>Alika wafanyakazi kwa namba ya simu. Kila mfanyakazi atakuwa na akaunti yake binafsi na ataingia kwa simu na password.</Text>
     {loading && <ActivityIndicator color="#43C99A" />}
     {!owner && !loading && <Text style={s.notice}>Akaunti hii haina ruhusa ya mmiliki. Unaweza kuona orodha tu; maamuzi ya ruhusa yanathibitishwa na database.</Text>}
     {owner && <View style={s.panel}>
       <Text style={s.heading}>Ongeza mfanyakazi</Text>
-      <Text style={s.copy}>Ingiza email ya mfanyakazi. Mfumo utatuma mwaliko wa kujiunga na duka.</Text>
-      <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" placeholder="Email ya mfanyakazi" placeholderTextColor="#8194A5" style={s.input}/>
+      <Text style={s.copy}>Ingiza namba ya simu ya mfanyakazi. Link ya mwaliko itatengenezwa ili umshirikishe.</Text>
+      <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="07XXXXXXXX au +2557XXXXXXXX" placeholderTextColor="#8194A5" style={s.input}/>
       <Text style={s.heading}>Chagua nafasi</Text>
       {roles.map(item => <Pressable key={item.id} onPress={() => setRole(item.id)} style={[s.role, role === item.id && s.selected]}>
         <Text style={s.roleTitle}>{item.label} {role === item.id ? "✓" : ""}</Text><Text style={s.copy}>{item.detail}</Text>
       </Pressable>)}
       <Pressable disabled={busy} onPress={addMember} style={s.button}><Text style={s.buttonText}>{busy ? "Inachakata..." : "＋ Ongeza mfanyakazi"}</Text></Pressable>
+      {!!inviteLink && <View style={s.inviteBox}>
+        <Text style={s.copy}>Link ya mwaliko (inaisha baada ya siku 7):</Text>
+        <Text selectable style={s.inviteLink}>{inviteLink}</Text>
+        <Pressable disabled={busy} onPress={() => void shareInvitation(inviteLink)} style={s.small}><Text style={s.smallText}>Shiriki tena link</Text></Pressable>
+      </View>}
     </View>}
     <Text style={s.heading}>Orodha ya wanachama ({members.length})</Text>
     {members.map(member => <View key={member.user_id} style={s.member}>
@@ -92,9 +168,20 @@ export default function StaffManagement() {
       <Text style={s.copy}>ID: {member.user_id}</Text>
       {owner && member.role !== "owner" && <View style={s.actions}>
         {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={s.smallText}>{r.label}</Text></Pressable>)}
+        {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={s.small}><Text style={s.smallText}>Ruhusa</Text></Pressable>}
         <Pressable disabled={busy} onPress={() => remove(member)} style={[s.small, s.remove]}><Text style={s.smallText}>Ondoa</Text></Pressable>
       </View>}
     </View>)}
+    {owner && permissionTarget && <View style={s.panel}>
+      <Text style={s.heading}>Ruhusa za Meneja</Text>
+      <Text style={s.copy}>Meneja: {permissionTarget.user_id}. Chagua kazi anazoweza kufanya. Bila ruhusa, taarifa na vitendo vinabaki vimefungwa.</Text>
+      {permissionOptions.map(item => <Pressable key={item.id} disabled={busy} onPress={() => togglePermission(item.id)} style={[s.role, permissions.includes(item.id) && s.selected]}>
+        <Text style={s.roleTitle}>{permissions.includes(item.id) ? "✓ " : "○ "}{item.label}</Text>
+        <Text style={s.copy}>{item.detail}</Text>
+      </Pressable>)}
+      <Pressable disabled={busy} onPress={() => void savePermissions()} style={s.button}><Text style={s.buttonText}>{busy ? "Inahifadhi..." : "Hifadhi ruhusa"}</Text></Pressable>
+      <Pressable disabled={busy} onPress={() => setPermissionTarget(null)} style={s.refresh}><Text style={s.smallText}>Ghairi</Text></Pressable>
+    </View>}
     <Pressable onPress={() => void load()} style={s.refresh}><Text style={s.smallText}>↻ Sasisha orodha</Text></Pressable>
     <Text style={s.notice}>{notice}</Text>
     <Text style={s.copy}>Usalama: kuongeza, kubadilisha nafasi na kuondoa wanachama hufanywa na RPC za database zinazokagua jukumu la owner. Ongeza tu User ID ya mtu unayemwamini.</Text>
@@ -117,6 +204,8 @@ const s = StyleSheet.create({
   actions:{flexDirection:"row",flexWrap:"wrap",gap:7,marginTop:10},
   small:{backgroundColor:"#173D36",paddingHorizontal:10,paddingVertical:8,borderRadius:8},
   remove:{backgroundColor:"#59332F"},
+  inviteBox:{backgroundColor:"#0B1B2A",borderColor:"#286451",borderWidth:1,borderRadius:10,padding:10,marginTop:12},
+  inviteLink:{color:"#75E0B8",fontSize:11,lineHeight:18,marginTop:6},
   smallText:{color:"#F4F7FA",fontSize:11,fontWeight:"800"},
   refresh:{alignSelf:"flex-start",padding:10,backgroundColor:"#173247",borderRadius:8,marginTop:12},
   notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,lineHeight:18,marginTop:14}
