@@ -333,7 +333,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
 const s = StyleSheet.create({
   container: { backgroundColor: "#FFFFFF", paddingBottom: 20, gap: 0 },
   hero: { backgroundColor: "#0B1F4A", paddingHorizontal: 13, paddingTop: 13, paddingBottom: 15, borderBottomLeftRadius: 17, borderBottomRightRadius: 17, elevation: 3 },
-  topBar: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", minHeight: 56, gap: 5 },
+  topBar: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", minHeight: 56, gap: 5 },
   
   
   
@@ -341,7 +341,7 @@ const s = StyleSheet.create({
   
   
   
-  brandLogo: { width: 200, height: 80 },
+  brandLogo: { width: 390, height: 250 },
   headerIcon: { width: 34, height: 34, borderRadius: 18, backgroundColor: "rgba(255,255,255,0.16)", alignItems: "center", justifyContent: "center" },
   headerIconText: { color: "#FFFFFF", fontSize: 22, fontWeight: "900" },
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },
