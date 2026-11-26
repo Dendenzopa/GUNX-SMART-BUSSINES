@@ -24,6 +24,12 @@ function LockIcon() {
   return <View style={a.lockIconWrap}><View style={a.lockShackle}/><View style={a.lockBody}><View style={a.lockKeyhole}/></View></View>;
 }
 
+function ThemeToggle({ darkMode, onPress }: { darkMode: boolean; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={darkMode ? "Washa Light Mode" : "Washa Dark Mode"} onPress={onPress} style={[a.themeToggle, darkMode && { backgroundColor: "#173D36", borderColor: "#43C99A" }]}>
+    <Text style={[a.themeToggleText, darkMode && { color: "#75E0B8" }]}>{darkMode ? "☀ Light Mode" : "☾ Dark Mode"}</Text>
+  </Pressable>;
+}
+
 function normalizeEmployeePhone(value: string) {
   const digits = value.replace(/\D/g, "");
   if (digits.startsWith("255") && digits.length === 12) return "+" + digits;
@@ -411,7 +417,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setMessage("");
   }
 
-  if (!supabaseConfigured) return <>{children}</>;
+  if (!supabaseConfigured) return <ShopContext.Provider value={{ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null, darkMode, toggleTheme, signOut }}>{children}</ShopContext.Provider>;
   if (loading) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
   if (!session || mode === "reset") return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}>
     <ScrollView contentContainerStyle={a.authScroll} keyboardShouldPersistTaps="handled">
@@ -457,15 +463,15 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     </View>
     </ScrollView>
   </SafeAreaView>;
-  if (session && inviteToken && !shopLoading) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><View style={a.authContent}><Text style={[a.title, darkMode && { color: "#F4F7FA" }]}>Thibitisha akaunti ya mfanyakazi</Text><Text style={[a.message, darkMode && { color: "#F2D99F" }]}>{message || "Mwaliko huu unahitaji akaunti ya simu inayolingana na namba iliyoalikwa."}</Text><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Ikiwa umeingia kwa akaunti nyingine, toka kisha ingia kwa namba ya mfanyakazi iliyopokea mwaliko.</Text><Pressable disabled={busy} onPress={signOut} style={a.button}><Text style={a.buttonText}>TOKA NA BADILISHA AKAUNTI</Text></Pressable></View></SafeAreaView>;
-  if (session && shopLoading) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><ActivityIndicator color="#43C99A" size="large"/><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
-  if (session && membershipCheckError) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><View style={a.authContent}><Text style={[a.title, darkMode && { color: "#F4F7FA" }]}>Imeshindikana kuthibitisha akaunti</Text><Text style={[a.message, darkMode && { color: "#F2D99F" }]}>{membershipCheckError}</Text><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Kwa usalama, dashboard haijafunguliwa kwa sababu role ya akaunti haijathibitishwa. Jaribu tena ukiwa na intaneti.</Text><Pressable onPress={()=>{setShopLoading(true);setMembershipCheckAttempt(v=>v+1);}} style={a.button}><Text style={a.buttonText}>JARIBU TENA</Text></Pressable><Pressable disabled={busy} onPress={signOut}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
+  if (session && inviteToken && !shopLoading) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><View style={a.authContent}><ThemeToggle darkMode={darkMode} onPress={toggleTheme}/><Text style={[a.title, darkMode && { color: "#F4F7FA" }]}>Thibitisha akaunti ya mfanyakazi</Text><Text style={[a.message, darkMode && { color: "#F2D99F" }]}>{message || "Mwaliko huu unahitaji akaunti ya simu inayolingana na namba iliyoalikwa."}</Text><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Ikiwa umeingia kwa akaunti nyingine, toka kisha ingia kwa namba ya mfanyakazi iliyopokea mwaliko.</Text><Pressable disabled={busy} onPress={signOut} style={a.button}><Text style={a.buttonText}>TOKA NA BADILISHA AKAUNTI</Text></Pressable></View></SafeAreaView>;
+  if (session && shopLoading) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><ThemeToggle darkMode={darkMode} onPress={toggleTheme}/><ActivityIndicator color="#43C99A" size="large"/><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
+  if (session && membershipCheckError) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><View style={a.authContent}><ThemeToggle darkMode={darkMode} onPress={toggleTheme}/><Text style={[a.title, darkMode && { color: "#F4F7FA" }]}>Imeshindikana kuthibitisha akaunti</Text><Text style={[a.message, darkMode && { color: "#F2D99F" }]}>{membershipCheckError}</Text><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Kwa usalama, dashboard haijafunguliwa kwa sababu role ya akaunti haijathibitishwa. Jaribu tena ukiwa na intaneti.</Text><Pressable onPress={()=>{setShopLoading(true);setMembershipCheckAttempt(v=>v+1);}} style={a.button}><Text style={a.buttonText}>JARIBU TENA</Text></Pressable><Pressable disabled={busy} onPress={signOut}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
   if (needsShop) return <SafeAreaView style={[a.onboardingSafe, darkMode && { backgroundColor: "#081522" }]}>
     <ScrollView contentContainerStyle={[a.onboardingScroll, darkMode && { backgroundColor: "#081522" }]} keyboardShouldPersistTaps="handled">
       <View style={a.onboardingTop}>
         
       </View>
-      <View style={a.onboardingContent}>\n        <Pressable accessibilityRole="button" accessibilityLabel={darkMode ? "Washa Light Mode" : "Washa Dark Mode"} onPress={toggleTheme} style={[a.themeToggle, darkMode && { backgroundColor: "#173D36", borderColor: "#43C99A" }]}><Text style={[a.themeToggleText, darkMode && { color: "#75E0B8" }]}>{darkMode ? "☀ Light Mode" : "☾ Dark Mode"}</Text></Pressable>
+      <View style={a.onboardingContent}>\n        <ThemeToggle darkMode={darkMode} onPress={toggleTheme}/>
         <Text style={[a.welcome, darkMode && { color: "#F4F7FA" }]}>Karibu {ownerDisplayName}, Ahsante kwa kuchagua GUNX SMART BUSINESS</Text>
         <Text style={[a.tagline, darkMode && { color: "#C1CED8" }]}>Think Big, Build Smart, Grow beyond</Text>
         {onboardingStep === "business" ? <>
