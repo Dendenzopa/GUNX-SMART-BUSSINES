@@ -8,6 +8,8 @@ import { supabase } from "../lib/supabase";
 import { formatTZS } from "../domain/money";
 
 type Props = {
+  darkMode: boolean;
+  onToggleTheme: () => void;
   shopId: string | null;
   sales: Sale[];
   products: Product[];
@@ -57,7 +59,7 @@ function smoothLinePoints(points: Array<{ x: number; y: number }>) {
   return result;
 }
 
-export default function OwnerBusinessDashboard({ shopId, sales, products, expenses, debts, pendingSales, notice, online, onNavigate }: Props) {
+export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId, sales, products, expenses, debts, pendingSales, notice, online, onNavigate }: Props) {
   const [businessName, setBusinessName] = useState("Biashara Yangu");
   const [ownerName, setOwnerName] = useState("Mmiliki wa Biashara");
   const [ownerEmail, setOwnerEmail] = useState("");
@@ -202,13 +204,14 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
     setHeroMediaType(null); setHeroMediaUrl(null); setMenuOpen(false);
   };
 
-  return <View style={s.container}>
-    <View style={s.hero}>
+  return <View style={[s.container,darkMode&&{backgroundColor:"#081522"}]}>
+    <View style={[s.hero,darkMode&&{backgroundColor:"#081522"}]}>
       <View style={s.topBar}>
         <Pressable accessibilityLabel="Fungua menyu ya mmiliki" onPress={() => setMenuOpen(true)} style={s.headerIcon}>
           <Text style={s.headerIconText}>☰</Text>
         </Pressable>
         <View style={s.topBarRight}>
+          <Pressable accessibilityRole="button" accessibilityLabel={darkMode?"Washa Light Mode":"Washa Dark Mode"} onPress={onToggleTheme} style={[s.headerIcon,darkMode&&{backgroundColor:"#173D36",borderColor:"#43C99A"}]}><Text style={[s.headerIconText,darkMode&&{color:"#75E0B8"}]}>{darkMode?"☀":"☾"}</Text></Pressable>
           <Pressable accessibilityLabel="Arifa za biashara" onPress={() => setNotificationsOpen(true)} style={s.headerIcon}>
             <Text style={s.headerIconText}>♧</Text>{(lowStock.length > 0 || pendingSales.length > 0) && <View style={s.notificationDot} />}
           </Pressable>
@@ -238,7 +241,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       </View>
     </View>
 
-    <View style={s.lowerContent}>
+    <View style={[s.lowerContent,darkMode&&{backgroundColor:"#081522"}]}>
       <View style={s.serviceGrid}>
         <Pressable onPress={() => onNavigate("POS")} style={[s.serviceTile, { backgroundColor: "#155EEF" }]}>
           <Text style={s.serviceIcon}>🛒</Text><Text style={s.serviceLabel}>Mauzo ya Leo</Text>
@@ -254,10 +257,10 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         </Pressable>
       </View>
 
-      <View style={s.summarySection}>
+      <View style={[s.summarySection,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
         <View style={s.summaryHeading}><Text style={s.summaryIcon}>▥</Text><Text style={s.summaryTitle}>Muhtasari wa Biashara</Text><Text style={s.summaryPeriod}>Leo</Text></View>
         <View style={s.summaryGrid}>
-          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>🛒</Text><Text style={s.summaryTileLabel}>Mauzo ya Leo</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(todaySales.reduce((sum, item) => sum + item.total, 0))}</Text></View>
+          <View style={[s.summaryTile,darkMode&&{backgroundColor:"#173247",borderColor:"#2B4B61"}]}><Text style={s.summaryTileIcon}>🛒</Text><Text style={s.summaryTileLabel}>Mauzo ya Leo</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(todaySales.reduce((sum, item) => sum + item.total, 0))}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>📦</Text><Text style={s.summaryTileLabel}>Bidhaa Hai</Text><Text style={s.summaryTileValue}>{activeProducts}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>👛</Text><Text style={s.summaryTileLabel}>Madeni</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(debts.reduce((sum, item) => sum + item.balance, 0))}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>💰</Text><Text style={s.summaryTileLabel}>Thamani ya Stock</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(stockValue)}</Text></View>
@@ -265,7 +268,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       </View>
 
       <View style={s.midSection}>
-        <View style={[s.chartCard, s.splitCard]}>
+        <View style={[s.chartCard, s.splitCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
           <View style={s.cardHeader}>
             <View style={s.chartTitleRow}><Text style={s.chartTitleIcon}>▥</Text><Text style={s.cardTitle}>Muhtasari wa Mauzo</Text></View>
             <Pressable onPress={() => setPeriodMenu(value => !value)} style={s.periodSelect}>
@@ -297,7 +300,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
           <Text style={s.chartFoot}>Hujisasisha mauzo yanapoingia · {chartLiveSales.length} rekodi za moja kwa moja</Text>
         </View>
 
-        <View style={[s.quickCard, s.splitCard]}>
+        <View style={[s.quickCard, s.splitCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
           <View style={s.quickTitleRow}><Text style={s.quickBolt}>ϟ</Text><Text style={s.cardTitle}>Vitendo vya Haraka</Text></View>
           <Pressable onPress={() => onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#16A34A" }]}>＋</Text><Text style={s.quickLabel}>Ongeza Bidhaa</Text><Text style={s.chevron}>›</Text></Pressable>
           <Pressable onPress={() => onNavigate("Staff")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#2563EB" }]}>♟</Text><Text style={s.quickLabel}>Ongeza Mfanyakazi</Text><Text style={s.chevron}>›</Text></Pressable>
@@ -306,7 +309,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         </View>
       </View>
 
-      <View style={s.systemCard}>
+      <View style={[s.systemCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
         <View style={s.systemHeading}><Text style={s.systemBell}>♧</Text><Text style={s.cardTitle}>Taarifa za Mfumo</Text></View>
         {lowStock.length > 0 && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#F59E0B"}]}/><Text style={s.systemText}>{lowStock.length} bidhaa zinahitaji kuongezewa stock</Text><Text style={s.chevron}>›</Text></View>}
         {pendingSales.length > 0 && <View style={s.systemRow}><View style={[s.systemDot,{backgroundColor:"#2563EB"}]}/><Text style={s.systemText}>{pendingSales.length} mauzo yanasubiri kusawazishwa</Text><Text style={s.chevron}>›</Text></View>}
@@ -325,8 +328,8 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable onPress={() => onNavigate("Staff")} style={[s.bottomNavItem, { backgroundColor: "#7C3AED" }]}><Text style={s.bottomNavIcon}>👥</Text><Text style={s.bottomNavLabel}>Wafanyakazi</Text></Pressable>
         <Pressable onPress={() => onNavigate("Reports")} style={[s.bottomNavItem, { backgroundColor: "#D69E0B" }]}><Text style={s.bottomNavIcon}>📄</Text><Text style={s.bottomNavLabel}>Ripoti</Text></Pressable>
       </View>
-      <View style={s.footer}><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
-      <View style={s.goalCard}>
+      <View style={[s.footer,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
+      <View style={[s.goalCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
         <View style={s.goalHeading}><Text style={s.goalIcon}>◎</Text><Text style={s.goalTitle}>Malengo ya Biashara</Text></View>
         <Text style={s.goalMessage}>Pamoja Tunaijenga Biashara Yako</Text>
         <View style={s.goalBottom}>
@@ -346,7 +349,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
 
     <Modal visible={menuOpen} transparent animationType="slide" onRequestClose={() => setMenuOpen(false)}>
       <Pressable style={s.modalBackdrop} onPress={() => setMenuOpen(false)}>
-        <Pressable style={s.drawer} onPress={() => {}}>
+        <Pressable style={[s.drawer,darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}]} onPress={() => {}}>
           <View style={s.drawerHandle} /><View style={s.drawerHeader}><Text style={s.drawerTitle}>Menyu ya Mmiliki</Text><Pressable onPress={() => setMenuOpen(false)}><Text style={s.closeText}>✕</Text></Pressable></View>
           <Text style={s.drawerBusiness}>{businessName}</Text><Text style={s.drawerSection}>NEMBO YA BIASHARA</Text>
           
@@ -436,23 +439,23 @@ const s = StyleSheet.create({
   cameraBadgeText: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
   lowerContent: { backgroundColor: "#FFFFFF", paddingHorizontal: 11, paddingTop: 13, gap: 12 },
   serviceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
-  serviceTile: { width: "48%", aspectRatio: 1.72, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 6, justifyContent: "center", alignItems: "center", elevation: 2 },
-  serviceIcon: { color: "#FFFFFF", fontSize: 34, fontWeight: "900" },
+  serviceTile: { width: "48%", aspectRatio: 1.35, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 6, justifyContent: "center", alignItems: "center", elevation: 2 },
+  serviceIcon: { color: "#FFFFFF", fontSize: 68, fontWeight: "900" },
   serviceLabel: { color: "#FFFFFF", fontSize: 15, fontWeight: "900", marginTop: 5, textAlign: "center" },
   
   summarySection: { gap: 8 },
   summaryHeading: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#FFFFFF", paddingHorizontal: 2, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
-  summaryIcon: { color: "#155EEF", fontSize: 20, fontWeight: "900" },
+  summaryIcon: { color: "#155EEF", fontSize: 40, fontWeight: "900" },
   summaryTitle: { color: "#0B1F4A", fontSize: 14, fontWeight: "900", flex: 1 },
   summaryPeriod: { color: "#155EEF", backgroundColor: "#FFFFFF", borderRadius: 14, overflow: "hidden", paddingHorizontal: 10, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
   summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
   summaryTile: { width: "48%", minHeight: 70, backgroundColor: "#F0F7FF", borderRadius: 10, borderWidth: 1, borderColor: "#DBEAFE", padding: 7, justifyContent: "center" },
-  summaryTileIcon: { fontSize: 27 },
+  summaryTileIcon: { fontSize: 54 },
   summaryTileLabel: { color: "#64748B", fontSize: 13, fontWeight: "800", marginTop: 3 },
   summaryTileValue: { color: "#0B1F4A", fontSize: 16, fontWeight: "900", marginTop: 3 },
   systemCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 11, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1, gap: 2 },
   systemHeading: { flexDirection: "row", alignItems: "center", gap: 7, marginBottom: 3 },
-  systemBell: { color: "#155EEF", fontSize: 21, fontWeight: "900" },
+  systemBell: { color: "#155EEF", fontSize: 42, fontWeight: "900" },
   systemRow: { flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 9, borderTopWidth: 1, borderTopColor: "#F1F5F9" },
   systemDot: { width: 8, height: 8, borderRadius: 5 },
   systemText: { flex: 1, color: "#334155", fontSize: 13, fontWeight: "700" },
@@ -463,9 +466,9 @@ const s = StyleSheet.create({
   cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 3 },
   cardTitle: { color: "#0B1F4A", fontSize: 14, fontWeight: "900", flexShrink: 1 },
   chartTitleRow: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },
-  chartTitleIcon: { color: "#0B1F4A", fontSize: 17, fontWeight: "900" },
+  chartTitleIcon: { color: "#0B1F4A", fontSize: 34, fontWeight: "900" },
   quickTitleRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 2 },
-  quickBolt: { color: "#D69E0B", fontSize: 19, fontWeight: "900" },
+  quickBolt: { color: "#D69E0B", fontSize: 38, fontWeight: "900" },
   periodSelect: { backgroundColor: "#EFF6FF", paddingHorizontal: 7, paddingVertical: 5, borderRadius: 7 },
   periodSelectText: { color: "#155EEF", fontSize: 9, fontWeight: "900" },
   periodOptions: { position: "absolute", zIndex: 5, right: 8, top: 35, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DBEAFE", borderRadius: 7, elevation: 4 },
@@ -488,7 +491,7 @@ const s = StyleSheet.create({
   axisText: { color: "#64748B", fontSize: 7 },
   chartFoot: { color: "#94A3B8", fontSize: 7, marginTop: 6 },
   quickRow: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
-  quickBadge: { width: 34, height: 34, borderRadius: 17, color: "#FFFFFF", fontSize: 22, fontWeight: "900", textAlign: "center", textAlignVertical: "center", overflow: "hidden" },
+  quickBadge: { width: 68, height: 68, borderRadius: 34, color: "#FFFFFF", fontSize: 44, fontWeight: "900", textAlign: "center", textAlignVertical: "center", overflow: "hidden" },
   quickLabel: { flex: 1, color: "#243B53", fontSize: 14, fontWeight: "800" },
   chevron: { color: "#94A3B8", fontSize: 16 },
   stockAlert: { backgroundColor: "#FFF8E8", borderColor: "#F4D58A", borderWidth: 1, borderRadius: 12, padding: 12 },
@@ -496,8 +499,8 @@ const s = StyleSheet.create({
   alertText: { color: "#5B4826", fontSize: 11, paddingVertical: 3 },
   alertLink: { color: "#8A5A00", fontSize: 11, fontWeight: "900", marginTop: 5 },
   bottomNav: { flexDirection: "row", gap: 7, justifyContent: "space-between" },
-  bottomNavItem: { flex: 1, minWidth: 0, minHeight: 68, borderRadius: 11, alignItems: "center", justifyContent: "center", paddingVertical: 7, paddingHorizontal: 3, elevation: 2 },
-  bottomNavIcon: { color: "#FFFFFF", fontSize: 27 },
+  bottomNavItem: { flex: 1, minWidth: 0, minHeight: 94, borderRadius: 11, alignItems: "center", justifyContent: "center", paddingVertical: 7, paddingHorizontal: 3, elevation: 2 },
+  bottomNavIcon: { color: "#FFFFFF", fontSize: 54 },
   bottomNavLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", textAlign: "center", marginTop: 3 },
   footer: { backgroundColor: "#FFFFFF", borderRadius: 12, padding: 11, flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderColor: "#E2E8F0" },
   footerLogo: { color: "#F2D99F", fontSize: 23, fontWeight: "900" },
@@ -507,7 +510,7 @@ const s = StyleSheet.create({
   footerValue: { color: "#F2D99F", fontSize: 9, fontWeight: "900" },
   goalCard: { width: "100%", backgroundColor: "#FFFFFF", borderRadius: 16, padding: 15, borderWidth: 1, borderColor: "#BFDBFE", elevation: 3, overflow: "hidden" },
   goalHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
-  goalIcon: { color: "#155EEF", fontSize: 25, fontWeight: "900" },
+  goalIcon: { color: "#155EEF", fontSize: 50, fontWeight: "900" },
   goalTitle: { color: "#0B1F4A", fontSize: 15, fontWeight: "900" },
   goalMessage: { color: "#0B1F4A", fontSize: 17, fontWeight: "900", marginTop: 9 },
   goalBottom: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginTop: 12, minHeight: 76 },
@@ -515,7 +518,7 @@ const s = StyleSheet.create({
   goalButtonText: { color: "#FFFFFF", fontSize: 12, fontWeight: "900" },
   goalChart: { flexDirection: "row", alignItems: "flex-end", gap: 6, height: 72, paddingRight: 15 },
   goalBar: { width: 13, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
-  goalArrow: { position: "absolute", right: -2, top: -2, color: "#159A70", fontSize: 25, fontWeight: "900" },
+  goalArrow: { position: "absolute", right: -2, top: -2, color: "#159A70", fontSize: 50, fontWeight: "900" },
   footerPrivacy: { color: "#64748B", fontSize: 7, marginTop: 3 },
 
   notice: { color: "#166534", backgroundColor: "#DCFCE7", padding: 10, borderRadius: 9, fontSize: 10 },
