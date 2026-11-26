@@ -4,9 +4,9 @@ import { supabase } from "../lib/supabase";
 import { formatTZS } from "../domain/money";
 import type { Product } from "../domain/types";
 
-type Props = { shopId: string | null; onProductsChanged: () => void };
+type Props = { shopId: string | null; onProductsChanged: () => void; darkMode?: boolean };
 
-export default function ProductManagement({ shopId, onProductsChanged }: Props) {
+export default function ProductManagement({ shopId, onProductsChanged, darkMode = true }: Props) {
   const [items, setItems] = useState<Product[]>([]);
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
@@ -95,29 +95,29 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
     await load(); onProductsChanged();
   }
 
-  return <ScrollView keyboardShouldPersistTaps="handled">
-    <Text style={s.title}>Usimamizi wa bidhaa</Text>
-    <Text style={s.copy}>Ongeza bidhaa, hariri bei na taarifa, au ifiche bidhaa isiyouzwa. Stock inaongezwa kupitia sehemu ya Pokea stock.</Text>
-    {canManage ? <View style={s.panel}>
-      <Text style={s.heading}>{editing ? "Hariri bidhaa" : "Ongeza bidhaa mpya"}</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="Jina la bidhaa" placeholderTextColor="#8194A5" style={s.input}/>
-      <TextInput value={sku} onChangeText={setSku} placeholder="SKU / Barcode (hiari)" placeholderTextColor="#8194A5" style={s.input}/>
-      <TextInput value={unit} onChangeText={setUnit} placeholder="Unit (mf. piece, kg, lita)" placeholderTextColor="#8194A5" style={s.input}/>
-      {canViewCost && <TextInput value={cost} onChangeText={setCost} placeholder="Bei ya kununua (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={s.input}/>}
-      <TextInput value={price} onChangeText={setPrice} placeholder="Bei ya kuuza (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={s.input}/>
-      <TextInput value={reorder} onChangeText={setReorder} placeholder="Tahadhari ya stock" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={s.input}/>
+  return <ScrollView keyboardShouldPersistTaps="handled" style={{ backgroundColor: darkMode ? "#081522" : "#F8FAFC" }}>
+    <Text style={[s.title, !darkMode && { color: "#142D42" }]}>Usimamizi wa bidhaa</Text>
+    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Ongeza bidhaa, hariri bei na taarifa, au ifiche bidhaa isiyouzwa. Stock inaongezwa kupitia sehemu ya Pokea stock.</Text>
+    {canManage ? <View style={[s.panel, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
+      <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>{editing ? "Hariri bidhaa" : "Ongeza bidhaa mpya"}</Text>
+      <TextInput value={name} onChangeText={setName} placeholder="Jina la bidhaa" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
+      <TextInput value={sku} onChangeText={setSku} placeholder="SKU / Barcode (hiari)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
+      <TextInput value={unit} onChangeText={setUnit} placeholder="Unit (mf. piece, kg, lita)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
+      {canViewCost && <TextInput value={cost} onChangeText={setCost} placeholder="Bei ya kununua (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>}
+      <TextInput value={price} onChangeText={setPrice} placeholder="Bei ya kuuza (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
+      <TextInput value={reorder} onChangeText={setReorder} placeholder="Tahadhari ya stock" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
       <Pressable disabled={busy} onPress={save} style={s.button}><Text style={s.buttonText}>{busy ? "Inahifadhi..." : editing ? "Hifadhi mabadiliko" : "Ongeza bidhaa"}</Text></Pressable>
       {editing && <Pressable onPress={reset} style={s.secondary}><Text style={s.buttonText}>Ghairi uhariri</Text></Pressable>}
       {!!message && <Text style={s.message}>{message}</Text>}
-    </View> : <Text style={s.copy}>Kubadilisha katalogi, kuficha au kurejesha bidhaa kunaruhusiwa kwa Owner na Manager pekee. Stockkeeper anaweza kupokea stock kupitia sehemu ya Pokea stock.</Text>}
+    </View> : <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Kubadilisha katalogi, kuficha au kurejesha bidhaa kunaruhusiwa kwa Owner na Manager pekee. Stockkeeper anaweza kupokea stock kupitia sehemu ya Pokea stock.</Text>}
     {!!message && !canManage && <Text style={s.message}>{message}</Text>}
-    <View style={s.row}><Text style={s.heading}>Bidhaa zilizopo ({items.filter(p => p.active).length})</Text><Pressable onPress={load}><Text style={s.refresh}>Refresh</Text></Pressable></View>
+    <View style={s.row}><Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Bidhaa zilizopo ({items.filter(p => p.active).length})</Text><Pressable onPress={load}><Text style={[s.refresh, !darkMode && { color: "#087A5A" }]}>Refresh</Text></Pressable></View>
     {busy && <ActivityIndicator color="#43C99A"/>}
-    {items.map(p => <View key={p.id} style={s.item}>
+    {items.map(p => <View key={p.id} style={[s.item, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
       <View style={{flex:1}}>
-        <Text style={s.name}>{p.name} {!p.active ? "(Imefichwa)" : ""}</Text>
-        <Text style={s.copy}>{p.sku || "Hakuna SKU"} · {p.unit} · Stock {p.stockQuantity}</Text>
-        <Text style={s.price}>{canViewCost ? `Gharama ${formatTZS(p.costPrice)} · ` : ""}Bei {formatTZS(p.sellingPrice)}</Text>
+        <Text style={[s.name, !darkMode && { color: "#142D42" }]}>{p.name} {!p.active ? "(Imefichwa)" : ""}</Text>
+        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{p.sku || "Hakuna SKU"} · {p.unit} · Stock {p.stockQuantity}</Text>
+        <Text style={[s.price, !darkMode && { color: "#8A6512" }]}>{canViewCost ? `Gharama ${formatTZS(p.costPrice)} · ` : ""}Bei {formatTZS(p.sellingPrice)}</Text>
       </View>
       {canManage && <View style={s.actions}>
         {p.active ? <>
@@ -126,7 +126,7 @@ export default function ProductManagement({ shopId, onProductsChanged }: Props) 
         </> : <Pressable onPress={() => restore(p)} style={s.small}><Text style={s.buttonText}>Rejesha</Text></Pressable>}
       </View>}
     </View>)}
-    {!busy && items.length === 0 && <Text style={s.copy}>Bado hakuna bidhaa. Ongeza bidhaa ya kwanza hapo juu.</Text>}
+    {!busy && items.length === 0 && <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Bado hakuna bidhaa. Ongeza bidhaa ya kwanza hapo juu.</Text>}
   </ScrollView>;
 }
 
