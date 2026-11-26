@@ -101,8 +101,8 @@ function Dashboard() {
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
  const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
  const outstandingDebt=debts.reduce((sum,d)=>sum+d.balance,0);
- const reportStart=useMemo(()=>{const now=new Date();const start=new Date(now);if(reportRange==="today")start.setHours(0,0,0,0);else if(reportRange==="7d")start.setDate(start.getDate()-6);else if(reportRange==="30d")start.setDate(start.getDate()-29);else if(reportRange==="year"){start.setMonth(0,1);start.setHours(0,0,0,0);}else return null;return start;},[reportRange]);
- const reportSales=useMemo(()=>reportStart?sales.filter(sale=>new Date(sale.createdAt)>=reportStart):sales,[sales,reportStart]);
+ const reportStart=useMemo(()=>{const now=new Date();const start=new Date(now);if(reportRange==="today")start.setHours(0,0,0,0);else if(reportRange==="7d"){start.setDate(start.getDate()-6);start.setHours(0,0,0,0);}else if(reportRange==="30d"){start.setDate(start.getDate()-29);start.setHours(0,0,0,0);}else if(reportRange==="year"){start.setMonth(0,1);start.setHours(0,0,0,0);}else return null;return start;},[reportRange]);
+ const reportSales=useMemo(()=>reportStart?sales.filter(sale=>new Date(sale.createdAt)>=reportStart&&new Date(sale.createdAt)<=new Date()):sales,[sales,reportStart]);
  const reportExpenses=useMemo(()=>reportStart?expenses.filter(expense=>{
   const expenseDate=new Date((expense.expenseDate??expense.createdAt).slice(0,10)+"T00:00:00");
   return expenseDate>=reportStart && expenseDate<=new Date();
