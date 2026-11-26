@@ -23,8 +23,10 @@ function makeIdempotencyKey() { return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx".re
 function Dashboard() {
  const { shopId, isPlatformAdmin, shopRole, userId, signOut } = useShopContext();
  const [darkMode,setDarkMode]=useState(true);
- useEffect(()=>{let active=true;void AsyncStorage.getItem("@gunx-theme-mode").then(value=>{if(active)setDarkMode(value==="dark");}).catch(()=>{});return()=>{active=false;};},[]);
- const toggleTheme=()=>setDarkMode(current=>{const next=!current;void AsyncStorage.setItem("@gunx-theme-mode",next?"dark":"light");return next;});
+ const [themeLoaded,setThemeLoaded]=useState(false);
+ useEffect(()=>{let active=true;void AsyncStorage.getItem("@gunx-theme-mode").then(value=>{if(active){setDarkMode(value==="dark");setThemeLoaded(true);}}).catch(()=>{if(active)setThemeLoaded(true);});return()=>{active=false;};},[]);
+ useEffect(()=>{if(themeLoaded)void AsyncStorage.setItem("@gunx-theme-mode",darkMode?"dark":"light").catch(()=>{});},[darkMode,themeLoaded]);
+ const toggleTheme=()=>setDarkMode(current=>!current);
  const effectiveRole = shopRole ?? "owner";
  const allowedScreens: Record<"owner"|"manager"|"cashier"|"stockkeeper", Screen[]> = {
   owner: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"],
