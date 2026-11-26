@@ -612,10 +612,10 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
             <Text style={s.sectionTitle}>Zana za Usimamizi</Text>
           </View>
           <View style={s.managementGrid}>
-            <ManagementCard icon="🏪" title="Biashara Zote" description="Orodha na usimamizi wa biashara." onPress={showBusinesses}/>
-            <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Users")}/>
-            <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." onPress={() => openModule("Subscriptions")}/>
-            <ManagementCard icon="⚙️" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." onPress={() => openModule("Settings")}/>
+            <ManagementCard icon="🏪" title="Biashara Zote" description="Orodha na usimamizi wa biashara." darkMode={darkMode} onPress={showBusinesses}/>
+            <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." darkMode={darkMode} onPress={() => openModule("Users")}/>
+            <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." darkMode={darkMode} onPress={() => openModule("Subscriptions")}/>
+            <ManagementCard icon="⚙️" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." darkMode={darkMode} onPress={() => openModule("Settings")}/>
             <ManagementCard icon="🛡️" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." darkMode={darkMode} onPress={() => openModule("Security")}/>
             <ManagementCard icon="📄" title="Ripoti" description="Ukuaji, mapato na matumizi." darkMode={darkMode} onPress={() => openModule("Reports")}/>
           </View>
