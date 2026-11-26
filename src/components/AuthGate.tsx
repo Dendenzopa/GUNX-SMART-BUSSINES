@@ -1,4 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import type { Session } from "@supabase/supabase-js";
@@ -384,7 +385,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (!session || mode === "reset") return <SafeAreaView style={a.safe}>
     <ScrollView contentContainerStyle={a.authScroll} keyboardShouldPersistTaps="handled">
     <View style={a.authContent}>
-      <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/Gunx smart business.jpg")} style={a.logoImage} resizeMode="contain"/>
+      <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={GUNX_OFFICIAL_LOGO} style={a.logoImage} resizeMode="contain"/>
       <Text style={a.title}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Umesahau password?" : mode === "reset" ? "Weka password mpya" : "Ingia kwenye akaunti yako"}</Text>
       {mode === "login" && !phoneLogin && !inviteToken && <>
         <Pressable disabled={busy} onPress={signInWithGoogle} style={a.googleButton}>
