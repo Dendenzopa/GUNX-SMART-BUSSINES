@@ -24,8 +24,8 @@ function Dashboard() {
  const { shopId, isPlatformAdmin, shopRole, userId, signOut } = useShopContext();
  const [darkMode,setDarkMode]=useState(true);
  const [themeLoaded,setThemeLoaded]=useState(false);
- useEffect(()=>{let active=true;void AsyncStorage.getItem("@gunx-theme-mode").then(value=>{if(active){setDarkMode(value==="dark");setThemeLoaded(true);}}).catch(()=>{if(active)setThemeLoaded(true);});return()=>{active=false;};},[]);
- useEffect(()=>{if(themeLoaded)void AsyncStorage.setItem("@gunx-theme-mode",darkMode?"dark":"light").catch(()=>{});},[darkMode,themeLoaded]);
+ useEffect(()=>{let active=true;setThemeLoaded(false);void AsyncStorage.getItem("@gunx-theme-mode:"+userId).then(value=>{if(active){setDarkMode(value==="dark");setThemeLoaded(true);}}).catch(()=>{if(active)setThemeLoaded(true);});return()=>{active=false;};},[userId]);
+ useEffect(()=>{if(themeLoaded)void AsyncStorage.setItem("@gunx-theme-mode:"+userId,darkMode?"dark":"light").catch(()=>{});},[darkMode,themeLoaded,userId]);
  const toggleTheme=()=>setDarkMode(current=>!current);
  const effectiveRole = shopRole ?? "owner";
  const allowedScreens: Record<"owner"|"manager"|"cashier"|"stockkeeper", Screen[]> = {
