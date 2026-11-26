@@ -432,7 +432,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (needsShop) return <SafeAreaView style={a.onboardingSafe}>
     <ScrollView contentContainerStyle={a.onboardingScroll} keyboardShouldPersistTaps="handled">
       <View style={a.onboardingTop}>
-        <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={require("../../assets/Gunx smart business.jpg")} style={a.onboardingLogo} resizeMode="contain"/>
+        <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={GUNX_OFFICIAL_LOGO} style={a.onboardingLogo} resizeMode="contain"/>
       </View>
       <View style={a.onboardingContent}>
         <Text style={a.welcome}>Karibu {ownerDisplayName}, Ahsante kwa kuchagua GUNX SMART BUSINESS</Text>
