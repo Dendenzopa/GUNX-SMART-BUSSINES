@@ -6,7 +6,7 @@ import * as ImagePicker from "expo-image-picker";
 import type { Product, Sale, Expense, DebtEntry } from "../domain/types";
 import type { PendingSale } from "../services/offlineSales";
 import { supabase } from "../lib/supabase";
-import { formatTZS, totalSales } from "../domain/money";
+import { formatTZS } from "../domain/money";
 
 type Props = {
   shopId: string | null;
@@ -249,7 +249,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
       <View style={s.summarySection}>
         <View style={s.summaryHeading}><Text style={s.summaryIcon}>▥</Text><Text style={s.summaryTitle}>Muhtasari wa Biashara</Text><Text style={s.summaryPeriod}>Leo</Text></View>
         <View style={s.summaryGrid}>
-          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>🛒</Text><Text style={s.summaryTileLabel}>Mauzo ya Leo</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(totalSales(todaySales))}</Text></View>
+          <View style={s.summaryTile}><Text style={s.summaryTileIcon}>🛒</Text><Text style={s.summaryTileLabel}>Mauzo ya Leo</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(todaySales.reduce((sum, item) => sum + item.total, 0))}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>📦</Text><Text style={s.summaryTileLabel}>Bidhaa Hai</Text><Text style={s.summaryTileValue}>{activeProducts}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>👛</Text><Text style={s.summaryTileLabel}>Madeni</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(debts.reduce((sum, item) => sum + item.balance, 0))}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>💰</Text><Text style={s.summaryTileLabel}>Thamani ya Stock</Text><Text numberOfLines={1} style={s.summaryTileValue}>{formatTZS(stockValue)}</Text></View>
