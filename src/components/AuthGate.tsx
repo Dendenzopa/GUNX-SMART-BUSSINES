@@ -422,6 +422,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   if (!session || mode === "reset") return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}>
     <ScrollView contentContainerStyle={a.authScroll} keyboardShouldPersistTaps="handled">
     <View style={a.authContent}>
+      <ThemeToggle darkMode={darkMode} onPress={toggleTheme}/>
       <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={GUNX_OFFICIAL_LOGO} style={a.logoImage} resizeMode="contain"/>
       <Text style={[a.title, darkMode && { color: "#F4F7FA" }]}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Umesahau password?" : mode === "reset" ? "Weka password mpya" : "Ingia kwenye akaunti yako"}</Text>
       {mode === "login" && !phoneLogin && !inviteToken && <>
@@ -471,7 +472,8 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       <View style={a.onboardingTop}>
         
       </View>
-      <View style={a.onboardingContent}>\n        <ThemeToggle darkMode={darkMode} onPress={toggleTheme}/>
+      <View style={a.onboardingContent}>
+        <ThemeToggle darkMode={darkMode} onPress={toggleTheme}/>
         <Text style={[a.welcome, darkMode && { color: "#F4F7FA" }]}>Karibu {ownerDisplayName}, Ahsante kwa kuchagua GUNX SMART BUSINESS</Text>
         <Text style={[a.tagline, darkMode && { color: "#C1CED8" }]}>Think Big, Build Smart, Grow beyond</Text>
         {onboardingStep === "business" ? <>
