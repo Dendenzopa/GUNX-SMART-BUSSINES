@@ -732,7 +732,7 @@ const s = StyleSheet.create({
   glowBottom: { position: "absolute", bottom: 140, left: -130, width: 250, height: 250, borderRadius: 130, backgroundColor: "#FFFFFF", opacity: 0 },
   header: { position: "relative", flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", gap: 8, marginBottom: 20, minHeight: 274, paddingVertical: 12, backgroundColor: "#FFFFFF" },
   brandBlock: { flex: 1, flexBasis: "100%", minWidth: 0, alignItems: "center", justifyContent: "center", backgroundColor: "transparent", padding: 0 },
-  brandLogo: { width: 390, height: 250 },
+  brandLogo: { width: 400, height: 250 },
   bellButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#93B8E4", backgroundColor: "#D2E3F7", alignItems: "center", justifyContent: "center" },
   bell: { color: "#1E3A8A", fontSize: 23, fontWeight: "800" },
   bellDot: { position: "absolute", width: 9, height: 9, borderRadius: 5, backgroundColor: "#DC2626", top: 8, right: 9, borderWidth: 1, borderColor: "#D2E3F7" },
