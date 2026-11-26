@@ -209,23 +209,16 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable accessibilityLabel="Fungua menyu ya mmiliki" onPress={() => setMenuOpen(true)} style={s.headerIcon}>
           <Text style={s.headerIconText}>☰</Text>
         </Pressable>
-        <Image source={GUNX_OFFICIAL_LOGO} resizeMode="contain" style={s.brandLogo} />
         <Pressable accessibilityLabel="Arifa za biashara" onPress={() => setNotificationsOpen(true)} style={s.headerIcon}>
           <Text style={s.headerIconText}>♧</Text>{(lowStock.length > 0 || pendingSales.length > 0) && <View style={s.notificationDot} />}
         </Pressable>
       </View>
       <View style={s.heroIdentity}>
-        <Pressable accessibilityLabel="Ongeza nembo ya biashara" onPress={() => void pickHeroMedia("business_logo")} style={s.logoUploadBanner}>
-          <View style={s.logoPreview}>
-            {heroMediaUrl && heroMediaType === "business_logo" ? <Image source={{ uri: heroMediaUrl }} style={s.heroImage} resizeMode="contain" /> : <Text style={s.heroPlaceholder}>＋</Text>}
-          </View>
-          <View style={s.logoUploadCopy}>
-            <Text style={s.logoUploadTitle}>{mediaBusy ? "Inahifadhi..." : "Add Photo"}</Text>
-            <Text style={s.logoUploadSubtitle}>(Your Business Logo)</Text>
-            <Text numberOfLines={1} style={s.businessName}>{businessName}</Text>
-          </View>
-          <View style={s.verifiedPill}><Text style={s.verifiedCheck}>✓</Text><Text style={s.verifiedText}>Biashara Yako</Text></View>
+        <Pressable accessibilityLabel="Badili nembo ya biashara" onPress={() => void pickHeroMedia("business_logo")} style={s.singleLogoWrap}>
+          <Image source={heroMediaUrl && heroMediaType === "business_logo" ? { uri: heroMediaUrl } : GUNX_OFFICIAL_LOGO} resizeMode="contain" style={s.singleLogo} />
         </Pressable>
+        <Text numberOfLines={1} style={s.businessName}>{businessName}</Text>
+        <View style={s.verifiedPill}><Text style={s.verifiedCheck}>✓</Text><Text style={s.verifiedText}>Biashara Yako</Text></View>
         <Text style={s.onlineText}>{online === false ? "● OFFLINE" : online === true ? "● ONLINE" : "● INAANGALIA MUUNGANISHO"}</Text>
       </View>
     </View>
@@ -317,7 +310,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable onPress={() => onNavigate("Staff")} style={[s.bottomNavItem, { backgroundColor: "#7C3AED" }]}><Text style={s.bottomNavIcon}>👥</Text><Text style={s.bottomNavLabel}>Wafanyakazi</Text></Pressable>
         <Pressable onPress={() => onNavigate("Reports")} style={[s.bottomNavItem, { backgroundColor: "#D69E0B" }]}><Text style={s.bottomNavIcon}>📄</Text><Text style={s.bottomNavLabel}>Ripoti</Text></Pressable>
       </View>
-      <View style={s.footer}><Text style={s.footerLogo}>G</Text><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
+      <View style={s.footer}><View style={s.footerCopy}><Text style={s.footerName}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
       <View style={s.goalCard}>
         <View style={s.goalHeading}><Text style={s.goalIcon}>◎</Text><Text style={s.goalTitle}>Malengo ya Biashara</Text></View>
         <Text style={s.goalMessage}>Pamoja Tunaijenga Biashara Yako</Text>
@@ -365,7 +358,7 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
 
 const s = StyleSheet.create({
   container: { backgroundColor: "#FFFFFF", paddingBottom: 20, gap: 0 },
-  hero: { backgroundColor: "#FFFFFF", paddingHorizontal: 13, paddingTop: 13, paddingBottom: 15, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
+  hero: { backgroundColor: "#FFFFFF", paddingHorizontal: 13, paddingTop: 13, paddingBottom: 15 },
   topBar: { flexDirection: "row", flexWrap: "wrap", alignItems: "center", justifyContent: "space-between", minHeight: 56, gap: 5 },
   
   
@@ -374,12 +367,14 @@ const s = StyleSheet.create({
   
   
   
-  brandLogo: { width: 116, height: 73 },
+  brandLogo: { width: 190, height: 110 },
   headerIcon: { width: 34, height: 34, borderRadius: 18, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
   headerIconText: { color: "#0B1F4A", fontSize: 22, fontWeight: "900" },
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },
-  heroIdentity: { flexDirection: "column", alignItems: "stretch", marginTop: 12, gap: 7 },
-  logoUploadBanner: { width: "100%", minHeight: 82, flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 13, borderWidth: 1, borderStyle: "dashed", borderColor: "#60A5FA", backgroundColor: "#F0F7FF" },
+  heroIdentity: { flexDirection: "column", alignItems: "center", marginTop: 8, gap: 5 },
+  singleLogoWrap: { width: "100%", minHeight: 118, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
+  singleLogo: { width: 210, height: 116 },
+  logoUploadBanner: { width: "100%", minHeight: 82, flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 13, borderWidth: 1, borderStyle: "dashed", borderColor: "#60A5FA", backgroundColor: "#FFFFFF" },
   logoPreview: { width: 58, height: 58, borderRadius: 10, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   logoUploadCopy: { flex: 1, minWidth: 0 },
   logoUploadTitle: { color: "#0B1F4A", fontSize: 14, fontWeight: "900" },
@@ -404,9 +399,9 @@ const s = StyleSheet.create({
   serviceLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", marginTop: 5, textAlign: "center" },
   
   summarySection: { gap: 8 },
-  summaryHeading: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#155EEF", paddingHorizontal: 11, paddingVertical: 9, borderRadius: 10 },
-  summaryIcon: { color: "#FFFFFF", fontSize: 17, fontWeight: "900" },
-  summaryTitle: { color: "#FFFFFF", fontSize: 12, fontWeight: "900", flex: 1 },
+  summaryHeading: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#FFFFFF", paddingHorizontal: 2, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
+  summaryIcon: { color: "#155EEF", fontSize: 17, fontWeight: "900" },
+  summaryTitle: { color: "#0B1F4A", fontSize: 12, fontWeight: "900", flex: 1 },
   summaryPeriod: { color: "#155EEF", backgroundColor: "#FFFFFF", borderRadius: 14, overflow: "hidden", paddingHorizontal: 10, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
   summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
   summaryTile: { width: "48%", minHeight: 78, backgroundColor: "#F0F7FF", borderRadius: 11, borderWidth: 1, borderColor: "#DBEAFE", padding: 9, justifyContent: "center" },
@@ -462,13 +457,13 @@ const s = StyleSheet.create({
   bottomNavItem: { flex: 1, minWidth: 0, minHeight: 68, borderRadius: 11, alignItems: "center", justifyContent: "center", paddingVertical: 7, paddingHorizontal: 3, elevation: 2 },
   bottomNavIcon: { color: "#FFFFFF", fontSize: 23 },
   bottomNavLabel: { color: "#FFFFFF", fontSize: 8, fontWeight: "900", textAlign: "center", marginTop: 3 },
-  footer: { backgroundColor: "#0B1F4A", borderRadius: 12, padding: 11, flexDirection: "row", alignItems: "center", gap: 9 },
+  footer: { backgroundColor: "#FFFFFF", borderRadius: 12, padding: 11, flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderColor: "#E2E8F0" },
   footerLogo: { color: "#F2D99F", fontSize: 23, fontWeight: "900" },
   footerCopy: { flex: 1 },
-  footerName: { color: "#FFFFFF", fontSize: 11, fontWeight: "900" },
+  footerName: { color: "#0B1F4A", fontSize: 11, fontWeight: "900" },
   footerTag: { color: "#D7B56D", fontSize: 8, marginTop: 3 },
   footerValue: { color: "#F2D99F", fontSize: 9, fontWeight: "900" },
-  goalCard: { width: "100%", backgroundColor: "#F8FBFF", borderRadius: 16, padding: 15, borderWidth: 1, borderColor: "#BFDBFE", elevation: 3, overflow: "hidden" },
+  goalCard: { width: "100%", backgroundColor: "#FFFFFF", borderRadius: 16, padding: 15, borderWidth: 1, borderColor: "#BFDBFE", elevation: 3, overflow: "hidden" },
   goalHeading: { flexDirection: "row", alignItems: "center", gap: 8 },
   goalIcon: { color: "#155EEF", fontSize: 25, fontWeight: "900" },
   goalTitle: { color: "#0B1F4A", fontSize: 15, fontWeight: "900" },
@@ -479,7 +474,7 @@ const s = StyleSheet.create({
   goalChart: { flexDirection: "row", alignItems: "flex-end", gap: 6, height: 72, paddingRight: 15 },
   goalBar: { width: 13, borderTopLeftRadius: 5, borderTopRightRadius: 5 },
   goalArrow: { position: "absolute", right: -2, top: -2, color: "#159A70", fontSize: 25, fontWeight: "900" },
-  footerPrivacy: { color: "#FFFFFF", fontSize: 7, marginTop: 3 },
+  footerPrivacy: { color: "#64748B", fontSize: 7, marginTop: 3 },
 
   notice: { color: "#166534", backgroundColor: "#DCFCE7", padding: 10, borderRadius: 9, fontSize: 10 },
   modalBackdrop: { flex: 1, justifyContent: "flex-end", backgroundColor: "rgba(5,15,35,0.58)" },
