@@ -1,4 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
+import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { BackHandler } from "react-native";
 import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
@@ -551,7 +552,7 @@ export default function PlatformOwnerDashboard() {
         <View style={s.brandBlock}>
           <Image
             accessibilityLabel="GUNX SMART BUSINESS official logo"
-            source={require("../../assets/GUNX20Smart20Business20Logo-1.jpg")}
+            source={GUNX_OFFICIAL_LOGO}
             style={s.brandLogo}
             resizeMode="contain"
           />
