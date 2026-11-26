@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { GUNX_OFFICIAL_LOGO } from "../branding";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
@@ -364,7 +365,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       const path = shopId + "/business_logo-" + Date.now() + "." + (extension === "png" ? "png" : "jpg");
       const { error: uploadError } = await supabase.storage.from("shop-branding").upload(path, blob, { contentType, upsert: true, cacheControl: "3600" });
       if (uploadError) throw uploadError;
-      const { data: publicUrl } = supabase.storage.from("business-assets").getPublicUrl(path);
+      const { data: publicUrl } = supabase.storage.from("shop-branding").getPublicUrl(path);
       const { error: updateError } = await supabase.from("shops").update({ hero_media_type: "business_logo", hero_media_url: publicUrl.publicUrl }).eq("id", shopId);
       if (updateError) throw updateError;
       setNeedsShop(false);
