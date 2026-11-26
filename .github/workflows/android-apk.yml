@@ -40,7 +40,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y imagemagick
-          convert assets/Gunx smart business.jpg -strip -interlace none assets/gunx-smart-business-logo-splash.png
+          convert "assets/Gunx smart business.jpg" -strip -interlace none assets/gunx-smart-business-logo-splash.png
           identify assets/gunx-smart-business-logo-splash.png
       - name: Generate native Android project
         run: CI=1 npx expo prebuild --platform android
