@@ -114,9 +114,25 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
     if (!supabase || !shopId) return;
     let active = true;
     const loadChartSales = async () => {
-      const { data, error } = await supabase!.from("sales").select("id,created_at,total,status").eq("shop_id", shopId).order("created_at", { ascending: false });
-      if (!active || error || !data) return;
-      setChartLiveSales(data.map((row: any) => ({ id: row.id, createdAt: row.created_at, total: Number(row.total), status: row.status })));
+      const since = new Date(Date.now() - 14 * 24 * 60 * 60 * 1000).toISOString();
+      const pageSize = 500;
+      const rows: any[] = [];
+      let offset = 0;
+      while (active) {
+        const { data, error } = await supabase!.from("sales")
+          .select("id,created_at,total,status")
+          .eq("shop_id", shopId)
+          .gte("created_at", since)
+          .order("created_at", { ascending: false })
+          .range(offset, offset + pageSize - 1);
+        if (!active || error || !data) return;
+        rows.push(...data);
+        if (data.length < pageSize) break;
+        offset += pageSize;
+      }
+      if (active) setChartLiveSales(rows.map((row: any) => ({
+        id: row.id, createdAt: row.created_at, total: Number(row.total), status: row.status
+      })));
     };
     void loadChartSales();
     const channel = supabase.channel("owner-sales-chart-" + shopId)
@@ -132,36 +148,73 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
     return Array.from(merged.values()).filter(item => item.status !== "pending_sync" && item.status !== "refunded" && item.status !== "voided");
   }, [sales, chartLiveSales]);
 
-  const todayStart = new Date();
+  const now = new Date();
+  const todayStart = new Date(now);
   todayStart.setHours(0, 0, 0, 0);
-  const todaySales = chartSales.filter(item => new Date(item.createdAt) >= todayStart);
+  const todaySales = chartSales.filter(item => {
+    const date = new Date(item.createdAt);
+    return date >= todayStart && date <= now;
+  });
   const lowStock = products.filter(item => item.active && item.stockQuantity <= item.reorderLevel);
   const activeProducts = products.filter(item => item.active).length;
   const stockValue = products.filter(item => item.active).reduce((sum, item) => sum + item.costPrice * item.stockQuantity, 0);
+
+  const chartCurrentStart = new Date(todayStart);
+  if (period === "Wiki") chartCurrentStart.setDate(chartCurrentStart.getDate() - 6);
+  const chartPreviousStart = new Date(chartCurrentStart);
+  chartPreviousStart.setDate(chartPreviousStart.getDate() - (period === "Leo" ? 1 : 7));
+  const currentPeriodSales = chartSales.filter(item => {
+    const date = new Date(item.createdAt);
+    return date >= chartCurrentStart && date <= now;
+  });
+  const previousPeriodSales = chartSales.filter(item => {
+    const date = new Date(item.createdAt);
+    return date >= chartPreviousStart && date < chartCurrentStart;
+  });
+  const chartTotal = currentPeriodSales.reduce((sum, item) => sum + item.total, 0);
+  const previousPeriodTotal = previousPeriodSales.reduce((sum, item) => sum + item.total, 0);
+  const changePct = previousPeriodTotal > 0
+    ? ((chartTotal - previousPeriodTotal) / previousPeriodTotal) * 100
+    : chartTotal > 0 ? 100 : 0;
+  const trendLabel = previousPeriodTotal === 0
+    ? (chartTotal > 0 ? "Mauzo mapya" : "Hakuna mauzo")
+    : (changePct >= 0 ? "+" : "") + Math.round(changePct) + "% dhidi ya " + (period === "Leo" ? "jana" : "wiki iliyopita");
+  const growing = changePct >= 0;
+  const chartColor = growing ? "#159A70" : "#D69E0B";
+
   const chartPoints = useMemo(() => {
     if (period === "Leo") {
-      return Array.from({ length: 7 }, (_, index) => {
-        const start = new Date(); start.setHours(8 + index * 2, 0, 0, 0);
-        const end = new Date(start); end.setHours(end.getHours() + 2);
-        const amount = chartSales.filter(item => { const date = new Date(item.createdAt); return date >= start && date < end; }).reduce((sum, item) => sum + item.total, 0);
-        return { label: String(8 + index * 2).padStart(2, "0") + ":00", amount };
+      return Array.from({ length: 6 }, (_, index) => {
+        const start = new Date(todayStart);
+        start.setHours(index * 4, 0, 0, 0);
+        const end = new Date(start);
+        end.setHours(end.getHours() + 4);
+        const amount = chartSales.filter(item => {
+          const date = new Date(item.createdAt);
+          return date >= start && date < end && date <= now;
+        }).reduce((sum, item) => sum + item.total, 0);
+        return { label: String(index * 4).padStart(2, "0") + ":00", amount };
       });
     }
     return Array.from({ length: 7 }, (_, index) => {
-      const start = new Date(); start.setHours(0, 0, 0, 0); start.setDate(start.getDate() - (6 - index));
-      const end = new Date(start); end.setDate(end.getDate() + 1);
-      const amount = chartSales.filter(item => { const date = new Date(item.createdAt); return date >= start && date < end; }).reduce((sum, item) => sum + item.total, 0);
+      const start = new Date(todayStart);
+      start.setDate(start.getDate() - (6 - index));
+      const end = new Date(start);
+      end.setDate(end.getDate() + 1);
+      const amount = chartSales.filter(item => {
+        const date = new Date(item.createdAt);
+        return date >= start && date < end && date <= now;
+      }).reduce((sum, item) => sum + item.total, 0);
       return { label: start.toLocaleDateString("sw-TZ", { weekday: "short" }), amount };
     });
   }, [chartSales, period]);
   const chartMax = Math.max(1, ...chartPoints.map(point => point.amount));
-  const chartTotal = chartPoints.reduce((sum, point) => sum + point.amount, 0);
-  const growing = chartPoints[chartPoints.length - 1].amount >= chartPoints[0].amount;
-  const chartColor = growing ? "#159A70" : "#D69E0B";
   const chartCoords = chartPoints.map((point, index) => ({
     x: 7 + index * (126 / Math.max(1, chartPoints.length - 1)),
     y: 91 - (point.amount / chartMax) * 68,
   }));
+  const peakIndex = chartPoints.reduce((best, point, index) =>
+    point.amount > chartPoints[best].amount ? index : best, 0);
 
   const smoothCoords = smoothLinePoints(chartCoords);
 
@@ -279,7 +332,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
             {(["Leo", "Wiki"] as const).map(option => <Pressable key={option} onPress={() => { setPeriod(option); setPeriodMenu(false); }} style={s.periodOption}><Text style={s.periodOptionText}>{option}</Text></Pressable>)}
           </View>}
           <Text numberOfLines={1} style={[s.chartTotal,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(chartTotal)}</Text>
-          <View style={s.chartLegend}><Text style={[s.chartSubLabel,darkMode&&{color:"#F4F7FA"}]}>Mauzo {period.toLowerCase()}</Text><Text style={[s.trendPill, { color: chartColor }]}>{growing ? "↗ Mwenendo chanya" : "↘ Mwelekeo umeshuka"}</Text></View>
+          <View style={s.chartLegend}><Text style={[s.chartSubLabel,darkMode&&{color:"#F4F7FA"}]}>Mauzo {period.toLowerCase()}</Text><Text style={[s.trendPill, { color: chartColor }]}>{trendLabel}</Text></View>
           <View style={s.chartPlot}>
             <View style={[s.chartGridLine, { top: 22 }]} /><View style={[s.chartGridLine, { top: 57 }]} />
             <View style={s.chartYAxis}><Text style={s.axisSmall}>{formatTZS(chartMax)}</Text><Text style={s.axisSmall}>0</Text></View>
@@ -294,10 +347,10 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
               return <View key={"line-" + index} style={[s.lineSegment, { left: previous.x, top: previous.y, width: Math.sqrt(dx * dx + dy * dy), backgroundColor: chartColor, transform: [{ rotate: Math.atan2(dy, dx) * 180 / Math.PI + "deg" }] }]} />;
             })}
             {chartCoords.map((point, index) => <View key={"dot-" + index} style={[s.chartDot, { left: point.x - 3.5, top: point.y - 3.5, borderColor: chartColor }]} />)}
-            <View style={[s.chartCallout, { left: Math.min(92, Math.max(4, chartCoords[chartCoords.length - 1].x - 20)), borderColor: chartColor }]}><Text style={[s.chartCalloutText, { color: chartColor }]}>{formatTZS(chartPoints[chartPoints.length - 1].amount)}</Text></View>
+            <View style={[s.chartCallout, { left: Math.min(92, Math.max(4, chartCoords[peakIndex].x - 20)), borderColor: chartColor }]}><Text style={[s.chartCalloutText, { color: chartColor }]}>{formatTZS(chartPoints[peakIndex].amount)}</Text></View>
           </View>
           <View style={s.chartAxis}>{chartPoints.map(point => <Text key={point.label} style={s.axisText}>{period === "Leo" ? point.label.slice(0, 2) : point.label.slice(0, 3)}</Text>)}</View>
-          <Text style={s.chartFoot}>Hujisasisha mauzo yanapoingia · {chartLiveSales.length} rekodi za moja kwa moja</Text>
+          <Text style={s.chartFoot}>Hujisasisha mauzo yanapoingia · Ulinganisho wa kipindi kilichopita</Text>
         </View>
 
         <View style={[s.quickCard, s.splitCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
@@ -335,10 +388,12 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
         <View style={s.goalBottom}>
           <Pressable onPress={() => onNavigate("Reports")} style={s.goalButton}><Text style={s.goalButtonText}>Anza Sasa →</Text></Pressable>
           <View style={s.goalChart} accessibilityLabel="Grafu ya ukuaji wa biashara">
-            <View style={[s.goalBar,{height:22,backgroundColor:"#2563EB"}]}/>
-            <View style={[s.goalBar,{height:34,backgroundColor:"#1D8CE0"}]}/>
-            <View style={[s.goalBar,{height:47,backgroundColor:"#16A085"}]}/>
-            <View style={[s.goalBar,{height:62,backgroundColor:"#16A34A"}]}/>
+            {chartPoints.slice(-4).map((point, index) => (
+              <View key={point.label} style={[s.goalBar, {
+                height: Math.max(8, (point.amount / chartMax) * 62),
+                backgroundColor: ["#2563EB", "#1D8CE0", "#16A085", "#16A34A"][index]
+              }]} />
+            ))}
             <Text style={s.goalArrow}>↗</Text>
           </View>
         </View>
