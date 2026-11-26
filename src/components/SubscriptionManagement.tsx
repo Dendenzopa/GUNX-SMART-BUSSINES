@@ -22,7 +22,7 @@ const statusText: Record<Subscription["status"], string> = {
   cancelled: "Usajili wa PRO umesitishwa",
 };
 
-export default function SubscriptionManagement() {
+export default function SubscriptionManagement({ darkMode = true }: { darkMode?: boolean }) {
   const { shopId } = useShopContext();
   const [subscription, setSubscription] = useState<Subscription | null>(null);
   const [loading, setLoading] = useState(true);
@@ -72,57 +72,57 @@ export default function SubscriptionManagement() {
     ? new Date(subscription.expires_at).toLocaleDateString("sw-TZ", { day: "numeric", month: "long", year: "numeric" })
     : null;
 
-  return <View style={s.wrap}>
-    <Text style={s.title}>Mipango ya GUNX</Text>
-    <Text style={s.copy}>Chagua mpango unaolingana na ukubwa wa biashara yako. Bei zote ni TZS.</Text>
+  return <View style={[s.wrap, !darkMode && { backgroundColor: "#F8FAFC" }]}>
+    <Text style={[s.title, !darkMode && { color: "#142D42" }]}>Mipango ya GUNX</Text>
+    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Chagua mpango unaolingana na ukubwa wa biashara yako. Bei zote ni TZS.</Text>
     {loading && <ActivityIndicator color="#43C99A" />}
     {subscription && <>
-      <View style={s.current}>
+      <View style={[s.current, !darkMode && { backgroundColor: "#E8F7F0", borderColor: "#A7DCC7" }]}>
         <Text style={s.eyebrow}>MPANGO WA SASA</Text>
-        <Text style={s.plan}>{subscription.plan_code.toUpperCase()}</Text>
-        <Text style={s.status}>{statusText[subscription.status]}</Text>
-        {expiry && <Text style={s.copy}>Tarehe ya mwisho ya usajili: {expiry}</Text>}
+        <Text style={[s.plan, !darkMode && { color: "#142D42" }]}>{subscription.plan_code.toUpperCase()}</Text>
+        <Text style={[s.status, !darkMode && { color: "#087A5A" }]}>{statusText[subscription.status]}</Text>
+        {expiry && <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Tarehe ya mwisho ya usajili: {expiry}</Text>}
       </View>
-      <View style={s.card}>
-        <Text style={s.plan}>FREE</Text>
-        <Text style={s.price}>TZS 0</Text>
-        <Text style={s.item}>• Bidhaa hadi {subscription.plan_code === "free" ? subscription.product_limit ?? 50 : 50}</Text>
-        <Text style={s.item}>• Mauzo 100 kwa mwezi</Text>
-        <Text style={s.item}>• Wateja wa deni hadi 10</Text>
-        <Text style={s.item}>• Ripoti za msingi</Text>
+      <View style={[s.card, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
+        <Text style={[s.plan, !darkMode && { color: "#142D42" }]}>FREE</Text>
+        <Text style={[s.price, !darkMode && { color: "#8A6512" }]}>TZS 0</Text>
+        <Text style={[s.item, !darkMode && { color: "#334155" }]}>• Bidhaa hadi {subscription.plan_code === "free" ? subscription.product_limit ?? 50 : 50}</Text>
+        <Text style={[s.item, !darkMode && { color: "#334155" }]}>• Mauzo 100 kwa mwezi</Text>
+        <Text style={[s.item, !darkMode && { color: "#334155" }]}>• Wateja wa deni hadi 10</Text>
+        <Text style={[s.item, !darkMode && { color: "#334155" }]}>• Ripoti za msingi</Text>
       </View>
-      <View style={s.cardPro}>
+      <View style={[s.cardPro, !darkMode && { backgroundColor: "#F0FDF7", borderColor: "#159A70" }]}>
         <Text style={s.eyebrow}>BIASHARA INAYOKUA</Text>
-        <Text style={s.plan}>GUNX PRO</Text>
-        <Text style={s.price}>TZS 5,000<Text style={s.per}> / mwezi</Text></Text>
-        <Text style={s.item}>• Bidhaa na mauzo bila kikomo</Text>
-        <Text style={s.item}>• Madeni na historia ya stock bila kikomo</Text>
-        <Text style={s.item}>• Ripoti na uchambuzi wa kina</Text>
-        <Text style={s.item}>• Backup ya cloud na majukumu ya wafanyakazi</Text>
-        <Text style={s.copy}>Muda wa Pro huisha kiotomatiki; akaunti hurudi Free na data za biashara hazifutwi.</Text>
+        <Text style={[s.plan, !darkMode && { color: "#142D42" }]}>GUNX PRO</Text>
+        <Text style={[s.price, !darkMode && { color: "#8A6512" }]}>TZS 5,000<Text style={[s.per, !darkMode && { color: "#526477" }]}> / mwezi</Text></Text>
+        <Text style={[s.item, !darkMode && { color: "#334155" }]}>• Bidhaa na mauzo bila kikomo</Text>
+        <Text style={[s.item, !darkMode && { color: "#334155" }]}>• Madeni na historia ya stock bila kikomo</Text>
+        <Text style={[s.item, !darkMode && { color: "#334155" }]}>• Ripoti na uchambuzi wa kina</Text>
+        <Text style={[s.item, !darkMode && { color: "#334155" }]}>• Backup ya cloud na majukumu ya wafanyakazi</Text>
+        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Muda wa Pro huisha kiotomatiki; akaunti hurudi Free na data za biashara hazifutwi.</Text>
       </View>
     </>}
-    <View style={s.payment}>
-      <Text style={s.heading}>Jinsi ya kuomba GUNX PRO</Text>
-      <Text style={s.item}>HaloPesa: 0621665181</Text>
-      <Text style={s.copy}>REORNADA BINARY RHESPICIOUS</Text>
-      <Text style={s.item}>M-Pesa: 0797665181</Text>
-      <Text style={s.copy}>ELIAS PAUL MARWA</Text>
-      <Text style={s.warning}>Hizi ni namba za malipo ya mkono tu. Mfumo bado hauthibitishi miamala ya simu moja kwa moja. Usajili wa Pro utaanzishwa na msimamizi baada ya kuthibitisha malipo; kutuma pesa hakubadilishi mpango moja kwa moja.</Text>
-      <Text style={s.formLabel}>Mtandao uliotumia</Text>
+    <View style={[s.payment, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
+      <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Jinsi ya kuomba GUNX PRO</Text>
+      <Text style={[s.item, !darkMode && { color: "#334155" }]}>HaloPesa: 0621665181</Text>
+      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>REORNADA BINARY RHESPICIOUS</Text>
+      <Text style={[s.item, !darkMode && { color: "#334155" }]}>M-Pesa: 0797665181</Text>
+      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>ELIAS PAUL MARWA</Text>
+      <Text style={[s.warning, !darkMode && { color: "#8A6512" }]}>Hizi ni namba za malipo ya mkono tu. Mfumo bado hauthibitishi miamala ya simu moja kwa moja. Usajili wa Pro utaanzishwa na msimamizi baada ya kuthibitisha malipo; kutuma pesa hakubadilishi mpango moja kwa moja.</Text>
+      <Text style={[s.formLabel, !darkMode && { color: "#334155" }]}>Mtandao uliotumia</Text>
       <View style={s.providerRow}>
-        <Pressable onPress={() => setProvider("halopesa")} style={[s.providerButton, provider === "halopesa" && s.providerSelected]}><Text style={s.providerText}>HaloPesa</Text></Pressable>
-        <Pressable onPress={() => setProvider("mpesa")} style={[s.providerButton, provider === "mpesa" && s.providerSelected]}><Text style={s.providerText}>M-Pesa</Text></Pressable>
+        <Pressable onPress={() => setProvider("halopesa")} style={[s.providerButton, !darkMode && { borderColor: "#CBD5E1" }, provider === "halopesa" && s.providerSelected]}><Text style={[s.providerText, !darkMode && { color: "#142D42" }]}>HaloPesa</Text></Pressable>
+        <Pressable onPress={() => setProvider("mpesa")} style={[s.providerButton, !darkMode && { borderColor: "#CBD5E1" }, provider === "mpesa" && s.providerSelected]}><Text style={[s.providerText, !darkMode && { color: "#142D42" }]}>M-Pesa</Text></Pressable>
       </View>
-      <Text style={s.formLabel}>Transaction ID / kumbukumbu ya muamala *</Text>
-      <TextInput value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="Mfano: ABC123XYZ" placeholderTextColor="#71869A" style={s.field} />
-      <Text style={s.formLabel}>Namba ya simu iliyotuma (hiari)</Text>
-      <TextInput value={payerPhone} onChangeText={setPayerPhone} keyboardType="phone-pad" placeholder="07XXXXXXXX" placeholderTextColor="#71869A" style={s.field} />
-      <Pressable disabled={submitting} onPress={() => void submitPayment()} style={[s.submitButton, submitting && { opacity: 0.6 }]}><Text style={s.refreshText}>{submitting ? "Inatuma ombi..." : "Wasilisha kumbukumbu ya malipo"}</Text></Pressable>
-      {!!paymentNotice && <Text style={s.paymentNotice}>{paymentNotice}</Text>}
+      <Text style={[s.formLabel, !darkMode && { color: "#334155" }]}>Transaction ID / kumbukumbu ya muamala *</Text>
+      <TextInput value={reference} onChangeText={setReference} autoCapitalize="characters" placeholder="Mfano: ABC123XYZ" placeholderTextColor="#71869A" style={[s.field, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]} />
+      <Text style={[s.formLabel, !darkMode && { color: "#334155" }]}>Namba ya simu iliyotuma (hiari)</Text>
+      <TextInput value={payerPhone} onChangeText={setPayerPhone} keyboardType="phone-pad" placeholder="07XXXXXXXX" placeholderTextColor="#71869A" style={[s.field, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]} />
+      <Pressable disabled={submitting} onPress={() => void submitPayment()} style={[s.submitButton, submitting && { opacity: 0.6 }]}><Text style={[s.refreshText, !darkMode && { color: "#142D42" }]}>{submitting ? "Inatuma ombi..." : "Wasilisha kumbukumbu ya malipo"}</Text></Pressable>
+      {!!paymentNotice && <Text style={[s.paymentNotice, !darkMode && { color: "#8A6512" }]}>{paymentNotice}</Text>}
     </View>
-    <Pressable onPress={() => void load()} style={s.refresh}><Text style={s.refreshText}>↻ Sasisha hali ya usajili</Text></Pressable>
-    <Text style={s.copy}>{notice}</Text>
+    <Pressable onPress={() => void load()} style={[s.refresh, !darkMode && { backgroundColor: "#E7EEF4" }]}><Text style={[s.refreshText, !darkMode && { color: "#142D42" }]}>↻ Sasisha hali ya usajili</Text></Pressable>
+    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{notice}</Text>
   </View>;
 }
 
