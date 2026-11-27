@@ -52,7 +52,7 @@ function ManagementCard({ icon, title, description, onPress, darkMode }: { icon:
 type BusinessRow = {
   shop_id: string;
   business_name: string;
-    created_at: string;
+  created_at: string;
   member_count: number;
   plan_code: string;
   subscription_status: string;
