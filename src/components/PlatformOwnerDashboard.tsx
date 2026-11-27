@@ -157,17 +157,17 @@ type ModulePageData = {
 const MODULE_PAGES: Record<string, ModulePageData> = {
   Users: {
     icon: "👥", title: "Usimamizi wa Watumiaji",
-    subtitle: "Akaunti, biashara wanazohusishwa nazo, majukumu na mipaka ya ruhusa.",
-    status: "Muonekano wa ukurasa umeandaliwa. Orodha kamili ya watumiaji na mabadiliko ya akaunti yanahitaji huduma maalum ya platform-admin na ukaguzi wa usalama.",
+    subtitle: "Akaunti za jukwaa, idadi ya biashara zinazohusishwa na majukumu.",
+    status: "Orodha inaonyesha User ID, idadi ya biashara, majukumu na tarehe ya usajili pekee. Email, simu na rekodi binafsi za biashara hazionyeshwi.",
     sections: [
-      { heading: "Usimamizi wa akaunti", body: "Hapa ndipo Super Admin ataangalia watumiaji wa jukwaa kwa ujumla.", items: ["Tafuta mtumiaji kwa jina, email au namba ya simu", "Angalia biashara anazomiliki au anazofanyia kazi", "Angalia hali ya akaunti na tarehe ya usajili"] },
+      { heading: "Usimamizi wa akaunti", body: "Hapa ndipo Super Admin ataangalia watumiaji wa jukwaa kwa ujumla.", items: ["Tafuta kwa User ID pale inapohitajika", "Angalia idadi ya biashara zinazohusishwa na majukumu", "Angalia tarehe ya usajili bila kufungua data binafsi ya tenant"] },
       { heading: "Majukumu na ruhusa", body: "Majukumu ya biashara yanabaki ndani ya biashara husika; ruhusa za Super Admin ni za jukwaa zima.", items: ["Business Owner", "Manager", "Cashier", "Stockkeeper", "Platform Super Admin"] }
     ]
   },
   Subscriptions: {
     icon: "🛡️", title: "Vifurushi na Usajili",
     subtitle: "Dhibiti mipango ya Free na Pro, muda wa usajili na uthibitishaji wa malipo.",
-    status: "Database tayari ina shop_subscriptions na pro_payment_requests. Ukurasa huu unaonyesha muundo wa usimamizi; vitendo vya kuthibitisha au kukataa malipo vitahitaji kuunganishwa kwa orodha ya maombi na audit trail.",
+    status: "Muhtasari unaonyesha biashara, provider, kiasi, status na tarehe ya ombi pekee. Kuthibitisha au kukataa malipo kutahitaji utaratibu salama wa uhakiki na audit trail.",
     sections: [
       { heading: "Mipango ya huduma", body: "Muhtasari wa vifurushi vinavyotumika kwenye GUNX SMART BUSINESS.", items: ["FREE — matumizi ya msingi kulingana na mipaka ya mpango", "PRO — huduma za ziada kwa usajili unaotumika", "Usajili ulioisha muda hurudi Free bila kufuta data ya biashara"] },
       { heading: "Uthibitishaji wa malipo", body: "Malipo ya Pro yanahitaji kuhakikiwa kabla ya kuwasha huduma.", items: ["M-Pesa, HaloPesa, Mixx, Airtel Money au Benki", "Kiasi kinachotarajiwa: TZS 5,000", "Hali za ombi: Pending, Verified au Rejected"] }
@@ -205,7 +205,7 @@ const MODULE_PAGES: Record<string, ModulePageData> = {
     subtitle: "Mapato ya usajili wa GUNX PRO na malipo yaliyothibitishwa.",
     status: "Mapato halisi bado hayajaunganishwa na ledger ya platform. Mfumo hautachukulia maombi ya malipo yanayosubiri kuwa mapato yaliyopokelewa.",
     sections: [
-      { heading: "Vyanzo vya mapato", body: "Mapato ya jukwaa yatatokana na huduma za kulipia.", items: ["Usajili wa GUNX PRO", "Malipo yaliyothibitishwa tu", "Rekodi ya provider na transaction reference"] },
+      { heading: "Vyanzo vya mapato", body: "Mapato ya jukwaa yatatokana na huduma za kulipia.", items: ["Usajili wa GUNX PRO", "Malipo yaliyothibitishwa tu", "Muhtasari wa provider na malipo yaliyothibitishwa; transaction reference kamili haionyeshwi"] },
       { heading: "Udhibiti wa fedha", body: "Kila uthibitisho au marekebisho lazima yawe na kumbukumbu.", items: ["Jumla ya mapato kwa siku, mwezi na mwaka", "Malipo yanayosubiri na yaliyokataliwa", "Historia ya uthibitishaji wa malipo"] }
     ]
   },
@@ -223,7 +223,7 @@ const MODULE_PAGES: Record<string, ModulePageData> = {
     subtitle: "Wasifu wa mmiliki na mamlaka ya usimamizi wa jukwaa.",
     status: "Akaunti hii inatambuliwa kupitia uthibitisho wa platform_admins. Mabadiliko ya wasifu na usalama wa session yataunganishwa kwenye hatua inayofuata.",
     sections: [
-      { heading: "Mamlaka ya akaunti", body: "Super Admin ana uwezo wa kusimamia jukwaa zima, si tenant moja tu.", items: ["Biashara zote na taarifa zake", "Watumiaji na majukumu ya jukwaa", "Usajili, mipango na malipo", "Ripoti na usalama wa mfumo"] },
+      { heading: "Mamlaka ya akaunti", body: "Super Admin ana uwezo wa kusimamia jukwaa zima, si tenant moja tu.", items: ["Muhtasari wa idadi ya biashara na hali za usajili", "Watumiaji na majukumu ya jukwaa bila data binafsi za tenant", "Usajili, mipango na malipo", "Ripoti na usalama wa mfumo"] },
       { heading: "Usalama wa akaunti", body: "Vitendo nyeti vitahitaji uthibitisho wa ziada.", items: ["Uthibitishaji wa akaunti", "Usimamizi wa session na vifaa", "Historia ya mabadiliko ya akaunti"] }
     ]
   },
