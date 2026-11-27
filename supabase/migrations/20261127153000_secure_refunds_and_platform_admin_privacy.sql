@@ -286,7 +286,7 @@ LANGUAGE plpgsql
 STABLE
 SECURITY DEFINER
 SET search_path = public, auth, pg_temp
-AS $
+AS $platform_user$
 BEGIN
   IF auth.uid() IS NULL OR NOT public.is_platform_admin() THEN
     RAISE EXCEPTION 'Platform administrator access required' USING errcode = '42501';
@@ -323,7 +323,7 @@ BEGIN
   ORDER BY user_rows.created_at DESC
   LIMIT p_limit OFFSET p_offset;
 END;
-$;
+$platform_user$;
 
 REVOKE ALL ON FUNCTION public.get_platform_admin_users(text, integer, integer) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_platform_admin_users(text, integer, integer) TO authenticated;
