@@ -2,6 +2,8 @@
 
 -- Disposable PostgreSQL 17 integration fixture for PR #45.
 -- This runs only in an isolated GitHub Actions service container.
+CREATE ROLE anon NOLOGIN;
+CREATE ROLE authenticated NOLOGIN;
 CREATE SCHEMA auth;
 CREATE TABLE auth.users (
   id uuid PRIMARY KEY,
