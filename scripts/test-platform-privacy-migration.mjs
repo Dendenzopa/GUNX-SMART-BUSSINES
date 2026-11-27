@@ -7,7 +7,7 @@ const dashboard = readFileSync(new URL("../src/components/PlatformOwnerDashboard
 function returnColumns(functionName) {
   const start = migration.indexOf(`CREATE FUNCTION public.${functionName}`);
   assert.notEqual(start, -1, `Missing migration function: ${functionName}`);
-  const match = migration.slice(start).match(/RETURNS TABLE\\(([\\s\\S]*?)\\)\\s*LANGUAGE/i);
+  const match = migration.slice(start).match(/RETURNS TABLE\(([\s\S]*?)\)\s*LANGUAGE/i);
   assert.ok(match, `Missing RETURNS TABLE for ${functionName}`);
   return match[1].toLowerCase();
 }
