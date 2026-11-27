@@ -25,7 +25,7 @@ A read-only inspection on 2026-11-27 confirmed:
 
 ### Security
 - 6 RLS-enabled tables have no policies: app_installations, app_user_activity, checkout_requests, platform_admins, shop_invitations, and shop_member_permissions. These may be intentionally deny-by-default tables whose writes/reads are restricted to trusted RPCs; validate grants and intended access before adding policies. Do not add broad policies just to silence the linter.
-- 37 SECURITY DEFINER functions are executable by authenticated users. Many are intentionally authenticated RPC entry points, but each needs an explicit review for auth.uid() checks, role checks, fixed search_path, tenant ownership, input validation, and least-privilege grants. The Advisor warning alone does not prove an exploitable vulnerability.
+- 37 SECURITY DEFINER functions are flagged as executable by authenticated users. A read-only inventory found fixed search_path clauses across the inspected SECURITY DEFINER functions; trigger-only functions are not executable by authenticated users, and admin_activate_pro is service_role-only. Authenticated RPCs are intentionally exposed entry points in this architecture, but still require per-function review of auth.uid() checks, role checks, tenant ownership, input validation, and least-privilege grants. The Advisor warning alone does not prove an exploitable vulnerability.
 - Supabase Auth leaked-password protection is disabled. Enable it in Auth password security settings after checking the user impact and rollout policy.
 
 Remediation references:
@@ -33,7 +33,7 @@ Remediation references:
 - [SECURITY DEFINER linter guidance](https://supabase.com/docs/guides/database/database-linter?lint=0029_authenticated_security_definer_function_executable)
 - [Leaked password protection](https://supabase.com/docs/guides/auth/password-security#password-strength-and-leaked-password-protection)
 
-### Performance
+### Health\n- Supabase Health Advisor returned no lints at the time of this read-only audit. This is not a substitute for backups, restore drills, uptime monitoring or application-level health checks.\n\n### Performance
 - 26 foreign keys were reported without covering indexes.
 - 8 indexes were reported as unused at the time of the Advisor snapshot. Do not drop these automatically: low-traffic paths may not have exercised them yet.
 - Prioritize indexes after examining query plans and workload; create indexes in a separate migration and measure before/after.
