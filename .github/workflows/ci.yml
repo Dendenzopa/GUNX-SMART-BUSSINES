@@ -2,7 +2,7 @@ name: GUNX SMART BUSINESS CI
 
 on:
   push:
-    branches: [main, master, feature/email-auth-recovery, feature/white-login-screen]
+    branches: [main, master, feature/email-auth-recovery, feature/white-login-screen, feat/business-owner-dashboard-design]
   pull_request:
     branches: [main, master]
 
@@ -23,7 +23,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install dependencies
-        run: npm install --no-audit --no-fund
+        run: npm ci --no-audit --no-fund
       - name: TypeScript check
         run: npm run typecheck
       - name: Prepare splash logo as PNG
