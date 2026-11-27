@@ -2,7 +2,8 @@ import * as Print from "expo-print";
 import * as Sharing from "expo-sharing";
 import * as FileSystem from "expo-file-system/legacy";
 import type { Expense, Sale } from "../domain/types";
-import { countSales, formatTZS, netProfit, totalSales } from "../domain/money";
+import type { RefundRecord } from "../domain/money";
+import { countSales, formatTZS, isCountableSale, netProfit, totalSales } from "../domain/money";
 
 export interface BusinessReportInput {
   businessName: string;
@@ -10,6 +11,7 @@ export interface BusinessReportInput {
   sales: Sale[];
   expenses: Expense[];
   refundTotal: number;
+  refunds?: RefundRecord[];
   generatedAt?: Date;
 }
 
@@ -24,10 +26,10 @@ const safeFileName = (value: string) => value.toLowerCase().replace(/[^a-z0-9]+/
 
 export async function exportBusinessReportPdf(input: BusinessReportInput): Promise<void> {
   const generated = input.generatedAt ?? new Date();
-  const sales = input.sales.filter(sale => sale.status !== "pending_sync");
-  const revenue = totalSales(sales);
+  const sales = input.sales.filter(isCountableSale);
+  const revenue = totalSales(sales, input.refundTotal);
   const expenses = input.expenses.reduce((sum, item) => sum + item.amount, 0);
-  const profit = netProfit(sales, input.expenses);
+  const profit = netProfit(sales, input.expenses, input.refunds ?? []);
   const saleRows = sales.map(sale => `<tr><td>${escapeHtml(sale.receiptNumber)}</td><td>${escapeHtml(new Date(sale.createdAt).toLocaleString("sw-TZ"))}</td><td>${sale.lines.reduce((sum,line)=>sum+line.quantity,0)}</td><td>${escapeHtml(formatTZS(sale.total))}</td><td>${escapeHtml(sale.status)}</td></tr>`).join("");
   const expenseRows = input.expenses.map(item => `<tr><td>${escapeHtml(item.description)}</td><td>${escapeHtml(item.category)}</td><td>${escapeHtml(new Date((item.expenseDate ?? item.createdAt).slice(0,10)+"T00:00:00").toLocaleDateString("sw-TZ"))}</td><td>${escapeHtml(formatTZS(item.amount))}</td></tr>`).join("");
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>
@@ -43,16 +45,16 @@ export async function exportBusinessReportPdf(input: BusinessReportInput): Promi
 }
 
 export async function exportBusinessReportCsv(input: BusinessReportInput): Promise<void> {
-  const sales = input.sales.filter(sale => sale.status !== "pending_sync");
+  const sales = input.sales.filter(isCountableSale);
   const rows: (string | number)[][] = [
     ["GUNX SMART BUSINESS", input.businessName],
     ["Kipindi", input.periodLabel],
     ["Tarehe ya kutengeneza", (input.generatedAt ?? new Date()).toISOString()],
     [],
     ["MUHTASARI", "TZS"],
-    ["Mauzo yaliyothibitishwa", totalSales(sales)],
+    ["Mauzo baada ya refunds", totalSales(sales, input.refundTotal)],
     ["Gharama", input.expenses.reduce((sum,item)=>sum+item.amount,0)],
-    ["Faida halisi (makadirio)", netProfit(sales,input.expenses)],
+    ["Faida halisi (makadirio)", netProfit(sales,input.expenses,input.refunds ?? [])],
     ["Refunds za kipindi", input.refundTotal],
     [],
     ["MAUZO", "Risiti", "Tarehe", "Idadi ya bidhaa", "Jumla TZS", "Hali"],
