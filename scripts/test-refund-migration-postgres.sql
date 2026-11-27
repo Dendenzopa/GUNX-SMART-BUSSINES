@@ -170,6 +170,7 @@ DECLARE
   v_total numeric;
   v_count integer;
   v_definition text;
+  v_rejected boolean := false;
 BEGIN
   -- Platform user directory no longer searches/returns email.
   SELECT count(*) INTO v_count FROM public.get_platform_admin_users('owner@example.test',100,0);
@@ -225,6 +226,26 @@ BEGIN
   v_repeat_refund := v_result.refund_id;
   IF v_repeat_refund <> v_first_refund OR v_result.refund_total <> 24.89 THEN
     RAISE EXCEPTION 'Idempotent retry did not return original refund';
+  END IF;
+
+  -- Reusing the same key with a different quantity must fail closed.
+  BEGIN
+    SELECT * INTO v_result FROM public.refund_sale(
+      '00000000-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000001',
+      '50000000-0000-0000-0000-000000000001',
+      '[{"sale_item_id":"40000000-0000-0000-0000-000000000002","quantity":0.5}]'::jsonb,
+      'First partial return','cash'
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM = 'Idempotency key was already used with different return items or quantities' THEN
+      v_rejected := true;
+    ELSE
+      RAISE;
+    END IF;
+  END;
+  IF NOT v_rejected THEN
+    RAISE EXCEPTION 'Idempotency key accepted a different return payload';
   END IF;
 
   SELECT * INTO v_result FROM public.refund_sale(
