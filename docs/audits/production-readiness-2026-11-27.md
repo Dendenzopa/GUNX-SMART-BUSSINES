@@ -76,3 +76,12 @@ Remediation references:
 - Never grant Super Admin routine access to business-level private sales, profits, customer details or transaction records.
 - Do not remove existing sales, customers, stock movements, refunds or subscriptions as part of migration cleanup.
 - Preserve the official GUNX logo, navy/emerald/gold identity, approved dashboard reference, Boss onboarding, and phone-based employee invitation flow.
+
+
+## Follow-up verification — 2026-11-27
+
+- Commit `e28dce00048e06e629f358cf08599336c16e8f4c` passed both Vercel Preview status checks. This verifies the exact branch commit's deployment checks, not full functional correctness or Production readiness.
+- Client-side Super Admin isolation was rechecked: the app bypasses shop membership/manager-permission loading for platform admins, does not load tenant offline snapshots/outbox for them, and renders the platform dashboard. The live `get_shop_sales` and `get_shop_products` SECURITY DEFINER RPCs still require shop role/permission checks; platform-admin status alone does not satisfy those checks. The platform directory/metrics RPCs are separately gated by `is_platform_admin()` and expose platform directory/aggregate data, not sale line items.
+- **Confirmed financial defect — discounted-sale refunds:** the live `refund_sale` RPC currently calculates each refund as `unit_price * returned_quantity` and stores that full-price amount. It does not allocate the original sale-level discount across returned items. Therefore, on a discounted receipt, a partial or full refund can exceed the discounted amount attributable to the returned items and make net sales/profit inaccurate. The app currently previews the same undiscounted amount, so a client-only display change would not fix the database ledger.
+- Do not patch the live RPC directly. First reconcile migration history and recover the authoritative migration source; then implement a versioned migration in an isolated staging database. Define a deterministic discount-allocation and rounding rule that guarantees cumulative refunds never exceed the sale's net paid total, including repeated partial returns, and add regression tests for multiple items, fractional quantities where allowed, multiple partial refunds, full return, and idempotent retries.
+- No schema change was applied during this follow-up. PR #45 remains open/draft; no merge or Production deployment was performed.
