@@ -24,6 +24,8 @@ AS $$
 DECLARE
   v_sale public.sales%rowtype;
   v_existing public.sale_refunds%rowtype;
+  v_requested_items jsonb;
+  v_existing_items jsonb;
   v_item record;
   v_sale_item public.sale_items%rowtype;
   v_product public.products%rowtype;
@@ -70,6 +72,33 @@ BEGIN
   FROM public.sale_refunds
   WHERE shop_id = p_shop_id AND idempotency_key = p_idempotency_key;
   IF FOUND THEN
+    IF v_existing.sale_id <> p_sale_id
+       OR v_existing.reason <> trim(p_reason)
+       OR v_existing.refund_method <> p_refund_method THEN
+      RAISE EXCEPTION 'Idempotency key was already used for a different refund request';
+    END IF;
+
+    SELECT coalesce(
+      jsonb_agg(jsonb_build_object('sale_item_id', x.sale_item_id, 'quantity', x.quantity)
+                ORDER BY x.sale_item_id),
+      '[]'::jsonb
+    )
+    INTO v_requested_items
+    FROM jsonb_to_recordset(p_items) AS x(sale_item_id uuid, quantity numeric);
+
+    SELECT coalesce(
+      jsonb_agg(jsonb_build_object('sale_item_id', ri.sale_item_id, 'quantity', ri.quantity)
+                ORDER BY ri.sale_item_id),
+      '[]'::jsonb
+    )
+    INTO v_existing_items
+    FROM public.sale_refund_items ri
+    WHERE ri.refund_id = v_existing.id;
+
+    IF v_requested_items IS DISTINCT FROM v_existing_items THEN
+      RAISE EXCEPTION 'Idempotency key was already used with different return items or quantities';
+    END IF;
+
     RETURN QUERY SELECT v_existing.id, v_existing.refund_total;
     RETURN;
   END IF;
