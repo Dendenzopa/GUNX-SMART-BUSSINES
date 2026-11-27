@@ -204,14 +204,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       }
       const admin = adminResult.data === true;
       const memberships = membershipResult.data ?? [];
-      if (memberships.length > 1) {
+      if (!admin && memberships.length > 1) {
         setMembershipCheckError("Akaunti hii imeunganishwa na biashara zaidi ya moja. Kwa usalama, hatutachagua biashara kiholela. Wasiliana na msimamizi ili uchague biashara sahihi.");
         setShopLoading(false);
         return;
       }
       const membership = memberships[0] ?? null;
       const validRoles: ShopRole[] = ["owner", "manager", "cashier", "stockkeeper"];
-      if (membership && !validRoles.includes(membership.role as ShopRole)) {
+      if (!admin && membership && !validRoles.includes(membership.role as ShopRole)) {
         setMembershipCheckError("Jukumu la akaunti hii halitambuliki. Dashboard imefungwa hadi role sahihi ithibitishwe.");
         setShopLoading(false);
         return;
