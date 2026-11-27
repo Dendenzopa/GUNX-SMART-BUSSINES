@@ -4,6 +4,8 @@ export interface RefundRecord {
   amount: number;
   returnedCost: number;
   createdAt: string;
+  saleId?: string;
+  items?: { saleItemId: string; quantity: number; returnedCost: number }[];
 }
 
 export const formatTZS = (amount: number): string => new Intl.NumberFormat("sw-TZ", { style: "currency", currency: "TZS", maximumFractionDigits: 0 }).format(Number.isFinite(amount) ? amount : 0);
