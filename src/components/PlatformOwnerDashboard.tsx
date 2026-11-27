@@ -52,9 +52,7 @@ function ManagementCard({ icon, title, description, onPress, darkMode }: { icon:
 type BusinessRow = {
   shop_id: string;
   business_name: string;
-  owner_id: string;
-  owner_email: string | null;
-  created_at: string;
+    created_at: string;
   member_count: number;
   plan_code: string;
   subscription_status: string;
@@ -107,7 +105,7 @@ function BusinessDirectory({ onBack, darkMode }: { onBack: () => void; darkMode:
         <TextInput
           value={search}
           onChangeText={setSearch}
-          placeholder="Tafuta jina la biashara au email ya mmiliki"
+          placeholder="Tafuta jina la biashara"
           placeholderTextColor="#526A7E"
           autoCapitalize="none"
           style={s.searchInput}
@@ -130,7 +128,6 @@ function BusinessDirectory({ onBack, darkMode }: { onBack: () => void; darkMode:
             <View style={s.businessIcon}><Text style={s.businessIconText}>▣</Text></View>
             <View style={s.businessIdentity}>
               <Text style={[s.businessName,darkMode&&{color:"#F4F7FA"}]}>{business.business_name}</Text>
-              <Text style={[s.businessEmail,darkMode&&{color:"#C1CED8"}]}>{business.owner_email || "Email ya mmiliki haipo"}</Text>
             </View>
           </View>
           <View style={s.businessMeta}>
@@ -243,7 +240,7 @@ const MODULE_PAGES: Record<string, ModulePageData> = {
 
 
 type PlatformUserRow = { user_id:string; email:string|null; created_at:string; shop_count:number; roles:string[]; total_count:number };
-type PlatformPaymentRow = { request_id:string; shop_id:string; business_name:string; owner_email:string|null; provider:string; amount_tzs:number; transaction_reference:string; payer_phone:string|null; status:string; submitted_at:string; verified_at:string|null; admin_note:string|null; total_count:number };
+type PlatformPaymentRow = { request_id:string; shop_id:string; business_name:string; provider:string; amount_tzs:number; status:string; submitted_at:string; verified_at:string|null; total_count:number };
 type PlatformSettingRow = { key:string; value:any; description:string|null; updated_at:string; updated_by:string|null };
 type PlatformAuditRow = { id:string; actor_id:string|null; action:string; target_type:string; target_id:string|null; metadata:any; created_at:string };
 type PlatformNotificationRow = { id:string; title:string; message:string; severity:string; source:string; read_at:string|null; created_at:string };
@@ -368,11 +365,9 @@ function ModulePage({ moduleKey, metrics, onBack, darkMode }: { moduleKey: strin
         <Text style={s.dataSectionTitle}>Maombi ya malipo ya PRO</Text>
         {payments.map(payment=><View key={payment.request_id} style={s.dataCard}>
           <View style={s.dataMetaRow}><Text style={s.dataTitle}>{payment.business_name}</Text><Text style={[s.statusPill,payment.status==="verified"?s.statusGood:payment.status==="rejected"?s.statusBad:s.statusPending]}>{payment.status.toUpperCase()}</Text></View>
-          <Text style={s.dataSub}>{payment.owner_email||"Mmiliki hajulikani"} · {payment.provider.toUpperCase()}</Text>
+          <Text style={s.dataSub}>Njia ya malipo: {payment.provider.toUpperCase()}</Text>
           <Text style={s.dataTitle}>{money(payment.amount_tzs)}</Text>
-          <Text style={s.dataSub}>Ref: {payment.transaction_reference}</Text>
-          <Text style={s.dataSub}>Simu: {payment.payer_phone||"Haijatolewa"} · {new Date(payment.submitted_at).toLocaleString("sw-TZ")}</Text>
-          {!!payment.admin_note&&<Text style={s.dataSub}>Maelezo: {payment.admin_note}</Text>}
+          <Text style={s.dataSub}>Tarehe ya ombi: {new Date(payment.submitted_at).toLocaleString("sw-TZ")}</Text>
         </View>)}
         {!busy&&payments.length===0&&<View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna maombi ya malipo</Text></View>}
         <Text style={s.footerNote}>Ukurasa huu unaonyesha rekodi halisi. Vitufe vya ku-verify/reject vitafunguliwa baada ya kuweka uthibitisho wa server-side na audit trail kwa kila hatua.</Text>
