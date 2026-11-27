@@ -27,7 +27,7 @@ const roles: { id: Role; label: string; detail: string }[] = [
   { id: "stockkeeper", label: "Stock", detail: "Kupokea na kufuatilia stock ya bidhaa zilizopo" },
 ];
 
-export default function StaffManagement() {
+export default function StaffManagement({ darkMode = true }: { darkMode?: boolean }) {
   const { shopId } = useShopContext();
   const [members, setMembers] = useState<Member[]>([]);
   const [phone, setPhone] = useState("");
@@ -142,49 +142,49 @@ export default function StaffManagement() {
     await load();
   }
 
-  return <ScrollView contentContainerStyle={s.wrap}>
-    <Text style={s.title}>Wafanyakazi wa Duka</Text>
-    <Text style={s.copy}>Alika wafanyakazi kwa namba ya simu. Kila mfanyakazi atakuwa na akaunti yake binafsi na ataingia kwa simu na password.</Text>
+  return <ScrollView style={{ backgroundColor: darkMode ? "#081522" : "#F8FAFC" }} contentContainerStyle={s.wrap}>
+    <Text style={[s.title, !darkMode && { color: "#142D42" }]}>Wafanyakazi wa Duka</Text>
+    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Alika wafanyakazi kwa namba ya simu. Kila mfanyakazi atakuwa na akaunti yake binafsi na ataingia kwa simu na password.</Text>
     {loading && <ActivityIndicator color="#43C99A" />}
-    {!owner && !loading && <Text style={s.notice}>Akaunti hii haina ruhusa ya mmiliki. Unaweza kuona orodha tu; maamuzi ya ruhusa yanathibitishwa na database.</Text>}
-    {owner && <View style={s.panel}>
-      <Text style={s.heading}>Ongeza mfanyakazi</Text>
-      <Text style={s.copy}>Ingiza namba ya simu ya mfanyakazi. Link ya mwaliko itatengenezwa ili umshirikishe.</Text>
-      <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="07XXXXXXXX au +2557XXXXXXXX" placeholderTextColor="#8194A5" style={s.input}/>
-      <Text style={s.heading}>Chagua nafasi</Text>
-      {roles.map(item => <Pressable key={item.id} onPress={() => setRole(item.id)} style={[s.role, role === item.id && s.selected]}>
-        <Text style={s.roleTitle}>{item.label} {role === item.id ? "✓" : ""}</Text><Text style={s.copy}>{item.detail}</Text>
+    {!owner && !loading && <Text style={[s.notice, !darkMode && { color: "#075E46", backgroundColor: "#E8F7F0" }]}>Akaunti hii haina ruhusa ya mmiliki. Unaweza kuona orodha tu; maamuzi ya ruhusa yanathibitishwa na database.</Text>}
+    {owner && <View style={[s.panel, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
+      <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Ongeza mfanyakazi</Text>
+      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Ingiza namba ya simu ya mfanyakazi. Link ya mwaliko itatengenezwa ili umshirikishe.</Text>
+      <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="07XXXXXXXX au +2557XXXXXXXX" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
+      <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Chagua nafasi</Text>
+      {roles.map(item => <Pressable key={item.id} onPress={() => setRole(item.id)} style={[s.role, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1" }, role === item.id && (darkMode ? s.selected : { backgroundColor: "#E8F7F0", borderColor: "#159A70" })]}>
+        <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{item.label} {role === item.id ? "✓" : ""}</Text><Text style={[s.copy, !darkMode && { color: "#526477" }]}>{item.detail}</Text>
       </Pressable>)}
       <Pressable disabled={busy} onPress={addMember} style={s.button}><Text style={s.buttonText}>{busy ? "Inachakata..." : "＋ Ongeza mfanyakazi"}</Text></Pressable>
-      {!!inviteLink && <View style={s.inviteBox}>
-        <Text style={s.copy}>Link ya mwaliko (inaisha baada ya siku 7):</Text>
-        <Text selectable style={s.inviteLink}>{inviteLink}</Text>
-        <Pressable disabled={busy} onPress={() => void shareInvitation(inviteLink)} style={s.small}><Text style={s.smallText}>Shiriki tena link</Text></Pressable>
+      {!!inviteLink && <View style={[s.inviteBox, !darkMode && { backgroundColor: "#F0FDF7", borderColor: "#A7DCC7" }]}>
+        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Link ya mwaliko (inaisha baada ya siku 7):</Text>
+        <Text selectable style={[s.inviteLink, !darkMode && { color: "#087A5A" }]}>{inviteLink}</Text>
+        <Pressable disabled={busy} onPress={() => void shareInvitation(inviteLink)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Shiriki tena link</Text></Pressable>
       </View>}
     </View>}
-    <Text style={s.heading}>Orodha ya wanachama ({members.length})</Text>
-    {members.map(member => <View key={member.user_id} style={s.member}>
-      <Text style={s.roleTitle}>{member.role === "owner" ? "Mmiliki" : roles.find(r => r.id === member.role)?.label ?? member.role}</Text>
-      <Text style={s.copy}>ID: {member.user_id}</Text>
+    <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Orodha ya wanachama ({members.length})</Text>
+    {members.map(member => <View key={member.user_id} style={[s.member, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
+      <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{member.role === "owner" ? "Mmiliki" : roles.find(r => r.id === member.role)?.label ?? member.role}</Text>
+      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Utambulisho: ••••{member.user_id.slice(-6)}</Text>
       {owner && member.role !== "owner" && <View style={s.actions}>
-        {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={s.smallText}>{r.label}</Text></Pressable>)}
-        {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={s.small}><Text style={s.smallText}>Ruhusa</Text></Pressable>}
-        <Pressable disabled={busy} onPress={() => remove(member)} style={[s.small, s.remove]}><Text style={s.smallText}>Ondoa</Text></Pressable>
+        {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>{r.label}</Text></Pressable>)}
+        {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ruhusa</Text></Pressable>}
+        <Pressable disabled={busy} onPress={() => remove(member)} style={[s.small, s.remove]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ondoa</Text></Pressable>
       </View>}
     </View>)}
-    {owner && permissionTarget && <View style={s.panel}>
-      <Text style={s.heading}>Ruhusa za Meneja</Text>
-      <Text style={s.copy}>Meneja: {permissionTarget.user_id}. Chagua kazi anazoweza kufanya. Bila ruhusa, taarifa na vitendo vinabaki vimefungwa.</Text>
+    {owner && permissionTarget && <View style={[s.panel, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
+      <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Ruhusa za Meneja</Text>
+      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Meneja ••••{permissionTarget.user_id.slice(-6)}. Chagua kazi anazoweza kufanya. Bila ruhusa, taarifa na vitendo vinabaki vimefungwa.</Text>
       {permissionOptions.map(item => <Pressable key={item.id} disabled={busy} onPress={() => togglePermission(item.id)} style={[s.role, permissions.includes(item.id) && s.selected]}>
-        <Text style={s.roleTitle}>{permissions.includes(item.id) ? "✓ " : "○ "}{item.label}</Text>
-        <Text style={s.copy}>{item.detail}</Text>
+        <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{permissions.includes(item.id) ? "✓ " : "○ "}{item.label}</Text>
+        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{item.detail}</Text>
       </Pressable>)}
       <Pressable disabled={busy} onPress={() => void savePermissions()} style={s.button}><Text style={s.buttonText}>{busy ? "Inahifadhi..." : "Hifadhi ruhusa"}</Text></Pressable>
-      <Pressable disabled={busy} onPress={() => setPermissionTarget(null)} style={s.refresh}><Text style={s.smallText}>Ghairi</Text></Pressable>
+      <Pressable disabled={busy} onPress={() => setPermissionTarget(null)} style={[s.refresh, !darkMode && { backgroundColor: "#E7EEF4" }]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ghairi</Text></Pressable>
     </View>}
-    <Pressable onPress={() => void load()} style={s.refresh}><Text style={s.smallText}>↻ Sasisha orodha</Text></Pressable>
-    <Text style={s.notice}>{notice}</Text>
-    <Text style={s.copy}>Usalama: kuongeza, kubadilisha nafasi na kuondoa wanachama hufanywa na RPC za database zinazokagua jukumu la owner. Ongeza tu User ID ya mtu unayemwamini.</Text>
+    <Pressable onPress={() => void load()} style={[s.refresh, !darkMode && { backgroundColor: "#E7EEF4" }]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>↻ Sasisha orodha</Text></Pressable>
+    <Text style={[s.notice, !darkMode && { color: "#075E46", backgroundColor: "#E8F7F0" }]}>{notice}</Text>
+    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Usalama: kuongeza, kubadilisha nafasi na kuondoa wanachama hufanywa na RPC za database zinazokagua jukumu la mmiliki. Wafanyakazi hujiunga kwa namba ya simu iliyothibitishwa kwa SMS.</Text>
   </ScrollView>;
 }
 

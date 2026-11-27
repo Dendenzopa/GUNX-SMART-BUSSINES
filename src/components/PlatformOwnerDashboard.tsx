@@ -26,24 +26,24 @@ type Metrics = {
   total_shops: number;
 };
 
-function StatCard({ icon, label, value, tone, onPress }: { icon: string; label: string; value: string; tone: "blue" | "gold" | "green"; onPress: () => void }) {
+function StatCard({ icon, label, value, tone, onPress, darkMode }: { icon: string; label: string; value: string; tone: "blue" | "gold" | "green"; onPress: () => void; darkMode: boolean }) {
   return (
-    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [[s.statCard, tone === "blue" ? s.statBlueCard : tone === "gold" ? s.statGoldCard : s.statGreenCard], pressed && s.pressed]}>
+    <Pressable accessibilityRole="button" onPress={onPress} style={({ pressed }) => [[s.statCard, tone === "blue" ? s.statBlueCard : tone === "gold" ? s.statGoldCard : s.statGreenCard, darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}], pressed && s.pressed]}>
       <View style={[s.statIcon, tone === "blue" ? s.blueIcon : tone === "gold" ? s.goldIcon : s.greenIcon]}>
         <Text style={[s.statIconText, tone === "blue" ? s.blueText : tone === "gold" ? s.goldText : s.greenText]}>{icon}</Text>
       </View>
-      <Text style={s.statValue}>{value}</Text>
-      <Text style={s.statLabel}>{label}</Text>
+      <Text style={[s.statValue,darkMode&&{color:"#F4F7FA"}]}>{value}</Text>
+      <Text style={[s.statLabel,darkMode&&{color:"#C1CED8"}]}>{label}</Text>
     </Pressable>
   );
 }
 
-function ManagementCard({ icon, title, description, onPress }: { icon: string; title: string; description: string; onPress: () => void }) {
+function ManagementCard({ icon, title, description, onPress, darkMode }: { icon: string; title: string; description: string; onPress: () => void; darkMode: boolean }) {
   return (
-    <Pressable onPress={onPress} style={({ pressed }) => [s.managementCard, pressed && s.pressed]}>
+    <Pressable onPress={onPress} style={({ pressed }) => [s.managementCard, darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}, pressed && s.pressed]}>
       <View style={s.managementIcon}><Text style={s.managementIconText}>{icon}</Text></View>
-      <Text style={s.managementTitle}>{title}</Text>
-      <Text style={s.managementDescription}>{description}</Text>
+      <Text style={[s.managementTitle,darkMode&&{color:"#F4F7FA"}]}>{title}</Text>
+      <Text style={[s.managementDescription,darkMode&&{color:"#C1CED8"}]}>{description}</Text>
     </Pressable>
   );
 }
@@ -52,8 +52,6 @@ function ManagementCard({ icon, title, description, onPress }: { icon: string; t
 type BusinessRow = {
   shop_id: string;
   business_name: string;
-  owner_id: string;
-  owner_email: string | null;
   created_at: string;
   member_count: number;
   plan_code: string;
@@ -62,7 +60,7 @@ type BusinessRow = {
   total_count: number;
 };
 
-function BusinessDirectory({ onBack }: { onBack: () => void }) {
+function BusinessDirectory({ onBack, darkMode }: { onBack: () => void; darkMode: boolean }) {
   const [rows, setRows] = useState<BusinessRow[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
@@ -98,7 +96,7 @@ function BusinessDirectory({ onBack }: { onBack: () => void }) {
   useEffect(() => { void loadBusinesses(""); }, [loadBusinesses]);
 
   return (
-    <View style={s.directory}>
+    <View style={[s.directory,darkMode&&{backgroundColor:"#081522"}]}>
       <Pressable onPress={onBack} style={s.backButton}><Text style={s.backText}>‹  Rudi Platform Overview</Text></Pressable>
       <Text style={s.sectionEyebrow}>PLATFORM DIRECTORY</Text>
       <Text style={s.sectionTitle}>All Businesses</Text>
@@ -107,7 +105,7 @@ function BusinessDirectory({ onBack }: { onBack: () => void }) {
         <TextInput
           value={search}
           onChangeText={setSearch}
-          placeholder="Tafuta jina la biashara au email ya mmiliki"
+          placeholder="Tafuta jina la biashara"
           placeholderTextColor="#526A7E"
           autoCapitalize="none"
           style={s.searchInput}
@@ -125,12 +123,11 @@ function BusinessDirectory({ onBack }: { onBack: () => void }) {
       {!!error && <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>}
       {!loading && !error && rows.length === 0 && <View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna biashara iliyopatikana</Text><Text style={s.managementDescription}>Biashara mpya zitaonekana hapa baada ya kusajiliwa.</Text></View>}
       {rows.map((business) => (
-        <View key={business.shop_id} style={s.businessCard}>
+        <View key={business.shop_id} style={[s.businessCard,darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}]}>
           <View style={s.businessHeading}>
             <View style={s.businessIcon}><Text style={s.businessIconText}>▣</Text></View>
             <View style={s.businessIdentity}>
-              <Text style={s.businessName}>{business.business_name}</Text>
-              <Text style={s.businessEmail}>{business.owner_email || "Email ya mmiliki haipo"}</Text>
+              <Text style={[s.businessName,darkMode&&{color:"#F4F7FA"}]}>{business.business_name}</Text>
             </View>
           </View>
           <View style={s.businessMeta}>
@@ -160,17 +157,17 @@ type ModulePageData = {
 const MODULE_PAGES: Record<string, ModulePageData> = {
   Users: {
     icon: "👥", title: "Usimamizi wa Watumiaji",
-    subtitle: "Akaunti, biashara wanazohusishwa nazo, majukumu na mipaka ya ruhusa.",
-    status: "Muonekano wa ukurasa umeandaliwa. Orodha kamili ya watumiaji na mabadiliko ya akaunti yanahitaji huduma maalum ya platform-admin na ukaguzi wa usalama.",
+    subtitle: "Akaunti za jukwaa, idadi ya biashara zinazohusishwa na majukumu.",
+    status: "Orodha inaonyesha User ID, idadi ya biashara, majukumu na tarehe ya usajili pekee. Email, simu na rekodi binafsi za biashara hazionyeshwi.",
     sections: [
-      { heading: "Usimamizi wa akaunti", body: "Hapa ndipo Super Admin ataangalia watumiaji wa jukwaa kwa ujumla.", items: ["Tafuta mtumiaji kwa jina, email au namba ya simu", "Angalia biashara anazomiliki au anazofanyia kazi", "Angalia hali ya akaunti na tarehe ya usajili"] },
+      { heading: "Usimamizi wa akaunti", body: "Hapa ndipo Super Admin ataangalia watumiaji wa jukwaa kwa ujumla.", items: ["Tafuta kwa User ID pale inapohitajika", "Angalia idadi ya biashara zinazohusishwa na majukumu", "Angalia tarehe ya usajili bila kufungua data binafsi ya tenant"] },
       { heading: "Majukumu na ruhusa", body: "Majukumu ya biashara yanabaki ndani ya biashara husika; ruhusa za Super Admin ni za jukwaa zima.", items: ["Business Owner", "Manager", "Cashier", "Stockkeeper", "Platform Super Admin"] }
     ]
   },
   Subscriptions: {
     icon: "🛡️", title: "Vifurushi na Usajili",
     subtitle: "Dhibiti mipango ya Free na Pro, muda wa usajili na uthibitishaji wa malipo.",
-    status: "Database tayari ina shop_subscriptions na pro_payment_requests. Ukurasa huu unaonyesha muundo wa usimamizi; vitendo vya kuthibitisha au kukataa malipo vitahitaji kuunganishwa kwa orodha ya maombi na audit trail.",
+    status: "Muhtasari unaonyesha biashara, provider, kiasi, status na tarehe ya ombi pekee. Kuthibitisha au kukataa malipo kutahitaji utaratibu salama wa uhakiki na audit trail.",
     sections: [
       { heading: "Mipango ya huduma", body: "Muhtasari wa vifurushi vinavyotumika kwenye GUNX SMART BUSINESS.", items: ["FREE — matumizi ya msingi kulingana na mipaka ya mpango", "PRO — huduma za ziada kwa usajili unaotumika", "Usajili ulioisha muda hurudi Free bila kufuta data ya biashara"] },
       { heading: "Uthibitishaji wa malipo", body: "Malipo ya Pro yanahitaji kuhakikiwa kabla ya kuwasha huduma.", items: ["M-Pesa, HaloPesa, Mixx, Airtel Money au Benki", "Kiasi kinachotarajiwa: TZS 5,000", "Hali za ombi: Pending, Verified au Rejected"] }
@@ -208,7 +205,7 @@ const MODULE_PAGES: Record<string, ModulePageData> = {
     subtitle: "Mapato ya usajili wa GUNX PRO na malipo yaliyothibitishwa.",
     status: "Mapato halisi bado hayajaunganishwa na ledger ya platform. Mfumo hautachukulia maombi ya malipo yanayosubiri kuwa mapato yaliyopokelewa.",
     sections: [
-      { heading: "Vyanzo vya mapato", body: "Mapato ya jukwaa yatatokana na huduma za kulipia.", items: ["Usajili wa GUNX PRO", "Malipo yaliyothibitishwa tu", "Rekodi ya provider na transaction reference"] },
+      { heading: "Vyanzo vya mapato", body: "Mapato ya jukwaa yatatokana na huduma za kulipia.", items: ["Usajili wa GUNX PRO", "Malipo yaliyothibitishwa tu", "Muhtasari wa provider na malipo yaliyothibitishwa; transaction reference kamili haionyeshwi"] },
       { heading: "Udhibiti wa fedha", body: "Kila uthibitisho au marekebisho lazima yawe na kumbukumbu.", items: ["Jumla ya mapato kwa siku, mwezi na mwaka", "Malipo yanayosubiri na yaliyokataliwa", "Historia ya uthibitishaji wa malipo"] }
     ]
   },
@@ -226,7 +223,7 @@ const MODULE_PAGES: Record<string, ModulePageData> = {
     subtitle: "Wasifu wa mmiliki na mamlaka ya usimamizi wa jukwaa.",
     status: "Akaunti hii inatambuliwa kupitia uthibitisho wa platform_admins. Mabadiliko ya wasifu na usalama wa session yataunganishwa kwenye hatua inayofuata.",
     sections: [
-      { heading: "Mamlaka ya akaunti", body: "Super Admin ana uwezo wa kusimamia jukwaa zima, si tenant moja tu.", items: ["Biashara zote na taarifa zake", "Watumiaji na majukumu ya jukwaa", "Usajili, mipango na malipo", "Ripoti na usalama wa mfumo"] },
+      { heading: "Mamlaka ya akaunti", body: "Super Admin ana uwezo wa kusimamia jukwaa zima, si tenant moja tu.", items: ["Muhtasari wa idadi ya biashara na hali za usajili", "Watumiaji na majukumu ya jukwaa bila data binafsi za tenant", "Usajili, mipango na malipo", "Ripoti na usalama wa mfumo"] },
       { heading: "Usalama wa akaunti", body: "Vitendo nyeti vitahitaji uthibitisho wa ziada.", items: ["Uthibitishaji wa akaunti", "Usimamizi wa session na vifaa", "Historia ya mabadiliko ya akaunti"] }
     ]
   },
@@ -242,14 +239,14 @@ const MODULE_PAGES: Record<string, ModulePageData> = {
 };
 
 
-type PlatformUserRow = { user_id:string; email:string|null; created_at:string; shop_count:number; roles:string[]; total_count:number };
-type PlatformPaymentRow = { request_id:string; shop_id:string; business_name:string; owner_email:string|null; provider:string; amount_tzs:number; transaction_reference:string; payer_phone:string|null; status:string; submitted_at:string; verified_at:string|null; admin_note:string|null; total_count:number };
+type PlatformUserRow = { user_id:string; created_at:string; shop_count:number; roles:string[]; total_count:number };
+type PlatformPaymentRow = { request_id:string; shop_id:string; business_name:string; provider:string; amount_tzs:number; status:string; submitted_at:string; verified_at:string|null; total_count:number };
 type PlatformSettingRow = { key:string; value:any; description:string|null; updated_at:string; updated_by:string|null };
 type PlatformAuditRow = { id:string; actor_id:string|null; action:string; target_type:string; target_id:string|null; metadata:any; created_at:string };
 type PlatformNotificationRow = { id:string; title:string; message:string; severity:string; source:string; read_at:string|null; created_at:string };
 type PlatformHealthRow = { id:string; service:string; status:string; response_time_ms:number|null; details:any; checked_at:string };
 
-function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics: Metrics | null; onBack: () => void }) {
+function ModulePage({ moduleKey, metrics, onBack, darkMode }: { moduleKey: string; metrics: Metrics | null; onBack: () => void; darkMode: boolean }) {
   const page = MODULE_PAGES[moduleKey];
   const [busy,setBusy]=useState(false);
   const [error,setError]=useState("");
@@ -328,26 +325,25 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 
     const money=(value:number)=>"TZS "+Number(value||0).toLocaleString("en-US");
   return (
-    <View style={s.modulePage}>
+    <View style={[s.modulePage,darkMode&&{backgroundColor:"#081522"}]}>
       <Pressable onPress={onBack} style={s.backButton}><Text style={s.backText}>‹  Rudi Dashboard</Text></Pressable>
-      <View style={s.moduleHero}>
+      <View style={[s.moduleHero,darkMode&&{backgroundColor:"#102438",borderColor:"#2B4B61"}]}>
         <View style={s.moduleHeroIcon}><Text style={s.moduleHeroIconText}>{page.icon}</Text></View>
         <Text style={s.moduleEyebrow}>GUNX SMART BUSINESS · SUPER ADMIN</Text>
-        <Text style={s.moduleTitle}>{page.title}</Text>
-        <Text style={s.moduleSubtitle}>{page.subtitle}</Text>
+        <Text style={[s.moduleTitle,darkMode&&{color:"#F4F7FA"}]}>{page.title}</Text>
+        <Text style={[s.moduleSubtitle,darkMode&&{color:"#C1CED8"}]}>{page.subtitle}</Text>
       </View>
       {busy && <View style={s.loading}><ActivityIndicator color="#176B56"/><Text style={s.loadingText}>Inapakia taarifa halisi...</Text></View>}
       {!!error && <View style={s.errorBox}><Text style={s.errorText}>{error}</Text></View>}
 
       {moduleKey==="Users" && <>
         <View style={s.dataToolbar}>
-          <TextInput value={userSearch} onChangeText={setUserSearch} placeholder="Tafuta kwa email au User ID" placeholderTextColor="#526A7E" style={s.searchInput} autoCapitalize="none"/>
+          <TextInput value={userSearch} onChangeText={setUserSearch} placeholder="Tafuta kwa User ID" placeholderTextColor="#526A7E" style={s.searchInput} autoCapitalize="none"/>
           <Pressable onPress={()=>void loadPage()} style={s.searchButton}><Text style={s.searchButtonText}>TAFUTA</Text></Pressable>
         </View>
         <Text style={s.dataCount}>Watumiaji: {users.length ? Number(users[0].total_count).toLocaleString("en-US") : "0"}</Text>
         {users.map(user=><View key={user.user_id} style={s.dataCard}>
-          <Text style={s.dataTitle}>{user.email||"Email haipo"}</Text>
-          <Text style={s.dataSub}>User ID: {user.user_id}</Text>
+          <Text style={s.dataTitle}>Akaunti ya mtumiaji</Text>
           <View style={s.dataMetaRow}><Text style={s.dataMeta}>Biashara: {user.shop_count}</Text><Text style={s.dataMeta}>Majukumu: {user.roles?.join(", ")||"Hakuna"}</Text></View>
           <Text style={s.dataSub}>Amesajiliwa: {new Date(user.created_at).toLocaleDateString("sw-TZ")}</Text>
         </View>)}
@@ -368,11 +364,9 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
         <Text style={s.dataSectionTitle}>Maombi ya malipo ya PRO</Text>
         {payments.map(payment=><View key={payment.request_id} style={s.dataCard}>
           <View style={s.dataMetaRow}><Text style={s.dataTitle}>{payment.business_name}</Text><Text style={[s.statusPill,payment.status==="verified"?s.statusGood:payment.status==="rejected"?s.statusBad:s.statusPending]}>{payment.status.toUpperCase()}</Text></View>
-          <Text style={s.dataSub}>{payment.owner_email||"Mmiliki hajulikani"} · {payment.provider.toUpperCase()}</Text>
+          <Text style={s.dataSub}>Njia ya malipo: {payment.provider.toUpperCase()}</Text>
           <Text style={s.dataTitle}>{money(payment.amount_tzs)}</Text>
-          <Text style={s.dataSub}>Ref: {payment.transaction_reference}</Text>
-          <Text style={s.dataSub}>Simu: {payment.payer_phone||"Haijatolewa"} · {new Date(payment.submitted_at).toLocaleString("sw-TZ")}</Text>
-          {!!payment.admin_note&&<Text style={s.dataSub}>Maelezo: {payment.admin_note}</Text>}
+          <Text style={s.dataSub}>Tarehe ya ombi: {new Date(payment.submitted_at).toLocaleString("sw-TZ")}</Text>
         </View>)}
         {!busy&&payments.length===0&&<View style={s.emptyBox}><Text style={s.emptyTitle}>Hakuna maombi ya malipo</Text></View>}
         <Text style={s.footerNote}>Ukurasa huu unaonyesha rekodi halisi. Vitufe vya ku-verify/reject vitafunguliwa baada ya kuweka uthibitisho wa server-side na audit trail kwa kila hatua.</Text>
@@ -437,9 +431,9 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
 
       {page.sections.map(section => (
         <View key={section.heading} style={s.moduleSection}>
-          <Text style={s.moduleSectionTitle}>{section.heading}</Text>
-          <Text style={s.moduleBody}>{section.body}</Text>
-          {section.items.map(item => <View key={item} style={s.moduleItem}><Text style={s.moduleBullet}>✓</Text><Text style={s.moduleItemText}>{item}</Text></View>)}
+          <Text style={[s.moduleSectionTitle,darkMode&&{color:"#F4F7FA"}]}>{section.heading}</Text>
+          <Text style={[s.moduleBody,darkMode&&{color:"#C1CED8"}]}>{section.body}</Text>
+          {section.items.map(item => <View key={item} style={s.moduleItem}><Text style={s.moduleBullet}>✓</Text><Text style={[s.moduleItemText,darkMode&&{color:"#DCE6EF"}]}>{item}</Text></View>)}
         </View>
       ))}
       <Pressable onPress={()=>void loadPage()} style={s.refresh}><Text style={s.refreshText}>↻  Sasisha taarifa</Text></Pressable>
@@ -451,7 +445,7 @@ function ModulePage({ moduleKey, metrics, onBack }: { moduleKey: string; metrics
   );
 }
 
-export default function PlatformOwnerDashboard() {
+export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { darkMode: boolean; onToggleTheme: () => void }) {
   const { signOut } = useShopContext();
   const [accountName, setAccountName] = useState("Super Admin");
   const [avatarUri, setAvatarUri] = useState<string | null>(null);
@@ -539,8 +533,8 @@ export default function PlatformOwnerDashboard() {
   const showBusinesses = () => setSelectedModule("All Businesses");
 
   return (
-    <View style={s.screen}>
-      <View style={s.header}>
+    <View style={[s.screen,darkMode&&{backgroundColor:"#081522"}]}>
+      <View style={[s.header,darkMode&&{backgroundColor:"#081522"}]}>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Akaunti ya Mmiliki"
@@ -557,6 +551,7 @@ export default function PlatformOwnerDashboard() {
             resizeMode="contain"
           />
         </View>
+        <Pressable accessibilityRole="button" accessibilityLabel={darkMode?"Washa Light Mode":"Washa Dark Mode"} onPress={onToggleTheme} style={[s.accountButton,{marginLeft:8,backgroundColor:darkMode?"#173D36":"#E8EEF5"}]}><Text style={[s.accountIcon,{color:darkMode?"#75E0B8":"#173247"}]}>{darkMode?"☀":"☾"}</Text></Pressable>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel="Taarifa za Mfumo"
@@ -572,12 +567,12 @@ export default function PlatformOwnerDashboard() {
       </Pressable>
 
       {selectedModule === "All Businesses" ? (
-        <BusinessDirectory onBack={() => setSelectedModule(null)} />
+        <BusinessDirectory darkMode={darkMode} onBack={() => setSelectedModule(null)} />
       ) : selectedModule ? (
-        <ModulePage moduleKey={selectedModule} metrics={metrics} onBack={() => setSelectedModule(null)} />
+        <ModulePage moduleKey={selectedModule} metrics={metrics} darkMode={darkMode} onBack={() => setSelectedModule(null)} />
       ) : (
         <>
-          <View style={s.welcomeBanner}>
+          <View style={[s.welcomeBanner,darkMode&&{backgroundColor:"#102438",borderColor:"#D7B56D"}]}>
             <Pressable accessibilityRole="button" accessibilityLabel="Badilisha picha ya wasifu" onPress={() => void changeProfilePhoto()} style={s.avatarPicker}>
               <View style={s.welcomeAvatar}>
                 {avatarUri ? <Image source={{ uri: avatarUri }} style={s.avatarPhoto} /> : <Text style={s.welcomeAvatarIcon}>👤</Text>}
@@ -598,10 +593,10 @@ export default function PlatformOwnerDashboard() {
           {loading && <View style={s.loading}><ActivityIndicator color="#1D4ED8"/><Text style={s.loadingText}>Inasoma taarifa kutoka server...</Text></View>}
 
           <View style={s.statsGrid}>
-            <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" onPress={() => openModule("All Businesses")}/>
-            <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" onPress={() => openModule("Users")}/>
-            <StatCard icon="📈" label="Mapato Yaliyothibitishwa" value={verifiedRevenue} tone="gold" onPress={() => openModule("Revenue")}/>
-            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="green" onPress={() => openModule("Health")}/>
+            <StatCard icon="🏪" label="Jumla ya Biashara" value={metrics ? metrics.total_shops.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" darkMode={darkMode} onPress={() => openModule("All Businesses")}/>
+            <StatCard icon="👥" label="Jumla ya Watumiaji" value={metrics ? metrics.registrations.toLocaleString("en-US") : loading ? "…" : "--"} tone="blue" darkMode={darkMode} onPress={() => openModule("Users")}/>
+            <StatCard icon="📈" label="Mapato Yaliyothibitishwa" value={verifiedRevenue} tone="gold" darkMode={darkMode} onPress={() => openModule("Revenue")}/>
+            <StatCard icon="🛡️" label="Ufanisi wa Mfumo" value={unavailable} tone="green" darkMode={darkMode} onPress={() => openModule("Health")}/>
           </View>
           <Text style={s.metricFootnote}>
             Watumiaji hai: {metrics ? metrics.active_7d.toLocaleString("en-US") + " (siku 7) · " + metrics.active_30d.toLocaleString("en-US") + " (siku 30)" : "Takwimu za shughuli zitaonekana baada ya server kurudisha data."}
@@ -611,12 +606,12 @@ export default function PlatformOwnerDashboard() {
             <Text style={s.sectionTitle}>Zana za Usimamizi</Text>
           </View>
           <View style={s.managementGrid}>
-            <ManagementCard icon="🏪" title="Biashara Zote" description="Orodha na usimamizi wa biashara." onPress={showBusinesses}/>
-            <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." onPress={() => openModule("Users")}/>
-            <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." onPress={() => openModule("Subscriptions")}/>
-            <ManagementCard icon="⚙️" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." onPress={() => openModule("Settings")}/>
-            <ManagementCard icon="🛡️" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." onPress={() => openModule("Security")}/>
-            <ManagementCard icon="📄" title="Ripoti" description="Ukuaji, mapato na matumizi." onPress={() => openModule("Reports")}/>
+            <ManagementCard icon="🏪" title="Biashara Zote" description="Orodha na usimamizi wa biashara." darkMode={darkMode} onPress={showBusinesses}/>
+            <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." darkMode={darkMode} onPress={() => openModule("Users")}/>
+            <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." darkMode={darkMode} onPress={() => openModule("Subscriptions")}/>
+            <ManagementCard icon="⚙️" title="Mipangilio ya Mfumo" description="Mipangilio ya jukwaa zima." darkMode={darkMode} onPress={() => openModule("Settings")}/>
+            <ManagementCard icon="🛡️" title="Mlinzi wa Usalama" description="Uingiaji na kumbukumbu za usalama." darkMode={darkMode} onPress={() => openModule("Security")}/>
+            <ManagementCard icon="📄" title="Ripoti" description="Ukuaji, mapato na matumizi." darkMode={darkMode} onPress={() => openModule("Reports")}/>
           </View>
 
           <Pressable
@@ -671,7 +666,7 @@ const s = StyleSheet.create({
 
    moduleHero: { padding: 19, borderRadius: 18, backgroundColor: "#DCEBFA", borderWidth: 1, borderColor: "#A9C9EB", marginBottom: 13 },
    moduleHeroIcon: { width: 58, height: 58, borderRadius: 17, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", marginBottom: 12 },
-   moduleHeroIconText: { fontSize: 34 },
+   moduleHeroIconText: { fontSize: 68 },
    moduleEyebrow: { color: "#315F91", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
    moduleTitle: { color: "#102A43", fontSize: 22, fontWeight: "900", marginTop: 5 },
    moduleSubtitle: { color: "#29465F", fontSize: 16, lineHeight: 24, marginTop: 7 },
@@ -690,7 +685,7 @@ const s = StyleSheet.create({
    moduleStatusText: { color: "#66532E", fontSize: 13, lineHeight: 18, marginTop: 5 },
 
   accountButton: { width: 44, height: 44, borderRadius: 22, backgroundColor: "#1E3A8A", borderWidth: 2, borderColor: "#D4AF37", alignItems: "center", justifyContent: "center", elevation: 3 },
-  accountIcon: { color: "#FFFFFF", fontSize: 25, fontWeight: "800" },
+  accountIcon: { color: "#FFFFFF", fontSize: 50, fontWeight: "800" },
   notificationStrip: { flexDirection: "row", alignItems: "center", gap: 10, padding: 12, borderRadius: 16, borderWidth: 1, borderColor: "#8FB5E3", backgroundColor: "#D3E4F8", marginBottom: 14 },
   notificationIcon: { width: 36, height: 36, borderRadius: 11, backgroundColor: "rgba(255,255,255,0.7)", alignItems: "center", justifyContent: "center" },
   notificationIconText: { color: "#1D4ED8", fontSize: 22, fontWeight: "900" },
@@ -734,7 +729,7 @@ const s = StyleSheet.create({
   brandBlock: { flex: 1, flexBasis: "100%", minWidth: 0, alignItems: "center", justifyContent: "center", backgroundColor: "transparent", padding: 0 },
   brandLogo: { width: 400, height: 250 },
   bellButton: { width: 44, height: 44, borderRadius: 22, borderWidth: 1, borderColor: "#93B8E4", backgroundColor: "#D2E3F7", alignItems: "center", justifyContent: "center" },
-  bell: { color: "#1E3A8A", fontSize: 23, fontWeight: "800" },
+  bell: { color: "#1E3A8A", fontSize: 46, fontWeight: "800" },
   bellDot: { position: "absolute", width: 9, height: 9, borderRadius: 5, backgroundColor: "#DC2626", top: 8, right: 9, borderWidth: 1, borderColor: "#D2E3F7" },
   profileCard: { flexDirection: "row", alignItems: "center", gap: 12, padding: 14, borderRadius: 16, borderWidth: 1, borderColor: "#DCE5EC", backgroundColor: "#F7FAFC", marginBottom: 22 },
   avatar: { width: 54, height: 54, borderRadius: 27, backgroundColor: "#183C42", borderWidth: 2, borderColor: "#D8B86F", alignItems: "center", justifyContent: "center" },
@@ -758,15 +753,15 @@ const s = StyleSheet.create({
   loading: { flexDirection: "row", alignItems: "center", justifyContent: "center", gap: 9, padding: 11, backgroundColor: "#D3E4F8", borderRadius: 10, marginBottom: 10 },
   loadingText: { color: "#1E293B", fontSize: 14 },
   statsGrid: { flexDirection: "row", flexWrap: "wrap", gap: 9 },
-  statCard: { width: "48%", minHeight: 154, padding: 16, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", justifyContent: "center" },
+  statCard: { width: "48%", minHeight: 188, padding: 16, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", justifyContent: "center" },
   statBlueCard: { backgroundColor: "#C7DCF4" },
   statGoldCard: { backgroundColor: "#FFFFFF", borderColor: "#D9B96F" },
   statGreenCard: { backgroundColor: "#FFFFFF", borderColor: "#7CC9A5" },
-  statIcon: { width: 62, height: 62, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 9, backgroundColor: "rgba(255,255,255,0.62)" },
+  statIcon: { width: 92, height: 92, borderRadius: 18, alignItems: "center", justifyContent: "center", marginBottom: 9, backgroundColor: "rgba(255,255,255,0.62)" },
   blueIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
   goldIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
   greenIcon: { backgroundColor: "rgba(255,255,255,0.62)" },
-  statIconText: { fontSize: 42, fontWeight: "900" },
+  statIconText: { fontSize: 84, fontWeight: "900" },
   blueText: { color: "#1D4ED8" },
   goldText: { color: "#1D4ED8" },
   greenText: { color: "#1D4ED8" },
@@ -775,11 +770,11 @@ const s = StyleSheet.create({
   metricFootnote: { color: "#334B61", fontSize: 15, lineHeight: 22, marginTop: 10, marginBottom: 18 },
   toolCount: { color: "#D9B96F", fontSize: 12, fontWeight: "900", letterSpacing: 1, marginBottom: 3 },
   managementGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, marginTop: 5 },
-  managementCard: { width: "47%", minHeight: 170, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
+  managementCard: { width: "47%", minHeight: 210, borderRadius: 18, borderWidth: 1.5, borderColor: "#8FB5E3", backgroundColor: "#C8DCF3", padding: 9, justifyContent: "center" },
   pressed: { opacity: 0.75, borderColor: "#D8B86F" },
   managementTop: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", marginBottom: 9 },
-  managementIcon: { width: 66, height: 66, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
-  managementIconText: { color: "#1D4ED8", fontSize: 44, fontWeight: "900" },
+  managementIcon: { width: 96, height: 96, borderRadius: 19, backgroundColor: "rgba(255,255,255,0.65)", alignItems: "center", justifyContent: "center" },
+  managementIconText: { color: "#1D4ED8", fontSize: 88, fontWeight: "900" },
   chevron: { color: "#526A7E", fontSize: 23, marginTop: -4 },
   managementTitle: { color: "#0F172A", fontSize: 14, fontWeight: "900" },
   managementDescription: { color: "#1E293B", fontSize: 12, lineHeight: 15, marginTop: 5 },
@@ -809,7 +804,7 @@ const s = StyleSheet.create({
   businessCard: { padding: 13, borderRadius: 13, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5EC", marginBottom: 9 },
   businessHeading: { flexDirection: "row", alignItems: "center", gap: 10 },
   businessIcon: { width: 38, height: 38, borderRadius: 10, backgroundColor: "#153D60", alignItems: "center", justifyContent: "center" },
-  businessIconText: { color: "#62B9F5", fontSize: 20 },
+  businessIconText: { color: "#62B9F5", fontSize: 40 },
   businessIdentity: { flex: 1 },
   businessName: { color: "#172B3D", fontSize: 17, fontWeight: "900" },
   businessEmail: { color: "#40566B", fontSize: 13, marginTop: 3 },

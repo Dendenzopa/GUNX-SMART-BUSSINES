@@ -1,13 +1,14 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { GUNX_OFFICIAL_LOGO } from "../branding";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import { ActivityIndicator, AppState, Linking, Platform, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, TextInput, View, Image } from "react-native";
 import * as ImagePicker from "expo-image-picker";
+import { GUNX_OFFICIAL_LOGO } from "../branding";
 import type { Session } from "@supabase/supabase-js";
 import { supabase, supabaseConfigured } from "../lib/supabase";
 import { registerAppInstallation, recordSignedInActivity } from "../services/appAnalytics";
 
 type ShopRole = "owner" | "manager" | "cashier" | "stockkeeper";
-const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null; signOut: () => Promise<void> }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null, signOut: async () => {} });
+const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: boolean; userId: string | null; shopRole: ShopRole | null; darkMode: boolean; toggleTheme: () => void; signOut: () => Promise<void> }>({ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null, darkMode: true, toggleTheme: () => {}, signOut: async () => {} });
 export function useShopContext() { return useContext(ShopContext); }
 
 const AUTH_REDIRECT_URL = "gunxsmartbusiness://auth/callback";
@@ -23,6 +24,12 @@ function LockIcon() {
   return <View style={a.lockIconWrap}><View style={a.lockShackle}/><View style={a.lockBody}><View style={a.lockKeyhole}/></View></View>;
 }
 
+function ThemeToggle({ darkMode, onPress }: { darkMode: boolean; onPress: () => void }) {
+  return <Pressable accessibilityRole="button" accessibilityLabel={darkMode ? "Washa Light Mode" : "Washa Dark Mode"} onPress={onPress} style={[a.themeToggle, darkMode && { backgroundColor: "#173D36", borderColor: "#43C99A" }]}>
+    <Text style={[a.themeToggleText, darkMode && { color: "#75E0B8" }]}>{darkMode ? "☀ Light Mode" : "☾ Dark Mode"}</Text>
+  </Pressable>;
+}
+
 function normalizeEmployeePhone(value: string) {
   const digits = value.replace(/\D/g, "");
   if (digits.startsWith("255") && digits.length === 12) return "+" + digits;
@@ -33,6 +40,7 @@ function normalizeEmployeePhone(value: string) {
 
 export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
+  const [darkMode, setDarkMode] = useState(true);
   const [loading, setLoading] = useState(true);
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
@@ -57,6 +65,35 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [message, setMessage] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [mode, setMode] = useState<"login" | "signup" | "forgot" | "reset">("login");
+
+  useEffect(() => {
+    let active = true;
+    const userId = session?.user.id;
+    const userKey = userId ? "@gunx-theme-mode:" + userId : "@gunx-auth-theme-mode";
+    void Promise.all([
+      AsyncStorage.getItem(userKey),
+      AsyncStorage.getItem("@gunx-auth-theme-mode")
+    ]).then(([saved, fallback]) => {
+      if (!active) return;
+      const preference = saved ?? fallback;
+      setDarkMode(preference !== "light");
+    }).catch(() => {
+      if (active) setDarkMode(true);
+    });
+    return () => { active = false; };
+  }, [session?.user.id]);
+
+  const toggleTheme = () => {
+    setDarkMode(current => {
+      const next = !current;
+      const value = next ? "dark" : "light";
+      void AsyncStorage.setItem("@gunx-auth-theme-mode", value).catch(() => {});
+      if (session?.user.id) {
+        void AsyncStorage.setItem("@gunx-theme-mode:" + session.user.id, value).catch(() => {});
+      }
+      return next;
+    });
+  };
 
   useEffect(() => {
     if (!supabaseConfigured || !supabase) { setLoading(false); return; }
@@ -167,14 +204,14 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       }
       const admin = adminResult.data === true;
       const memberships = membershipResult.data ?? [];
-      if (memberships.length > 1) {
+      if (!admin && memberships.length > 1) {
         setMembershipCheckError("Akaunti hii imeunganishwa na biashara zaidi ya moja. Kwa usalama, hatutachagua biashara kiholela. Wasiliana na msimamizi ili uchague biashara sahihi.");
         setShopLoading(false);
         return;
       }
       const membership = memberships[0] ?? null;
       const validRoles: ShopRole[] = ["owner", "manager", "cashier", "stockkeeper"];
-      if (membership && !validRoles.includes(membership.role as ShopRole)) {
+      if (!admin && membership && !validRoles.includes(membership.role as ShopRole)) {
         setMembershipCheckError("Jukumu la akaunti hii halitambuliki. Dashboard imefungwa hadi role sahihi ithibitishwe.");
         setShopLoading(false);
         return;
@@ -187,8 +224,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       const googleIdentity = session.user.identities?.find((item: any) => item.provider === "google")?.identity_data ?? {};
       const displayName = googleIdentity.name ?? googleIdentity.full_name ?? metadata.full_name ?? metadata.name ?? metadata.display_name ?? session.user.email ?? "Mmiliki wa Biashara";
       setOwnerDisplayName(typeof displayName === "string" && displayName.trim() ? displayName.trim() : "Mmiliki wa Biashara");
-      setShopId(membership?.shop_id ?? null);
-      setShopRole((membership?.role as ShopRole | undefined) ?? null);
+      // Platform admins must never inherit a tenant context, even if a stale shop_members row exists.
+      setShopId(admin ? null : (membership?.shop_id ?? null));
+      setShopRole(admin ? null : ((membership?.role as ShopRole | undefined) ?? null));
       setShopLoading(false);
     }).catch((error: unknown) => {
       if (!active) return;
@@ -362,10 +400,10 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       const blob = await response.blob();
       const extension = (uri.split(".").pop()?.split("?")[0] || "jpg").toLowerCase();
       const contentType = blob.type || (extension === "png" ? "image/png" : "image/jpeg");
-      const path = shopId + "/" + session.user.id + "/business-" + Date.now() + "." + (extension === "png" ? "png" : "jpg");
-      const { error: uploadError } = await supabase.storage.from("business-assets").upload(path, blob, { contentType, upsert: false, cacheControl: "3600" });
+      const path = shopId + "/business_logo-" + Date.now() + "." + (extension === "png" ? "png" : "jpg");
+      const { error: uploadError } = await supabase.storage.from("shop-branding").upload(path, blob, { contentType, upsert: true, cacheControl: "3600" });
       if (uploadError) throw uploadError;
-      const { data: publicUrl } = supabase.storage.from("business-assets").getPublicUrl(path);
+      const { data: publicUrl } = supabase.storage.from("shop-branding").getPublicUrl(path);
       const { error: updateError } = await supabase.from("shops").update({ hero_media_type: "business_logo", hero_media_url: publicUrl.publicUrl }).eq("id", shopId);
       if (updateError) throw updateError;
       setNeedsShop(false);
@@ -380,20 +418,21 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     setMessage("");
   }
 
-  if (!supabaseConfigured) return <>{children}</>;
-  if (loading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
-  if (!session || mode === "reset") return <SafeAreaView style={a.safe}>
+  if (!supabaseConfigured) return <ShopContext.Provider value={{ shopId: null, isPlatformAdmin: false, userId: null, shopRole: null, darkMode, toggleTheme, signOut }}>{children}</ShopContext.Provider>;
+  if (loading) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><ActivityIndicator color="#43C99A" size="large"/></SafeAreaView>;
+  if (!session || mode === "reset") return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}>
     <ScrollView contentContainerStyle={a.authScroll} keyboardShouldPersistTaps="handled">
     <View style={a.authContent}>
+      <ThemeToggle darkMode={darkMode} onPress={toggleTheme}/>
       <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={GUNX_OFFICIAL_LOGO} style={a.logoImage} resizeMode="contain"/>
-      <Text style={a.title}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Umesahau password?" : mode === "reset" ? "Weka password mpya" : "Ingia kwenye akaunti yako"}</Text>
+      <Text style={[a.title, darkMode && { color: "#F4F7FA" }]}>{mode === "signup" ? "Fungua akaunti" : mode === "forgot" ? "Umesahau password?" : mode === "reset" ? "Weka password mpya" : "Ingia kwenye akaunti yako"}</Text>
       {mode === "login" && !phoneLogin && !inviteToken && <>
         <Pressable disabled={busy} onPress={signInWithGoogle} style={a.googleButton}>
           <Text style={a.googleG}>G</Text><Text style={a.googleText}>{busy ? "Subiri..." : "Endelea kwa Google (Gmail)"}</Text>
         </Pressable>
         <View style={a.orRow}><View style={a.orLine}/><Text style={a.orText}>AU</Text><View style={a.orLine}/></View>
       </>}
-      {inviteToken && <Text style={a.copy}>Mwaliko wa mfanyakazi umepatikana. Tumia namba ya simu iliyowekwa na mmiliki wa biashara.</Text>}
+      {inviteToken && <Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Mwaliko wa mfanyakazi umepatikana. Tumia namba ya simu iliyowekwa na mmiliki wa biashara.</Text>}
       {mode !== "reset" && (phoneLogin ? <View style={a.inputWrap}>
         <Text style={{color:"#102B63",fontSize:20,marginHorizontal:4}}>☎</Text>
         <TextInput value={phone} onChangeText={setPhone} autoCapitalize="none" keyboardType="phone-pad" autoComplete="tel" placeholder="07XXXXXXXX au +2557XXXXXXXX" placeholderTextColor="#65758B" style={a.input}/>
@@ -417,49 +456,52 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       </View>}
       {mode === "login" && !phoneLogin && <Pressable onPress={()=>{setMode("forgot");setMessage("");}} style={a.forgotWrap}><Text style={a.forgotLink}>Umesahau password?</Text></Pressable>}
       <Pressable disabled={busy} onPress={phoneOtpPending ? verifyPhoneOtp : mode === "signup" || mode === "login" ? authenticate : mode === "forgot" ? sendPasswordReset : saveNewPassword} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : phoneOtpPending ? "THIBITISHA SMS" : phoneLogin && mode === "signup" ? "JISAJILI KWA SIMU" : phoneLogin ? "INGIA KWA SIMU" : mode === "signup" ? "JISAJILI" : mode === "forgot" ? "TUMA LINK YA PASSWORD" : mode === "reset" ? "HIFADHI PASSWORD MPYA" : "INGIA"}</Text></Pressable>
-      {mode === "signup" && !phoneLogin && <Pressable disabled={busy} onPress={resendConfirmation}><Text style={a.link}>Tuma tena email ya uthibitisho</Text></Pressable>}
-      {mode === "login" && !inviteToken && <Pressable onPress={()=>{setPhoneLogin(value=>!value);setMessage("");}}><Text style={a.link}>{phoneLogin ? "Ingia kwa Email" : "Ingia kwa namba ya simu"}</Text></Pressable>}
-      {mode !== "login" && mode !== "reset" && <Pressable onPress={()=>{setMode("login");setMessage("");}}><Text style={a.link}>Rudi kwenye Login</Text></Pressable>}
-      {mode === "login" && <Pressable onPress={()=>{setMode("signup");if(!inviteToken)setPhoneLogin(false);setMessage("");}} style={a.signupWrap}><Text style={a.signupText}>Huna akaunti? <Text style={a.signupLink}>Jisajili hapa</Text></Text></Pressable>}
-      {mode === "reset" && <Pressable onPress={()=>{setMode("login");setMessage("Omba link mpya kama link hii imeisha muda wake.");}}><Text style={a.link}>Rudi kwenye Login</Text></Pressable>}
-      {!!message&&<Text style={a.message}>{message}</Text>}
+      {mode === "signup" && !phoneLogin && <Pressable disabled={busy} onPress={resendConfirmation}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Tuma tena email ya uthibitisho</Text></Pressable>}
+      {mode === "login" && !inviteToken && <Pressable onPress={()=>{setPhoneLogin(value=>!value);setMessage("");}}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>{phoneLogin ? "Ingia kwa Email" : "Ingia kwa namba ya simu"}</Text></Pressable>}
+      {mode !== "login" && mode !== "reset" && <Pressable onPress={()=>{setMode("login");setMessage("");}}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Rudi kwenye Login</Text></Pressable>}
+      {mode === "login" && <Pressable onPress={()=>{setMode("signup");if(!inviteToken)setPhoneLogin(false);setMessage("");}} style={a.signupWrap}><Text style={[a.signupText, darkMode && { color: "#C1CED8" }]}>Huna akaunti? <Text style={[a.signupLink, darkMode && { color: "#75E0B8" }]}>Jisajili hapa</Text></Text></Pressable>}
+      {mode === "reset" && <Pressable onPress={()=>{setMode("login");setMessage("Omba link mpya kama link hii imeisha muda wake.");}}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Rudi kwenye Login</Text></Pressable>}
+      {!!message&&<Text style={[a.message, darkMode && { color: "#F2D99F" }]}>{message}</Text>}
     </View>
     </ScrollView>
   </SafeAreaView>;
-  if (session && inviteToken && !shopLoading) return <SafeAreaView style={a.safe}><View style={a.authContent}><Text style={a.title}>Thibitisha akaunti ya mfanyakazi</Text><Text style={a.message}>{message || "Mwaliko huu unahitaji akaunti ya simu inayolingana na namba iliyoalikwa."}</Text><Text style={a.copy}>Ikiwa umeingia kwa akaunti nyingine, toka kisha ingia kwa namba ya mfanyakazi iliyopokea mwaliko.</Text><Pressable disabled={busy} onPress={signOut} style={a.button}><Text style={a.buttonText}>TOKA NA BADILISHA AKAUNTI</Text></Pressable></View></SafeAreaView>;
-  if (session && shopLoading) return <SafeAreaView style={a.safe}><ActivityIndicator color="#43C99A" size="large"/><Text style={a.copy}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
-  if (session && membershipCheckError) return <SafeAreaView style={a.safe}><View style={a.authContent}><Text style={a.title}>Imeshindikana kuthibitisha akaunti</Text><Text style={a.message}>{membershipCheckError}</Text><Text style={a.copy}>Kwa usalama, dashboard haijafunguliwa kwa sababu role ya akaunti haijathibitishwa. Jaribu tena ukiwa na intaneti.</Text><Pressable onPress={()=>{setShopLoading(true);setMembershipCheckAttempt(v=>v+1);}} style={a.button}><Text style={a.buttonText}>JARIBU TENA</Text></Pressable><Pressable disabled={busy} onPress={signOut}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
-  if (needsShop) return <SafeAreaView style={a.onboardingSafe}>
-    <ScrollView contentContainerStyle={a.onboardingScroll} keyboardShouldPersistTaps="handled">
+  if (session && inviteToken && !shopLoading) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><View style={a.authContent}><ThemeToggle darkMode={darkMode} onPress={toggleTheme}/><Text style={[a.title, darkMode && { color: "#F4F7FA" }]}>Thibitisha akaunti ya mfanyakazi</Text><Text style={[a.message, darkMode && { color: "#F2D99F" }]}>{message || "Mwaliko huu unahitaji akaunti ya simu inayolingana na namba iliyoalikwa."}</Text><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Ikiwa umeingia kwa akaunti nyingine, toka kisha ingia kwa namba ya mfanyakazi iliyopokea mwaliko.</Text><Pressable disabled={busy} onPress={signOut} style={a.button}><Text style={a.buttonText}>TOKA NA BADILISHA AKAUNTI</Text></Pressable></View></SafeAreaView>;
+  if (session && shopLoading) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><ThemeToggle darkMode={darkMode} onPress={toggleTheme}/><ActivityIndicator color="#43C99A" size="large"/><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Inathibitisha ruhusa za akaunti...</Text></SafeAreaView>;
+  if (session && membershipCheckError) return <SafeAreaView style={[a.safe, darkMode && { backgroundColor: "#081522" }]}><View style={a.authContent}><ThemeToggle darkMode={darkMode} onPress={toggleTheme}/><Text style={[a.title, darkMode && { color: "#F4F7FA" }]}>Imeshindikana kuthibitisha akaunti</Text><Text style={[a.message, darkMode && { color: "#F2D99F" }]}>{membershipCheckError}</Text><Text style={[a.copy, darkMode && { color: "#C1CED8" }]}>Kwa usalama, dashboard haijafunguliwa kwa sababu role ya akaunti haijathibitishwa. Jaribu tena ukiwa na intaneti.</Text><Pressable onPress={()=>{setShopLoading(true);setMembershipCheckAttempt(v=>v+1);}} style={a.button}><Text style={a.buttonText}>JARIBU TENA</Text></Pressable><Pressable disabled={busy} onPress={signOut}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Toka kwenye akaunti</Text></Pressable></View></SafeAreaView>;
+  if (needsShop) return <SafeAreaView style={[a.onboardingSafe, darkMode && { backgroundColor: "#081522" }]}>
+    <ScrollView contentContainerStyle={[a.onboardingScroll, darkMode && { backgroundColor: "#081522" }]} keyboardShouldPersistTaps="handled">
       <View style={a.onboardingTop}>
-        <Image accessibilityLabel="GUNX SMART BUSINESS official logo" source={GUNX_OFFICIAL_LOGO} style={a.onboardingLogo} resizeMode="contain"/>
+        
       </View>
       <View style={a.onboardingContent}>
-        <Text style={a.welcome}>Karibu {ownerDisplayName}, Ahsante kwa kuchagua GUNX SMART BUSINESS</Text>
-        <Text style={a.tagline}>Think Big, Build Smart, Grow beyond</Text>
+        <ThemeToggle darkMode={darkMode} onPress={toggleTheme}/>
+        <Text style={[a.welcome, darkMode && { color: "#F4F7FA" }]}>Karibu {ownerDisplayName}, Ahsante kwa kuchagua GUNX SMART BUSINESS</Text>
+        <Text style={[a.tagline, darkMode && { color: "#C1CED8" }]}>Think Big, Build Smart, Grow beyond</Text>
         {onboardingStep === "business" ? <>
-          <Text style={a.prompt}>Tafadhali Andika Jina la Kampuni yako au Biashara yako</Text>
+          <Text style={[a.prompt, darkMode && { color: "#F4F7FA" }]}>Tafadhali Andika Jina la Kampuni yako au Biashara yako</Text>
           <TextInput value={shopName} onChangeText={setShopName} placeholder="Jina la Kampuni / Biashara" placeholderTextColor="#8291A8" style={a.onboardingInput} maxLength={120}/>
           <Pressable disabled={busy} onPress={()=>void createShopAndContinue(false)} style={a.onboardingButton}><Text style={a.onboardingButtonText}>{busy ? "Inahifadhi..." : "Create"}</Text></Pressable>
-          <Pressable disabled={busy} onPress={()=>void createShopAndContinue(true)} style={a.skipButton}><Text style={a.skipText}>Skip</Text></Pressable>
+          <Pressable disabled={busy} onPress={()=>void createShopAndContinue(true)} style={a.skipButton}><Text style={[a.skipText, darkMode && { color: "#75E0B8" }]}>Skip</Text></Pressable>
         </> : <>
-          <Text style={a.prompt}>Pakia Picha ya Biashara yako, Logo au Icon</Text>
+          <Text style={[a.prompt, darkMode && { color: "#F4F7FA" }]}>Pakia Picha ya Biashara yako, Logo au Icon</Text>
           <Pressable disabled={busy} onPress={()=>void uploadBusinessImage()} style={a.uploadArea}>
-            {businessImageUri ? <Image source={{uri:businessImageUri}} style={a.previewImage} resizeMode="cover"/> : <><Text style={a.uploadIcon}>＋</Text><Text style={a.uploadHint}>Chagua picha, logo au icon kutoka kwenye simu</Text></>}
+            {businessImageUri ? <Image source={{uri:businessImageUri}} style={a.previewImage} resizeMode="cover"/> : <><Text style={a.uploadIcon}>＋</Text><Text style={[a.uploadHint, darkMode && { color: "#C1CED8" }]}>Chagua picha, logo au icon kutoka kwenye simu</Text></>}
           </Pressable>
           <Pressable disabled={busy} onPress={()=>void uploadBusinessImage()} style={a.onboardingButton}><Text style={a.onboardingButtonText}>{busy ? "Inapakia..." : "Create"}</Text></Pressable>
-          <Pressable disabled={busy} onPress={skipBusinessPhoto} style={a.skipButton}><Text style={a.skipText}>Skip</Text></Pressable>
+          <Pressable disabled={busy} onPress={skipBusinessPhoto} style={a.skipButton}><Text style={[a.skipText, darkMode && { color: "#75E0B8" }]}>Skip</Text></Pressable>
         </>}
-        {!!message&&<Text style={a.onboardingMessage}>{message}</Text>}
-        <Pressable disabled={busy} onPress={signOut}><Text style={a.link}>Toka kwenye akaunti</Text></Pressable>
+        {!!message&&<Text style={[a.onboardingMessage, darkMode && { color: "#F2D99F" }]}>{message}</Text>}
+        <Pressable disabled={busy} onPress={signOut}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Toka kwenye akaunti</Text></Pressable>
       </View>
     </ScrollView>
   </SafeAreaView>;
-  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole, signOut }}>{children}</ShopContext.Provider>;
+  return <ShopContext.Provider value={{ shopId, isPlatformAdmin, userId: session.user.id, shopRole, darkMode, toggleTheme, signOut }}>{children}</ShopContext.Provider>;
 }
 
 const a = StyleSheet.create({
   safe:{flex:1,backgroundColor:"#FFFFFF",paddingHorizontal:22},
+  themeToggle:{alignSelf:"flex-end",paddingHorizontal:12,paddingVertical:8,borderRadius:9,borderWidth:1,borderColor:"#CBD5E1",backgroundColor:"#F1F5F9",marginBottom:10},
+  themeToggleText:{color:"#142D42",fontSize:11,fontWeight:"900"},
   onboardingSafe:{flex:1,backgroundColor:"#FFFFFF"},
   onboardingScroll:{flexGrow:1,paddingBottom:30,backgroundColor:"#FFFFFF"},
   onboardingTop:{width:"100%",alignItems:"center",justifyContent:"center",paddingTop:18,paddingBottom:4},

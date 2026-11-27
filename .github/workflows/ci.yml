@@ -2,7 +2,7 @@ name: GUNX SMART BUSINESS CI
 
 on:
   push:
-    branches: [main, master, feature/email-auth-recovery, feature/white-login-screen]
+    branches: [main, master, feature/email-auth-recovery, feature/white-login-screen, feat/business-owner-dashboard-design]
   pull_request:
     branches: [main, master]
 
@@ -10,6 +10,40 @@ permissions:
   contents: read
 
 jobs:
+  database-migration-integration:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:17
+        env:
+          POSTGRES_DB: gunx_test
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres -d gunx_test"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 12
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.ref || github.ref_name }}
+      - name: Install PostgreSQL client
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y postgresql-client
+      - name: Run refund and platform privacy migration against disposable PostgreSQL
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGDATABASE: gunx_test
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: psql -v ON_ERROR_STOP=1 -f scripts/test-refund-migration-postgres.sql
+
   typecheck:
     runs-on: ubuntu-latest
     steps:
@@ -26,6 +60,12 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript check
         run: npm run typecheck
+      - name: Refund allocation regression tests
+        run: npm run test:refund-allocation
+      - name: Employee invitation migration static security checks
+        run: npm run test:employee-invitation-migration
+      - name: Platform privacy and refund migration security checks
+        run: npm run test:platform-privacy-migration
       - name: Prepare splash logo as PNG
         run: |
           sudo apt-get update
