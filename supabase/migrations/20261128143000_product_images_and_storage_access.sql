@@ -7,26 +7,16 @@ BEGIN;
 ALTER TABLE public.products
   ADD COLUMN IF NOT EXISTS image_url text;
 
--- Keep the existing column-level update boundary while explicitly allowing
--- product managers to persist the uploaded image URL. Stock and price columns
--- remain governed by the existing grants and trigger.
+-- Preserve the column-level update boundary while allowing product image URLs.
 GRANT UPDATE (image_url) ON TABLE public.products TO authenticated;
 
 DROP FUNCTION IF EXISTS public.get_shop_products(uuid);
 
 CREATE FUNCTION public.get_shop_products(p_shop_id uuid)
 RETURNS TABLE(
-  id uuid,
-  shop_id uuid,
-  name text,
-  sku text,
-  image_url text,
-  unit text,
-  cost_price numeric,
-  selling_price numeric,
-  stock_quantity numeric,
-  reorder_level numeric,
-  active boolean
+  id uuid, shop_id uuid, name text, sku text, image_url text, unit text,
+  cost_price numeric, selling_price numeric, stock_quantity numeric,
+  reorder_level numeric, active boolean
 )
 LANGUAGE plpgsql
 SECURITY DEFINER
@@ -48,18 +38,9 @@ BEGIN
     OR public.has_shop_permission(p_shop_id, 'reports.profit');
 
   RETURN QUERY
-  SELECT
-    p.id,
-    p.shop_id,
-    p.name,
-    p.sku,
-    p.image_url,
-    p.unit,
+  SELECT p.id, p.shop_id, p.name, p.sku, p.image_url, p.unit,
     CASE WHEN v_can_view_cost THEN p.cost_price ELSE NULL::numeric END,
-    p.selling_price,
-    p.stock_quantity,
-    p.reorder_level,
-    p.active
+    p.selling_price, p.stock_quantity, p.reorder_level, p.active
   FROM public.products p
   WHERE p.shop_id = p_shop_id
   ORDER BY p.name;
@@ -69,8 +50,8 @@ $function$;
 REVOKE ALL ON FUNCTION public.get_shop_products(uuid) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.get_shop_products(uuid) TO authenticated;
 
--- The bucket is public for product-image display, but listing and mutations
--- through the Storage API are limited to the uploader and product managers.
+-- Public display is supported by the bucket; mutations remain role and
+-- uploader-folder scoped.
 DROP POLICY IF EXISTS business_assets_product_images_select ON storage.objects;
 CREATE POLICY business_assets_product_images_select
 ON storage.objects FOR SELECT TO authenticated
@@ -95,7 +76,7 @@ WITH CHECK (
   AND (storage.foldername(name))[3] = 'products'
   AND (
     public.has_shop_role(((storage.foldername(name))[1])::uuid, ARRAY['owner']::text[])
-    OR public.has_shop_permission(((storage.foldername(name))[1]::uuid, 'products.manage')
+    OR public.has_shop_permission(((storage.foldername(name))[1])::uuid, 'products.manage')
   )
 );
 
