@@ -652,7 +652,7 @@ const s = StyleSheet.create({
 
   dataToolbar:{flexDirection:"row",gap:8,marginBottom:10},
   dataCount:{color:"#52697C",fontSize: 14,fontWeight:"800",marginBottom:8},
-  dataCard:{padding:13,borderRadius:13,backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#DCE5EC",marginBottom:9,gap:6},
+  dataCard:{padding:15,borderRadius:16,backgroundColor:"#FFFFFF",borderWidth:1,borderColor:"#DCE5EC",marginBottom:10,gap:7},
   dataTitle:{color:"#172B3D",fontSize: 16,fontWeight:"900"},
   dataSub:{color:"#334B61",fontSize: 15,lineHeight: 22},
   dataMetaRow:{flexDirection:"row",alignItems:"center",justifyContent:"space-between",gap:8},
@@ -666,12 +666,12 @@ const s = StyleSheet.create({
 
    moduleHero: { padding: 19, borderRadius: 18, backgroundColor: "#DCEBFA", borderWidth: 1, borderColor: "#A9C9EB", marginBottom: 13 },
    moduleHeroIcon: { width: 58, height: 58, borderRadius: 17, backgroundColor: "#FFFFFF", alignItems: "center", justifyContent: "center", marginBottom: 12 },
-   moduleHeroIconText: { fontSize: 68 },
+   moduleHeroIconText: { fontSize: 34 },
    moduleEyebrow: { color: "#315F91", fontSize: 12, fontWeight: "900", letterSpacing: 1 },
    moduleTitle: { color: "#102A43", fontSize: 22, fontWeight: "900", marginTop: 5 },
    moduleSubtitle: { color: "#29465F", fontSize: 16, lineHeight: 24, marginTop: 7 },
    moduleMetrics: { flexDirection: "row", gap: 8, marginBottom: 12 },
-   moduleMetric: { flex: 1, minWidth: 0, padding: 11, borderRadius: 12, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E5EF" },
+   moduleMetric: { flex: 1, minWidth: 0, padding: 13, borderRadius: 15, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#D8E5EF" },
    moduleMetricValue: { color: "#163D63", fontSize: 22, fontWeight: "900" },
    moduleMetricLabel: { color: "#40566B", fontSize: 12, fontWeight: "800", marginTop: 4 },
    moduleSection: { padding: 15, borderRadius: 14, backgroundColor: "#FFFFFF", borderWidth: 1, borderColor: "#DCE5EC", marginBottom: 10 },
