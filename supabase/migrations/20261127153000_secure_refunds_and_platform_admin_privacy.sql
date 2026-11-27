@@ -56,7 +56,10 @@ BEGIN
   IF p_refund_method IS NULL OR p_refund_method NOT IN ('cash','mobile_money','bank') THEN
     RAISE EXCEPTION 'Unsupported refund method';
   END IF;
-  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' OR jsonb_array_length(p_items) = 0 THEN
+  IF jsonb_typeof(p_items) IS DISTINCT FROM 'array' THEN
+    RAISE EXCEPTION 'Return items must be a JSON array';
+  END IF;
+  IF jsonb_array_length(p_items) = 0 THEN
     RAISE EXCEPTION 'At least one return item is required';
   END IF;
 
