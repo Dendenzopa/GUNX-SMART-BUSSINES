@@ -106,10 +106,10 @@ CREATE TABLE public.stock_movements (
 
 CREATE OR REPLACE FUNCTION public.has_shop_role(p_shop_id uuid, p_roles text[])
 RETURNS boolean LANGUAGE sql STABLE
-AS $$ SELECT current_setting('gunx.test.role', true) = ANY(p_roles) $$;
+AS $ SELECT coalesce(current_setting('gunx.test.role', true) = ANY(p_roles), false) $;
 CREATE OR REPLACE FUNCTION public.has_shop_permission(p_shop_id uuid, p_permission text)
 RETURNS boolean LANGUAGE sql STABLE
-AS $$ SELECT current_setting('gunx.test.permission', true) = p_permission $$;
+AS $ SELECT coalesce(current_setting('gunx.test.permission', true) = p_permission, false) $;
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS boolean LANGUAGE sql STABLE
 AS $$ SELECT current_setting('gunx.test.platform_admin', true) = 'true' $$;
