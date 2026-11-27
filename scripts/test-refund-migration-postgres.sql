@@ -197,6 +197,7 @@ DECLARE
   v_policy_count integer;
   v_result_type text;
 BEGIN
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
   SELECT * INTO v_product
   FROM public.get_shop_products('00000000-0000-0000-0000-000000000001')
   WHERE id = '20000000-0000-0000-0000-000000000001';
