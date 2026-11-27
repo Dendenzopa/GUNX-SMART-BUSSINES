@@ -11,13 +11,17 @@ Only the publishable/anon key belongs in the client. Never put a service-role ke
 
 The current app includes:
 - Supabase Auth session persistence and owner shop onboarding.
-- Phone-based employee invitations, phone OTP authentication and invitation acceptance.
+- Phone-based employee invitations, phone OTP authentication and invitation acceptance. The app uses the database `create_shop_invitation` and `accept_shop_invitation` RPCs; no Edge Function is required for this flow.
 - Shop membership roles and manager permission RPCs.
 - Server-side checkout and stock/refund RPCs.
 - Shop-scoped reads, offline sales outbox/cache and owner/manager reporting.
 - Platform-level dashboards and subscription administration.
 
 These capabilities still require end-to-end verification against configured Auth providers, real devices, and the current database. Demo mode is used when the two Supabase environment variables are absent; demo records are temporary and must never be mistaken for production business data.
+
+## Authentication and employee invitation flow
+
+The live project inspection found no deployed Supabase Edge Functions. The obsolete repository-only `invite-staff` function used an older email invitation flow, was not called by the app, and has been removed to avoid confusion. Employee invitations are created by the owner through the phone-bound database RPC and can only be accepted by an authenticated user whose SMS-confirmed phone matches the invitation. End-to-end SMS delivery, redirect/deep-link handling and wrong-account recovery still require real-device tests.
 
 ## Database model and security boundaries
 
