@@ -214,8 +214,12 @@ function Dashboard() {
     if(item.unit_cost_snapshot!==null&&item.unit_cost_snapshot!==undefined&&Number.isFinite(Number(item.unit_cost_snapshot)))saleItemCosts.set(item.id,Number(item.unit_cost_snapshot));
    }));
    const refundRows=refundsResult.data??[];
-   const refundCostsComplete=!refundsResult.error&&!salesResult.error&&refundRows.every((row:any)=>(row.sale_refund_items??[]).every((item:any)=>saleItemCosts.has(item.sale_item_id)));
-   const mappedRefundRecords:RefundRecord[]|null=refundCostsComplete?refundRows.map((row:any)=>({saleId:row.sale_id,amount:Number(row.refund_total),createdAt:row.created_at,returnedCost:(row.sale_refund_items??[]).reduce((sum:number,item:any)=>sum+Number(item.quantity)*saleItemCosts.get(item.sale_item_id)!,0),items:(row.sale_refund_items??[]).map((item:any)=>({saleItemId:item.sale_item_id,quantity:Number(item.quantity),returnedCost:Number(item.quantity)*saleItemCosts.get(item.sale_item_id)!}))})):null;
+   const mappedRefundRecords:RefundRecord[]|null=!refundsResult.error?refundRows.map((row:any)=>{
+    const items=row.sale_refund_items??[];
+    const costsAvailable=!salesResult.error&&items.every((item:any)=>saleItemCosts.has(item.sale_item_id));
+    const returnedCost=costsAvailable?items.reduce((sum:number,item:any)=>sum+Number(item.quantity)*saleItemCosts.get(item.sale_item_id)!,0):Number.NaN;
+    return {saleId:row.sale_id,amount:Number(row.refund_total),createdAt:row.created_at,returnedCost,items:items.map((item:any)=>({saleItemId:item.sale_item_id,quantity:Number(item.quantity),returnedCost:costsAvailable?Number(item.quantity)*saleItemCosts.get(item.sale_item_id)!:Number.NaN}))};
+   }):null;
    const [pending]=await Promise.all([readPendingSales(shopId,userId,effectiveRole)]);
    if(!active)return;
    if(mappedSales)setSales([...pending.map(item=>({...item.sale})),...mappedSales.filter(sale=>!pending.some(item=>item.sale.id===sale.id))]);
