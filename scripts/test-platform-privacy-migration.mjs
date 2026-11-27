@@ -12,6 +12,14 @@ function returnColumns(functionName) {
   return match[1].toLowerCase();
 }
 
+// Platform user directory avoids email exposure and only searches opaque IDs.
+const userColumns = returnColumns("get_platform_admin_users");
+assert.ok(!userColumns.includes("email"), "Platform user directory leaks email");
+for (const required of ["user_id", "created_at", "shop_count", "roles"]) {
+  assert.ok(userColumns.includes(required), `Platform user directory missing ${required}`);
+}
+assert.ok(!dashboard.includes("user.email"), "Dashboard renders platform user email");
+
 // Platform directory exposes tenant-level platform metadata, never owner identity.
 const businessColumns = returnColumns("get_platform_businesses");
 for (const forbidden of ["owner_id", "owner_email", "email"]) {
