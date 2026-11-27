@@ -49,6 +49,7 @@ CREATE TABLE public.sales (
   id uuid PRIMARY KEY,
   shop_id uuid NOT NULL,
   receipt_number text NOT NULL,
+  customer_id uuid,
   status text NOT NULL,
   subtotal numeric NOT NULL,
   discount numeric NOT NULL,
@@ -71,6 +72,13 @@ CREATE TABLE public.sale_items (
   unit_price numeric NOT NULL,
   unit_cost_snapshot numeric NOT NULL,
   line_total numeric NOT NULL
+);
+CREATE TABLE public.payments (
+  id uuid PRIMARY KEY,
+  shop_id uuid NOT NULL,
+  sale_id uuid NOT NULL,
+  method text NOT NULL,
+  received_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE TABLE public.sale_refunds (
   id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -126,7 +134,7 @@ RETURNS boolean LANGUAGE sql STABLE
 AS $platform_admin$ SELECT current_setting('gunx.test.platform_admin', true) = 'true' $platform_admin$;
 
 -- Apply the exact migration from the PR, not a copied approximation.
-\ir ../supabase/migrations/20261127153000_secure_refunds_and_platform_admin_privacy.sql
+\ir ../supabase/migrations/20261127153000_secure_refunds_and_platform_admin_privacy.sql\n\ir ../supabase/migrations/20261128110000_scope_cashier_sales_and_manager_refunds.sql
 
 INSERT INTO auth.users(id, email) VALUES
 ('10000000-0000-0000-0000-000000000001', 'owner@example.test'),
@@ -156,11 +164,11 @@ INSERT INTO public.products(id, shop_id, stock_quantity) VALUES
 
 -- Three lines sum to TZS 100.00; discount TZS 12.35; net total TZS 87.65.
 INSERT INTO public.sales(
-  id, shop_id, receipt_number, status, subtotal, discount, total, amount_paid
+  id, shop_id, receipt_number, status, subtotal, discount, total, amount_paid, created_by
 ) VALUES (
   '30000000-0000-0000-0000-000000000001',
   '00000000-0000-0000-0000-000000000001',
-  'TEST-001', 'completed', 100.00, 12.35, 87.65, 87.65
+  'TEST-001', 'completed', 100.00, 12.35, 87.65, 87.65, '10000000-0000-0000-0000-000000000001'
 );
 INSERT INTO public.sale_items(
   id, sale_id, product_id, product_name_snapshot, quantity, unit_price, unit_cost_snapshot, line_total
@@ -309,11 +317,15 @@ BEGIN
   IF v_count <> 4 THEN RAISE EXCEPTION 'Expected 4 stock audit rows, got %', v_count; END IF;
 
   -- An unauthorized cashier cannot refund.
-  INSERT INTO public.sales(id,shop_id,receipt_number,status,subtotal,discount,total,amount_paid)
-  VALUES ('30000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000001','TEST-002','completed',10,0,10,10);
+  INSERT INTO public.sales(id,shop_id,receipt_number,status,subtotal,discount,total,amount_paid,created_by)
+  VALUES ('30000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000001','TEST-002','completed',10,0,10,10,'10000000-0000-0000-0000-000000000002');
   INSERT INTO public.sale_items(id,sale_id,product_name_snapshot,quantity,unit_price,unit_cost_snapshot,line_total)
   VALUES ('40000000-0000-0000-0000-000000000004','30000000-0000-0000-0000-000000000002','Denied',1,10,4,10);
   PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',false);
+  SELECT count(*) INTO v_count FROM public.get_shop_sales('00000000-0000-0000-0000-000000000001');
+  IF v_count <> 1 THEN
+    RAISE EXCEPTION 'Cashier should read only their own sale; got % rows', v_count;
+  END IF;
   BEGIN
     PERFORM * FROM public.refund_sale(
       '00000000-0000-0000-0000-000000000001',
