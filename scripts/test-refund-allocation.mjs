@@ -40,7 +40,7 @@ const cents=v=>Math.round(v*100);
  assert.throws(()=>allocateDiscountedLineAmounts(100,101,[{saleItemId:"a",grossAmount:100}]),/cannot exceed/);
  assert.throws(()=>allocateDiscountedLineAmounts(100,90,[{saleItemId:"a",grossAmount:99}]),/equal the sale subtotal/);
  assert.throws(()=>allocateDiscountedLineAmounts(100,90,[{saleItemId:"a",grossAmount:50},{saleItemId:"a",grossAmount:50}]),/unique/);
- assert.throws(()=>allocateDiscountedLineAmounts(100,90,[]),/at least one/);
+ assert.throws(()=>allocateDiscountedLineAmounts(100,90,[]),/at least one/i);
 }
 {
  assert.throws(()=>calculateCumulativeLineRefund({allocatedNetAmount:10,originalQuantity:3,cumulativeReturnedQuantity:1,previouslyRefundedAmount:4}),/Historical refunds exceed/);
