@@ -191,7 +191,7 @@ INSERT INTO public.products(
 ('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Item B', 'SKU-B', 'piece', 10, 28.39, 10, 2, true, null),
 ('20000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Item C', 'SKU-C', 'piece', 12, 30.88, 10, 2, true, null);
 
-DO $
+DO $product_media_test$
 DECLARE
   v_product record;
   v_policy_count integer;
@@ -238,7 +238,7 @@ BEGIN
     RAISE EXCEPTION 'get_shop_products return type does not include image_url: %', v_result_type;
   END IF;
 END;
-$;
+$product_media_test$;
 
 -- Three lines sum to TZS 100.00; discount TZS 12.35; net total TZS 87.65.
 INSERT INTO public.sales(
