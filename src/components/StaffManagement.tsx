@@ -189,24 +189,24 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
 }
 
 const s = StyleSheet.create({
-  wrap:{padding:16,paddingBottom:40,maxWidth:900,width:"100%",alignSelf:"center"},
-  title:{color:"#F4F7FA",fontSize:24,fontWeight:"900"},
+  wrap:{padding:18,paddingBottom:44,maxWidth:980,width:"100%",alignSelf:"center"},
+  title:{color:"#F4F7FA",fontSize:26,fontWeight:"900",letterSpacing:-0.4},
   heading:{color:"#FFF",fontSize:16,fontWeight:"800",marginTop:12,marginBottom:8},
   copy:{color:"#91A4B5",fontSize:12,lineHeight:18,marginTop:4},
-  panel:{backgroundColor:"#102438",borderColor:"#1D3A50",borderWidth:1,borderRadius:14,padding:14,marginTop:14},
-  input:{backgroundColor:"#0B1B2A",borderWidth:1,borderColor:"#2B4B61",borderRadius:9,color:"#F4F7FA",padding:12,marginTop:8,fontSize:12},
-  role:{padding:11,borderWidth:1,borderColor:"#2B4B61",borderRadius:10,marginTop:7,backgroundColor:"#0B1B2A"},
+  panel:{backgroundColor:"#102438",borderColor:"#29475D",borderWidth:1,borderRadius:18,padding:16,marginTop:16},
+  input:{backgroundColor:"#0B1B2A",borderWidth:1,borderColor:"#29475D",borderRadius:12,color:"#F4F7FA",padding:14,marginTop:9,fontSize:13},
+  role:{padding:13,borderWidth:1,borderColor:"#29475D",borderRadius:13,marginTop:8,backgroundColor:"#0B1B2A"},
   selected:{borderColor:"#43C99A",backgroundColor:"#12372F"},
   roleTitle:{color:"#F4F7FA",fontWeight:"800",fontSize:13},
-  button:{backgroundColor:"#16785C",padding:13,borderRadius:10,alignItems:"center",marginTop:12},
+  button:{backgroundColor:"#16785C",padding:15,borderRadius:13,alignItems:"center",marginTop:13,borderWidth:1,borderColor:"#43C99A"},
   buttonText:{color:"#F5FFFA",fontWeight:"900"},
-  member:{backgroundColor:"#102438",borderWidth:1,borderColor:"#1D3A50",padding:13,borderRadius:12,marginTop:8},
+  member:{backgroundColor:"#102438",borderWidth:1,borderColor:"#29475D",padding:15,borderRadius:16,marginTop:9},
   actions:{flexDirection:"row",flexWrap:"wrap",gap:7,marginTop:10},
   small:{backgroundColor:"#173D36",paddingHorizontal:10,paddingVertical:8,borderRadius:8},
   remove:{backgroundColor:"#59332F"},
-  inviteBox:{backgroundColor:"#0B1B2A",borderColor:"#286451",borderWidth:1,borderRadius:10,padding:10,marginTop:12},
+  inviteBox:{backgroundColor:"#0B1B2A",borderColor:"#286451",borderWidth:1,borderRadius:14,padding:13,marginTop:14},
   inviteLink:{color:"#75E0B8",fontSize:11,lineHeight:18,marginTop:6},
   smallText:{color:"#F4F7FA",fontSize:11,fontWeight:"800"},
-  refresh:{alignSelf:"flex-start",padding:10,backgroundColor:"#173247",borderRadius:8,marginTop:12},
+  refresh:{alignSelf:"flex-start",padding:12,backgroundColor:"#173247",borderRadius:11,marginTop:13},
   notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,lineHeight:18,marginTop:14}
 });
