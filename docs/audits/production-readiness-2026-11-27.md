@@ -45,6 +45,8 @@ Remediation references:
 ## Application implementation checks
 
 - Employee onboarding UI creates phone-number invitations and requires the invited employee to authenticate with the invited phone identity. Verify end-to-end SMS delivery and phone provider configuration in a real device test.
+- Live `accept_shop_invitation` checks for an authenticated user, an SMS-confirmed phone, exact phone match, expiry, one-time use and an existing membership in another shop. Live `create_shop_invitation` is owner-only and expires a previous pending invitation for the same shop/phone. This is a sound baseline, but must be covered by automated negative-path tests.
+- The live project currently has no deployed Edge Functions. The repository contained an unused legacy `invite-staff` email-based function that was not called by the app; it has been removed so the obsolete email flow cannot be mistaken for the current phone-bound invitation system.
 - Existing dashboard and reports are currently shop-scoped. The database migration explicitly deferred branch-level scoping.
 - shop_members contains role and user ID only; there is no first-class employee profile table for verified display name/phone in the inspected schema. Do not display invented names or query auth.users from the client.
 - Owner dashboard chart reads sales and subtracts refund values by refund timestamp. Reports also use refund history and returned cost snapshots. Add regression tests for partial/full returns, duplicate idempotency keys, historical sales refunded in the selected period, and multiple refunds on one sale.
