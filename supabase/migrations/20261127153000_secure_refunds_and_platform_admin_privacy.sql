@@ -266,6 +266,68 @@ $$;
 REVOKE ALL ON FUNCTION public.refund_sale(uuid, uuid, uuid, jsonb, text, text) FROM PUBLIC, anon;
 GRANT EXECUTE ON FUNCTION public.refund_sale(uuid, uuid, uuid, jsonb, text, text) TO authenticated;
 
+-- Platform user directory also avoids exposing email addresses. Search by exact
+-- opaque user ID only; the UI does not print that identifier.
+DROP FUNCTION IF EXISTS public.get_platform_admin_users(text, integer, integer);
+
+CREATE FUNCTION public.get_platform_admin_users(
+  p_search text DEFAULT NULL,
+  p_limit integer DEFAULT 50,
+  p_offset integer DEFAULT 0
+)
+RETURNS TABLE(
+  user_id uuid,
+  created_at timestamptz,
+  shop_count bigint,
+  roles text[],
+  total_count bigint
+)
+LANGUAGE plpgsql
+STABLE
+SECURITY DEFINER
+SET search_path = public, auth, pg_temp
+AS $
+BEGIN
+  IF auth.uid() IS NULL OR NOT public.is_platform_admin() THEN
+    RAISE EXCEPTION 'Platform administrator access required' USING errcode = '42501';
+  END IF;
+  IF p_limit IS NULL OR p_limit < 1 OR p_limit > 100
+     OR p_offset IS NULL OR p_offset < 0 THEN
+    RAISE EXCEPTION 'Invalid pagination' USING errcode = '22023';
+  END IF;
+
+  RETURN QUERY
+  WITH user_rows AS (
+    SELECT
+      u.id,
+      u.created_at,
+      count(DISTINCT sm.shop_id)::bigint AS shops,
+      coalesce(
+        array_agg(DISTINCT sm.role) FILTER (WHERE sm.role IS NOT NULL),
+        ARRAY[]::text[]
+      ) AS user_roles
+    FROM auth.users u
+    LEFT JOIN public.shop_members sm ON sm.user_id = u.id
+    WHERE p_search IS NULL
+       OR trim(p_search) = ''
+       OR u.id::text = trim(p_search)
+    GROUP BY u.id, u.created_at
+  )
+  SELECT
+    id,
+    user_rows.created_at,
+    shops,
+    user_roles,
+    count(*) OVER()::bigint
+  FROM user_rows
+  ORDER BY user_rows.created_at DESC
+  LIMIT p_limit OFFSET p_offset;
+END;
+$;
+
+REVOKE ALL ON FUNCTION public.get_platform_admin_users(text, integer, integer) FROM PUBLIC, anon;
+GRANT EXECUTE ON FUNCTION public.get_platform_admin_users(text, integer, integer) TO authenticated;
+
 -- The directory is platform metadata only. Do not return owner identifiers or email,
 -- and do not allow searching platform-wide by private owner email.
 DROP FUNCTION IF EXISTS public.get_platform_businesses(text, integer, integer);
