@@ -35,7 +35,7 @@ function Dashboard() {
  const [managerPermissions,setManagerPermissions]=useState<string[]>([]);
  const [managerPermissionsLoaded,setManagerPermissionsLoaded]=useState(false);
  useEffect(()=>{
-  if(effectiveRole!=="manager"||!shopId||!supabase){setManagerPermissions([]);setManagerPermissionsLoaded(true);return;}
+  if(isPlatformAdmin||effectiveRole!=="manager"||!shopId||!supabase){setManagerPermissions([]);setManagerPermissionsLoaded(true);return;}
   let active=true;
   setManagerPermissionsLoaded(false);
   supabase.rpc("get_my_shop_permissions",{p_shop_id:shopId}).then(({data,error})=>{
@@ -44,7 +44,7 @@ function Dashboard() {
    setManagerPermissionsLoaded(true);
   });
   return ()=>{active=false;};
- },[shopId,effectiveRole]);
+ },[shopId,effectiveRole,isPlatformAdmin]);
  const managerScreens:Screen[]=["Home"];
  if(managerPermissions.includes("pos.use"))managerScreens.push("POS");
  if(managerPermissions.includes("stock.manage"))managerScreens.push("Stock");
@@ -99,7 +99,7 @@ function Dashboard() {
   setRefundsLoaded(false);
   setPendingOutbox([]);
   setHasShopProductCache(false);
- },[shopId,userId]);
+ },[shopId,userId,isPlatformAdmin]);
  const syncingOutboxRef=useRef(false);
  const cartTotal=useMemo(()=>cart.reduce((sum,line)=>sum+(products.find(p=>p.id===line.productId)?.sellingPrice||0)*line.quantity,0),[cart,products]);
  const lowStock=products.filter(p=>p.stockQuantity<=p.reorderLevel).length;
@@ -125,7 +125,7 @@ function Dashboard() {
   return unsubscribe;
  },[]);
  useEffect(() => {
-  if(!shopId)return;
+  if(isPlatformAdmin||!shopId)return;
   let active=true;
   Promise.all([readPendingSales(shopId,userId,effectiveRole),readCachedProducts(shopId,userId,effectiveRole,effectiveRole==="manager"?managerPermissions.slice().sort().join(","):"")]).then(([items,cached])=>{
    if(!active)return;
@@ -139,10 +139,10 @@ function Dashboard() {
    if(items.length)setSales(current=>[...items.map(item=>({...item.sale})),...current.filter(sale=>!items.some(item=>item.sale.id===sale.id))]);
   });
   return ()=>{active=false;};
- },[shopId,userId,effectiveRole,managerPermissions.join(",")]);
+ },[shopId,userId,effectiveRole,managerPermissions.join(","),isPlatformAdmin]);
  useEffect(() => {
   const client=supabase;
-  if(!supabaseConfigured||!client||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
+  if(isPlatformAdmin||!supabaseConfigured||!client||!shopId||isConnected!==true||pendingOutbox.length===0||syncingOutboxRef.current)return;
   syncingOutboxRef.current=true;
   const sync=async()=>{
    let remaining=[...pendingOutbox];
@@ -176,9 +176,9 @@ function Dashboard() {
    syncingOutboxRef.current=false;
   };
   void sync();
- },[shopId,userId,effectiveRole,isConnected,pendingOutbox]);
+ },[shopId,userId,effectiveRole,isConnected,pendingOutbox,isPlatformAdmin]);
  useEffect(() => {
-  if (!supabaseConfigured || !supabase || !shopId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
+  if (isPlatformAdmin || !supabaseConfigured || !supabase || !shopId || (effectiveRole !== "owner" && effectiveRole !== "manager")) return;
   let active = true;
   setCloudLoading(true);
   Promise.all([readCachedBusinessSnapshot(shopId,userId,effectiveRole,effectiveRole==="manager"?managerPermissions.slice().sort().join(","):""),readPendingSales(shopId,userId,effectiveRole)]).then(([snapshot,pending])=>{
@@ -219,7 +219,7 @@ function Dashboard() {
    }
   });
   return () => { active = false; };
- },[shopId,userId,effectiveRole,managerPermissions.join(",")]);
+ },[shopId,userId,effectiveRole,managerPermissions.join(","),isPlatformAdmin]);
  async function refreshProductsFromCloud() {
   if(!supabase||!shopId)return;
   const {data,error}=await supabase.rpc("get_shop_products",{p_shop_id:shopId});
