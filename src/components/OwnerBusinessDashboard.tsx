@@ -148,8 +148,8 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
     const merged = new Map<string, ChartSale>();
     sales.forEach(item => merged.set(item.id, { id: item.id, createdAt: item.createdAt, total: item.total, status: item.status }));
     chartLiveSales.forEach(item => merged.set(item.id, item));
-    return Array.from(merged.values()).filter(item => item.status !== "pending_sync" && item.status !== "voided");
-  }, [sales, chartLiveSales]);
+    return refundsLoaded ? Array.from(merged.values()).filter(item => item.status !== "pending_sync" && item.status !== "voided") : [];
+  }, [sales, chartLiveSales, refundsLoaded]);
 
   const now = new Date();
   const todayStart = new Date(now);
@@ -181,7 +181,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
   const changePct = previousPeriodTotal > 0
     ? ((chartTotal - previousPeriodTotal) / previousPeriodTotal) * 100
     : chartTotal > 0 ? 100 : 0;
-  const trendLabel = previousPeriodTotal === 0
+  const trendLabel = !refundsLoaded ? "Inapakia historia ya refunds" : previousPeriodTotal === 0
     ? (chartTotal > 0 ? "Mauzo mapya" : "Hakuna mauzo")
     : (changePct >= 0 ? "+" : "") + Math.round(changePct) + "% dhidi ya " + (period === "Leo" ? "jana" : "wiki iliyopita");
   const growing = changePct >= 0;
@@ -336,7 +336,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
           {periodMenu && <View style={s.periodOptions}>
             {(["Leo", "Wiki"] as const).map(option => <Pressable key={option} onPress={() => { setPeriod(option); setPeriodMenu(false); }} style={s.periodOption}><Text style={s.periodOptionText}>{option}</Text></Pressable>)}
           </View>}
-          <Text numberOfLines={1} style={[s.chartTotal,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(chartTotal)}</Text>
+          <Text numberOfLines={1} style={[s.chartTotal,darkMode&&{color:"#F4F7FA"}]}>{refundsLoaded ? formatTZS(chartTotal) : "Inapakia"}</Text>
           <View style={s.chartLegend}><Text style={[s.chartSubLabel,darkMode&&{color:"#F4F7FA"}]}>Mauzo {period.toLowerCase()}</Text><Text style={[s.trendPill, { color: chartColor }]}>{trendLabel}</Text></View>
           <View style={s.chartPlot}>
             <View style={[s.chartGridLine, { top: 22 }]} /><View style={[s.chartGridLine, { top: 57 }]} />
