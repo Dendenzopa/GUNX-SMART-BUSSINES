@@ -241,7 +241,7 @@ BEGIN
     '30000000-0000-0000-0000-000000000001',
     '50000000-0000-0000-0000-000000000001',
     '[{"sale_item_id":"40000000-0000-0000-0000-000000000002","quantity":1}]'::jsonb,
-    'Retry same request','cash'
+    'First partial return','cash'
   );
   v_repeat_refund := v_result.refund_id;
   IF v_repeat_refund <> v_first_refund OR v_result.refund_total <> 24.89 THEN
