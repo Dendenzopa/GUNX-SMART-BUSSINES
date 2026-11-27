@@ -30,6 +30,8 @@ jobs:
         run: npm run test:refund-allocation
       - name: Employee invitation migration static security checks
         run: npm run test:employee-invitation-migration
+      - name: Platform privacy and refund migration security checks
+        run: npm run test:platform-privacy-migration
       - name: Prepare splash logo as PNG
         run: |
           sudo apt-get update
