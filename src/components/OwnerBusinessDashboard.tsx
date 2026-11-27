@@ -5,6 +5,7 @@ import * as ImagePicker from "expo-image-picker";
 import type { Product, Sale, Expense, DebtEntry } from "../domain/types";
 import type { PendingSale } from "../services/offlineSales";
 import { supabase } from "../lib/supabase";
+import type { RefundRecord } from "../domain/money";
 import { formatTZS } from "../domain/money";
 
 type Props = {
@@ -15,6 +16,8 @@ type Props = {
   products: Product[];
   expenses: Expense[];
   debts: DebtEntry[];
+  refunds: RefundRecord[];
+  refundsLoaded: boolean;
   pendingSales: PendingSale[];
   notice: string;
   online: boolean | null;
@@ -59,7 +62,7 @@ function smoothLinePoints(points: Array<{ x: number; y: number }>) {
   return result;
 }
 
-export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId, sales, products, expenses, debts, pendingSales, notice, online, onNavigate }: Props) {
+export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId, sales, products, expenses, debts, refunds, refundsLoaded, pendingSales, notice, online, onNavigate }: Props) {
   const [businessName, setBusinessName] = useState("Biashara Yangu");
   const [ownerName, setOwnerName] = useState("Mmiliki wa Biashara");
   const [ownerEmail, setOwnerEmail] = useState("");
@@ -145,7 +148,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
     const merged = new Map<string, ChartSale>();
     sales.forEach(item => merged.set(item.id, { id: item.id, createdAt: item.createdAt, total: item.total, status: item.status }));
     chartLiveSales.forEach(item => merged.set(item.id, item));
-    return Array.from(merged.values()).filter(item => item.status !== "pending_sync" && item.status !== "refunded" && item.status !== "voided");
+    return Array.from(merged.values()).filter(item => item.status !== "pending_sync" && item.status !== "voided");
   }, [sales, chartLiveSales]);
 
   const now = new Date();
@@ -155,6 +158,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
     const date = new Date(item.createdAt);
     return date >= todayStart && date <= now;
   });
+  const refundAmountBetween = (start: Date, end: Date) => refundsLoaded ? refunds.filter(item => { const date = new Date(item.createdAt); return date >= start && date < end; }).reduce((sum, item) => sum + item.amount, 0) : 0;
   const lowStock = products.filter(item => item.active && item.stockQuantity <= item.reorderLevel);
   const activeProducts = products.filter(item => item.active).length;
   const stockValue = products.filter(item => item.active).reduce((sum, item) => sum + item.costPrice * item.stockQuantity, 0);
@@ -172,8 +176,8 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
     const date = new Date(item.createdAt);
     return date >= chartPreviousStart && date < chartPreviousEnd;
   });
-  const chartTotal = currentPeriodSales.reduce((sum, item) => sum + item.total, 0);
-  const previousPeriodTotal = previousPeriodSales.reduce((sum, item) => sum + item.total, 0);
+  const chartTotal = currentPeriodSales.reduce((sum, item) => sum + item.total, 0) - refundAmountBetween(chartCurrentStart, new Date(now.getTime() + 1));
+  const previousPeriodTotal = previousPeriodSales.reduce((sum, item) => sum + item.total, 0) - refundAmountBetween(chartPreviousStart, chartPreviousEnd);
   const changePct = previousPeriodTotal > 0
     ? ((chartTotal - previousPeriodTotal) / previousPeriodTotal) * 100
     : chartTotal > 0 ? 100 : 0;
@@ -193,7 +197,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
         const amount = chartSales.filter(item => {
           const date = new Date(item.createdAt);
           return date >= start && date < end && date <= now;
-        }).reduce((sum, item) => sum + item.total, 0);
+        }).reduce((sum, item) => sum + item.total, 0) - refundAmountBetween(start, end);
         return { label: String(index * 4).padStart(2, "0") + ":00", amount };
       });
     }
@@ -205,10 +209,10 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
       const amount = chartSales.filter(item => {
         const date = new Date(item.createdAt);
         return date >= start && date < end && date <= now;
-      }).reduce((sum, item) => sum + item.total, 0);
+      }).reduce((sum, item) => sum + item.total, 0) - refundAmountBetween(start, end);
       return { label: start.toLocaleDateString("sw-TZ", { weekday: "short" }), amount };
     });
-  }, [chartSales, period, now]);
+  }, [chartSales, period, now, refunds, refundsLoaded]);
   const chartMax = Math.max(1, ...chartPoints.map(point => point.amount));
   const chartCoords = chartPoints.map((point, index) => ({
     x: 7 + index * (126 / Math.max(1, chartPoints.length - 1)),
@@ -314,7 +318,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
       <View style={[s.summarySection,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
         <View style={s.summaryHeading}><Text style={s.summaryIcon}>▥</Text><Text style={[s.summaryTitle,darkMode&&{color:"#F4F7FA"}]}>Muhtasari wa Biashara</Text><Text style={s.summaryPeriod}>Leo</Text></View>
         <View style={s.summaryGrid}>
-          <View style={[s.summaryTile,darkMode&&{backgroundColor:"#173247",borderColor:"#2B4B61"}]}><Text style={s.summaryTileIcon}>🛒</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Mauzo ya Leo</Text><Text numberOfLines={1} style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(todaySales.reduce((sum, item) => sum + item.total, 0))}</Text></View>
+          <View style={[s.summaryTile,darkMode&&{backgroundColor:"#173247",borderColor:"#2B4B61"}]}><Text style={s.summaryTileIcon}>🛒</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Mauzo ya Leo</Text><Text numberOfLines={1} style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{refundsLoaded ? formatTZS(todaySales.reduce((sum, item) => sum + item.total, 0) - refundAmountBetween(todayStart, new Date(now.getTime() + 1))) : "Inapakia"}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>📦</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Bidhaa Hai</Text><Text style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{activeProducts}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>👛</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Madeni</Text><Text numberOfLines={1} style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(debts.reduce((sum, item) => sum + item.balance, 0))}</Text></View>
           <View style={s.summaryTile}><Text style={s.summaryTileIcon}>💰</Text><Text style={[s.summaryTileLabel,darkMode&&{color:"#F4F7FA"}]}>Thamani ya Stock</Text><Text numberOfLines={1} style={[s.summaryTileValue,darkMode&&{color:"#F4F7FA"}]}>{formatTZS(stockValue)}</Text></View>
