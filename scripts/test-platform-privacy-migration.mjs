@@ -3,6 +3,9 @@ import { readFileSync } from "node:fs";
 
 const migration = readFileSync(new URL("../supabase/migrations/20261127153000_secure_refunds_and_platform_admin_privacy.sql", import.meta.url), "utf8");
 const dashboard = readFileSync(new URL("../src/components/PlatformOwnerDashboard.tsx", import.meta.url), "utf8");
+const accessMigration = readFileSync(new URL("../supabase/migrations/20261128110000_scope_cashier_sales_and_manager_refunds.sql", import.meta.url), "utf8");
+const app = readFileSync(new URL("../App.tsx", import.meta.url), "utf8");
+const money = readFileSync(new URL("../src/domain/money.ts", import.meta.url), "utf8");
 
 function returnColumns(functionName) {
   const start = migration.indexOf(`CREATE FUNCTION public.${functionName}`);
@@ -68,4 +71,22 @@ assert.ok(refundSql.includes("REVOKE ALL ON FUNCTION public.refund_sale"));
 assert.ok(refundSql.includes("GRANT EXECUTE ON FUNCTION public.refund_sale(uuid, uuid, uuid, jsonb, text, text) TO authenticated"));
 assert.ok(migration.includes("BEGIN;") && migration.trimEnd().endsWith("COMMIT;"));
 
-console.log("Platform privacy and refund migration checks passed.");
+// Cashiers are restricted to sales they created in both RLS and the SECURITY DEFINER RPC.
+for (const required of [
+  "created_by = auth.uid()",
+  "s.created_by = auth.uid()",
+  "DROP POLICY IF EXISTS sale_refunds_management_select",
+  "DROP POLICY IF EXISTS sale_refund_items_management_select",
+  "public.has_shop_permission(p_shop_id, 'sales.view')",
+  "public.has_shop_permission(p_shop_id, 'reports.view')"
+]) {
+  assert.ok(accessMigration.includes(required), `Cashier/manager access migration missing: ${required}`);
+}
+assert.ok(app.includes('managerPermissions.includes("refunds.manage")&&(managerPermissions.includes("sales.view")||managerPermissions.includes("reports.view"))'),
+  "Returns screen must require refund permission and sale/report read permission");
+assert.ok(app.includes("unit_cost_snapshot==null?Number.NaN:Number(x.unit_cost_snapshot)"),
+  "Hidden cost snapshots must not be converted to zero");
+assert.ok(money.includes("sale.lines.some(line => !Number.isFinite(line.unitCost))"),
+  "Profit calculation must remain unavailable when sale costs are hidden");
+
+console.log("Platform privacy, refund, cashier-scope and profit-visibility checks passed.");
