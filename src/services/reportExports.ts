@@ -35,7 +35,7 @@ export async function exportBusinessReportPdf(input: BusinessReportInput): Promi
   const html = `<!doctype html><html><head><meta charset="utf-8"><style>
   body{font-family:Arial,sans-serif;color:#132333;padding:28px}header{background:#081522;color:#fff;padding:22px;border-radius:12px}header h1{margin:0;color:#e5bd58}header p{color:#9ddfc4;margin:7px 0 0}.brand{font-size:12px;letter-spacing:3px;color:#43c99a}h2{font-size:16px;margin-top:26px;color:#102438}.metrics{display:flex;gap:10px;margin-top:16px}.metric{flex:1;background:#eef5f2;padding:12px;border-radius:8px}.metric small{display:block;color:#526779;font-size:9px}.metric strong{display:block;margin-top:8px;font-size:15px}table{width:100%;border-collapse:collapse;font-size:10px;margin-top:10px}th{background:#102438;color:#fff;text-align:left}td,th{padding:8px;border-bottom:1px solid #dce5e9}footer{margin-top:28px;font-size:9px;color:#687b89} .gold{color:#e5bd58}</style></head><body>
   <header><div class="brand">GUNX SMART BUSINESS</div><h1>${escapeHtml(input.businessName || "Business Report")}</h1><p>Ripoti ya biashara · ${escapeHtml(input.periodLabel)}</p></header>
-  <div class="metrics"><div class="metric"><small>MAUZO BAADA YA REFUNDS</small><strong>${escapeHtml(formatTZS(revenue))}</strong></div><div class="metric"><small>GHARAMA</small><strong>${escapeHtml(formatTZS(expenses))}</strong></div><div class="metric"><small>FAIDA HALISI (MAKADIRIO)</small><strong>${escapeHtml(formatTZS(profit))}</strong></div></div>
+  <div class="metrics"><div class="metric"><small>MAUZO BAADA YA REFUNDS</small><strong>${escapeHtml(formatTZS(revenue))}</strong></div><div class="metric"><small>GHARAMA</small><strong>${escapeHtml(formatTZS(expenses))}</strong></div><div class="metric"><small>FAIDA HALISI (MAKADIRIO)</small><strong>${escapeHtml(profit===null?"Haijapatikana":formatTZS(profit))}</strong></div></div>
   <h2>Mauzo (${countSales(sales)})</h2><table><thead><tr><th>Risiti</th><th>Tarehe</th><th>Bidhaa</th><th>Jumla</th><th>Hali</th></tr></thead><tbody>${saleRows || '<tr><td colspan="5">Hakuna mauzo katika kipindi hiki</td></tr>'}</tbody></table>
   <h2>Gharama (${input.expenses.length})</h2><table><thead><tr><th>Maelezo</th><th>Kategoria</th><th>Tarehe</th><th>Kiasi</th></tr></thead><tbody>${expenseRows || '<tr><td colspan="4">Hakuna gharama katika kipindi hiki</td></tr>'}</tbody></table>
   <footer>Refunds za kipindi kilichochaguliwa: ${escapeHtml(formatTZS(input.refundTotal))}. Takwimu za faida ni makadirio; hakiki hesabu na miamala kabla ya maamuzi ya fedha. Imetengenezwa ${escapeHtml(generated.toLocaleString("sw-TZ"))}.</footer></body></html>`;
@@ -54,7 +54,7 @@ export async function exportBusinessReportCsv(input: BusinessReportInput): Promi
     ["MUHTASARI", "TZS"],
     ["Mauzo baada ya refunds", totalSales(sales, input.refundTotal)],
     ["Gharama", input.expenses.reduce((sum,item)=>sum+item.amount,0)],
-    ["Faida halisi (makadirio)", netProfit(sales,input.expenses,input.refunds ?? [])],
+    ["Faida halisi (makadirio)", netProfit(sales,input.expenses,input.refunds ?? []) ?? "Haijapatikana"],
     ["Refunds za kipindi", input.refundTotal],
     [],
     ["MAUZO", "Risiti", "Tarehe", "Idadi ya bidhaa", "Jumla TZS", "Hali"],
