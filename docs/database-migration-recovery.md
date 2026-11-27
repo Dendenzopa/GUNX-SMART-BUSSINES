@@ -8,9 +8,9 @@ Repository branch: `feat/business-owner-dashboard-design`
 
 The live Supabase migration ledger contains 24 applied timestamped migrations. The repository now contains all 24 matching timestamped SQL files under `supabase/migrations/`.
 
-- 4 timestamped files were already present in the branch.
 - 20 missing timestamped files were restored from the live project's `supabase_migrations.schema_migrations.statements` records.
-- Restored file contents were written from the recorded SQL statements, not regenerated from current schema guesses.
+- 4 timestamped files were already present; 3 of those were aligned to the exact SQL recorded in the live ledger after comparison found source drift.
+- Every timestamped file was then checked against its corresponding ledger SQL. All 24 files contain the exact recorded SQL statements (with provenance headers where recovered/aligned), not SQL regenerated from current schema guesses.
 - The recovered files include a header identifying their provenance and warning that they represent migrations already applied to the live project.
 
 ## Verification
@@ -21,6 +21,7 @@ The live ledger and branch directory were compared by migration version:
 - Repository timestamped versions: 24
 - Missing versions: 0
 - Extra timestamped versions: 0
+- Exact SQL content comparisons passed: 24/24
 
 ## Important safety rules
 
