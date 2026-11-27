@@ -63,7 +63,7 @@ Remediation references:
 6. **Employee profiles:** add verified profile lifecycle tied to owner and employee onboarding, with minimal PII exposure and role-scoped access.
 7. **UI/UX audit:** review all owner, manager, cashier, stockkeeper, platform admin, auth, onboarding, modal and report screens in light/dark mode on mobile and web.
 8. **Operational readiness:** confirm backups/PITR, monitoring, Auth SMS provider and redirect URLs, storage policies, secrets, payment provider verification, privacy notice, and incident/recovery runbooks.
-9. **Build and preview:** run reproducible npm ci, TypeScript, Expo web export, Android build, database tests and a current Vercel Preview. Vercel deployment quota has previously blocked Preview builds.
+9. **Build and preview:** run the currently compatible npm install workflow, TypeScript, Expo web export, Android build, database tests and a current Vercel Preview. A trial switch to npm ci failed at dependency installation and was reverted; investigate the lockfile/CI error before adopting npm ci. Vercel deployment quota has previously blocked Preview builds.
 10. **Release:** merge and Production deployment only after review and explicit owner approval.
 
 ## Guardrails
