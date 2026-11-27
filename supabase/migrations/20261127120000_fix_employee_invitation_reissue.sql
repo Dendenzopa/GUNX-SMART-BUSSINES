@@ -89,19 +89,20 @@ AS $$
 DECLARE
   v_inv public.shop_invitations%rowtype;
   v_phone text;
+  v_phone_confirmed_at timestamptz;
 BEGIN
   IF auth.uid() IS NULL THEN
     RAISE EXCEPTION 'Sign in with your employee phone number first';
   END IF;
 
   -- Serialize invitation acceptance for this account to enforce one-business membership.
-  SELECT phone INTO v_phone
+  SELECT phone, phone_confirmed_at INTO v_phone, v_phone_confirmed_at
   FROM auth.users
   WHERE id = auth.uid()
   FOR UPDATE;
 
-  IF v_phone IS NULL THEN
-    RAISE EXCEPTION 'This account has no verified phone number';
+  IF v_phone IS NULL OR v_phone_confirmed_at IS NULL THEN
+    RAISE EXCEPTION 'Verify this phone number by SMS before accepting the invitation';
   END IF;
 
   SELECT * INTO v_inv
