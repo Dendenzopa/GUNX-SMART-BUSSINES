@@ -23,7 +23,7 @@ jobs:
           node-version: 22
           cache: npm
       - name: Install dependencies
-        run: npm ci --no-audit --no-fund
+        run: npm install --no-audit --no-fund
       - name: TypeScript check
         run: npm run typecheck
       - name: Prepare splash logo as PNG
