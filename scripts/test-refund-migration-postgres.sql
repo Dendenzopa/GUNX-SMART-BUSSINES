@@ -12,7 +12,7 @@ CREATE TABLE auth.users (
 );
 CREATE OR REPLACE FUNCTION auth.uid()
 RETURNS uuid LANGUAGE sql STABLE
-AS $$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $$;
+AS $authuid$ SELECT nullif(current_setting('request.jwt.claim.sub', true), '')::uuid $authuid$;
 
 CREATE TABLE public.shops (
   id uuid PRIMARY KEY,
@@ -106,13 +106,13 @@ CREATE TABLE public.stock_movements (
 
 CREATE OR REPLACE FUNCTION public.has_shop_role(p_shop_id uuid, p_roles text[])
 RETURNS boolean LANGUAGE sql STABLE
-AS $ SELECT coalesce(current_setting('gunx.test.role', true) = ANY(p_roles), false) $;
+AS $role$ SELECT coalesce(current_setting('gunx.test.role', true) = ANY(p_roles), false) $role$;
 CREATE OR REPLACE FUNCTION public.has_shop_permission(p_shop_id uuid, p_permission text)
 RETURNS boolean LANGUAGE sql STABLE
-AS $ SELECT coalesce(current_setting('gunx.test.permission', true) = p_permission, false) $;
+AS $permission$ SELECT coalesce(current_setting('gunx.test.permission', true) = p_permission, false) $permission$;
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS boolean LANGUAGE sql STABLE
-AS $$ SELECT current_setting('gunx.test.platform_admin', true) = 'true' $$;
+AS $platform_admin$ SELECT current_setting('gunx.test.platform_admin', true) = 'true' $platform_admin$;
 
 -- Apply the exact migration from the PR, not a copied approximation.
 \ir ../supabase/migrations/20261127153000_secure_refunds_and_platform_admin_privacy.sql
