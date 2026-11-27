@@ -239,7 +239,7 @@ const MODULE_PAGES: Record<string, ModulePageData> = {
 };
 
 
-type PlatformUserRow = { user_id:string; email:string|null; created_at:string; shop_count:number; roles:string[]; total_count:number };
+type PlatformUserRow = { user_id:string; created_at:string; shop_count:number; roles:string[]; total_count:number };
 type PlatformPaymentRow = { request_id:string; shop_id:string; business_name:string; provider:string; amount_tzs:number; status:string; submitted_at:string; verified_at:string|null; total_count:number };
 type PlatformSettingRow = { key:string; value:any; description:string|null; updated_at:string; updated_by:string|null };
 type PlatformAuditRow = { id:string; actor_id:string|null; action:string; target_type:string; target_id:string|null; metadata:any; created_at:string };
@@ -338,13 +338,12 @@ function ModulePage({ moduleKey, metrics, onBack, darkMode }: { moduleKey: strin
 
       {moduleKey==="Users" && <>
         <View style={s.dataToolbar}>
-          <TextInput value={userSearch} onChangeText={setUserSearch} placeholder="Tafuta kwa email au User ID" placeholderTextColor="#526A7E" style={s.searchInput} autoCapitalize="none"/>
+          <TextInput value={userSearch} onChangeText={setUserSearch} placeholder="Tafuta kwa User ID" placeholderTextColor="#526A7E" style={s.searchInput} autoCapitalize="none"/>
           <Pressable onPress={()=>void loadPage()} style={s.searchButton}><Text style={s.searchButtonText}>TAFUTA</Text></Pressable>
         </View>
         <Text style={s.dataCount}>Watumiaji: {users.length ? Number(users[0].total_count).toLocaleString("en-US") : "0"}</Text>
         {users.map(user=><View key={user.user_id} style={s.dataCard}>
-          <Text style={s.dataTitle}>{user.email||"Email haipo"}</Text>
-          <Text style={s.dataSub}>User ID: {user.user_id}</Text>
+          <Text style={s.dataTitle}>Akaunti ya mtumiaji</Text>
           <View style={s.dataMetaRow}><Text style={s.dataMeta}>Biashara: {user.shop_count}</Text><Text style={s.dataMeta}>Majukumu: {user.roles?.join(", ")||"Hakuna"}</Text></View>
           <Text style={s.dataSub}>Amesajiliwa: {new Date(user.created_at).toLocaleDateString("sw-TZ")}</Text>
         </View>)}
