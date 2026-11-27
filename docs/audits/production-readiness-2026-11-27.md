@@ -8,7 +8,7 @@
 
 ## Executive finding
 
-The application has meaningful implemented functionality (Supabase authentication, shop onboarding, phone-based employee invitations, role-gated screens, atomic checkout, refunds, offline outbox, reporting and platform administration). It is not yet safe to label the complete product production-ready. The largest release blocker discovered in this audit is **migration-history drift between the Git branch and the live Supabase project**. Do not apply new DDL or deploy branch/group schema until that drift is reconciled and a disposable Supabase development database is available.
+The application has meaningful implemented functionality (Supabase authentication, shop onboarding, phone-based employee invitations, role-gated screens, atomic checkout, refunds, offline outbox, reporting and platform administration). It is not yet safe to label the complete product production-ready. The migration-source recovery checkpoint has since resolved the repository-versus-live-ledger source mismatch: all 24 timestamped live migrations now have matching SQL files in the branch (24/24 exact comparisons). This does not validate a fresh database replay or certify schema equivalence. Remaining release blockers include isolated database integration tests, financial regression coverage, role/tenant isolation tests, operational readiness and end-to-end device testing. Do not apply new DDL or deploy branch/group schema until those checks are complete.
 
 ## Verified live database state
 
@@ -57,7 +57,7 @@ Remediation references:
 
 ## Release blockers and next engineering sequence
 
-1. **Reconcile migrations:** map each live timestamp migration to its source SQL, restore missing migration files from trusted history, and make the repository migration directory replayable. Resolve duplicate legacy version prefixes without rewriting deployed history.
+1. **Migration source recovery — completed:** all 24 timestamped live migration SQL files are present in the branch and match the live ledger exactly (24/24). See `docs/database-migration-recovery.md`. This is source recovery only; a clean disposable-database replay and schema-level validation remain outstanding. Do not replay recovered migrations against Production.
 2. **Create an isolated database branch or disposable staging project:** the current project has no development branches. A development branch may incur usage charges; obtain cost approval before creating one.
 3. **Automated database tests:** test RLS with at least two unrelated shops and each role; test invitation phone binding, checkout idempotency, stock locks, refunds, cross-tenant ID substitution, manager permission revocation, and platform admin boundaries.
 4. **Financial regression tests:** prove gross revenue, refunds, returned COGS, expenses and net profit reconcile for daily/weekly/monthly/all-time periods, including a sale made in an earlier period and refunded later.
@@ -87,10 +87,16 @@ Remediation references:
 - No schema change was applied during this follow-up. PR #45 remains open/draft; no merge or Production deployment was performed.
 
 
-## Migration reconciliation checkpoint — 2026-11-27
+## Migration reconciliation checkpoint — superseded by verified recovery
 
-- Preview deployment for audit commit `c958b9a877a45763497da9f1e24e99dac7368712` reached Vercel state `READY` at `gunx-smart-bussines-8nnodb3zp-dendenzopa.vercel.app`. This is a Preview deployment only.
-- Live Supabase migration history currently lists 23 timestamped migrations from `20261124224157` through `20261125214713`. The repository `supabase/migrations` directory contains 29 files (25 legacy numbered files, including duplicate 0010 and 0011 prefixes, plus only four timestamped files ending at `20261125004226`). The later live migration sources are absent from this branch, including the onboarding media, tenant read-policy, cost/member visibility, manager permissions, employee invitations, and verified-phone hardening migrations. The source for live version `20261124224157_platform_business_directory` is also not present under that exact timestamp.
-- The live `refund_sale(uuid,uuid,uuid,jsonb,text,text)` definition differs from legacy `0008_sale_returns_refunds.sql`: the live authorization requires owner role or `refunds.manage` permission, while the legacy file allows owner/manager role. Replaying or copying the legacy function as a new migration would silently weaken the current permission model and is prohibited.
-- Live table metadata confirms sale-level `subtotal`, `discount`, and `total`; sale-item `quantity`, `unit_price`, and `line_total`; refund-item `quantity`, `unit_price`, and `refund_amount`. The current live refund function still computes `round(unit_price * returned_quantity, 2)`, so it does not allocate the sale discount. This is a verified accounting defect, but a safe fix must preserve the live role/permission guard and all current stock/idempotency/locking behavior.
-- **No database migration was applied.** Before authoring a deployable refund migration, recover and archive the missing live migration sources (or a verified schema/function snapshot with provenance), then build regression tests in an isolated database. Never use the legacy 0008 function as the replacement baseline.
+The earlier checkpoint below was based on an incomplete repository snapshot and is retained here as historical audit context only. Its statement that 20+ live migration sources were missing is no longer current.
+
+The subsequent verification is recorded in `docs/database-migration-recovery.md`:
+- The live migration ledger contains 24 applied timestamped migrations.
+- The branch contains all 24 corresponding timestamped SQL files.
+- All 24 files were compared with the live ledger SQL and passed exact-content verification.
+- Recovered files carry provenance headers and must not be replayed against the live Production project.
+
+**Current status:** migration-source recovery is complete; isolated replay/integration validation is still pending. No Production migration was applied. Do not treat source recovery as proof that a fresh database can be safely migrated or that the application is production-ready.
+
+The confirmed discounted-sale refund allocation defect remains a separate release blocker. Its correction must preserve the live authorization rule (owner OR `refunds.manage`), idempotency, locks, stock restoration and audit behavior, and must be tested against a disposable database before any Production change.
