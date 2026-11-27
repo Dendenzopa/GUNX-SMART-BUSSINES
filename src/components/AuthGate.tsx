@@ -224,8 +224,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       const googleIdentity = session.user.identities?.find((item: any) => item.provider === "google")?.identity_data ?? {};
       const displayName = googleIdentity.name ?? googleIdentity.full_name ?? metadata.full_name ?? metadata.name ?? metadata.display_name ?? session.user.email ?? "Mmiliki wa Biashara";
       setOwnerDisplayName(typeof displayName === "string" && displayName.trim() ? displayName.trim() : "Mmiliki wa Biashara");
-      setShopId(membership?.shop_id ?? null);
-      setShopRole((membership?.role as ShopRole | undefined) ?? null);
+      // Platform admins must never inherit a tenant context, even if a stale shop_members row exists.
+      setShopId(admin ? null : (membership?.shop_id ?? null));
+      setShopRole(admin ? null : ((membership?.role as ShopRole | undefined) ?? null));
       setShopLoading(false);
     }).catch((error: unknown) => {
       if (!active) return;
