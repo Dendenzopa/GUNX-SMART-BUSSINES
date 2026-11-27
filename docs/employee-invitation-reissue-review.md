@@ -15,7 +15,7 @@ instead of pretending an invitation was accepted.
 
 The migration preserves:
 - owner-only create/revoke authorization;
-- verified phone-number matching on acceptance;
+- verified phone-number matching on acceptance, including a non-null SMS `phone_confirmed_at` timestamp;
 - one-business-per-employee guard;
 - role allowlist (manager, cashier, stockkeeper);
 - SECURITY DEFINER fixed search path;
@@ -25,11 +25,12 @@ The migration preserves:
 1. Create an invitation; revoke it; create another for the same shop/phone — succeeds.
 2. Create an invitation; let it expire; create another for the same shop/phone — succeeds.
 3. Reissue an unused invitation — old token fails, new token succeeds only for the invited verified phone.
-4. Accept an invitation twice — second attempt fails.
-5. Accept with a different verified phone — fails.
-6. Attempt create/revoke as manager or cashier — fails.
-7. Concurrent reissue attempts — unique index permits only one active invitation.
-8. Confirm execute ACL remains authenticated-only and RLS/direct table grants remain unchanged.
+4. Accept without SMS phone verification — fails.
+5. Accept an invitation twice — second attempt fails.
+6. Accept with a different verified phone — fails.
+7. Attempt create/revoke as manager or cashier — fails.
+8. Concurrent reissue attempts — unique index permits only one active invitation.
+9. Confirm execute ACL remains authenticated-only and RLS/direct table grants remain unchanged.
 
 ## Safety
 Prepared in source only. Not applied to Supabase Production. No business/customer/sales
