@@ -303,34 +303,55 @@ function Dashboard() {
   setDebts(v=>v.map(d=>d.id===id?{...d,amountPaid:d.amountPaid+amount,balance:d.balance-amount}:d));
   setRepaymentAmount("");setNotice("Marejesho yameandikwa kwenye demo.");
  }
+ function returnedQuantity(sale:Sale,line:Sale["lines"][number]) {
+  const lineId=line.id??line.productId;
+  return refunds.filter(refund=>refund.saleId===sale.id).flatMap(refund=>refund.items??[]).filter(item=>item.saleItemId===lineId).reduce((sum,item)=>sum+item.quantity,0);
+ }
  async function refundSale(sale:Sale) {
   const reason=refundReason.trim();
   if(reason.length<3){setNotice("Andika sababu ya kurejesha bidhaa (angalau herufi 3).");return;}
-  if(sale.status!=="completed"||sale.amountPaid<sale.total){setNotice("Kwa sasa marejesho yanaruhusiwa kwa mauzo yaliyolipwa kikamilifu pekee.");return;}
+  if(sale.status!=="completed"||sale.amountPaid<sale.total){setNotice("Marejesho yanaruhusiwa kwa mauzo yaliyolipwa kikamilifu pekee.");return;}
   if(!sale.lines.length){setNotice("Risiti haina bidhaa za kurejesha.");return;}
-  if(supabaseConfigured&&isConnected===false){setNotice("Refund haijafanyika. Unganisha mtandao ili kuthibitisha marejesho na kurejesha stock kwa usalama.");return;}
+  const selected=sale.lines.map((line,index)=>({line,quantity:Number(refundQuantities[sale.id+":"+(line.id??line.productId+":"+index)]??"0")}))
+   .filter(item=>Number.isFinite(item.quantity)&&item.quantity>0);
+  if(!selected.length){setNotice("Chagua bidhaa na kiasi cha kurejesha kwanza.");return;}
+  for(const item of selected){
+   const remaining=item.line.quantity-returnedQuantity(sale,item.line);
+   if(item.quantity>remaining){setNotice("Kiasi cha "+item.line.productName+" kinazidi kilichobaki kurejeshwa ("+remaining+").");return;}
+  }
+  if(supabaseConfigured&&isConnected===false){setNotice("Refund haijafanyika. Unganisha mtandao ili kuthibitisha marejesho na stock.");return;}
   if(supabaseConfigured){
-   if(sale.lines.some(line=>!line.id)){setNotice("Taarifa za bidhaa za risiti hazijakamilika; haiwezekani kufanya refund salama.");return;}
+   if(selected.some(item=>!item.line.id)){setNotice("Taarifa za bidhaa za risiti hazijakamilika; refund salama haiwezekani.");return;}
    if(!supabase||!shopId){setNotice("Hakuna duka lililounganishwa.");return;}
    const key=refundKeys[sale.id]??makeIdempotencyKey();
    if(!refundKeys[sale.id])setRefundKeys(v=>({...v,[sale.id]:key}));
    setCloudLoading(true);setNotice("Inathibitisha marejesho kwenye database...");
    const {data,error}=await supabase.rpc("refund_sale",{
     p_shop_id:shopId,p_sale_id:sale.id,p_idempotency_key:key,p_reason:reason,p_refund_method:"cash",
-    p_items:sale.lines.map(line=>({sale_item_id:line.id,quantity:line.quantity}))
+    p_items:selected.map(item=>({sale_item_id:item.line.id,quantity:item.quantity}))
    });
    setCloudLoading(false);
    if(error){setNotice("Refund haijakamilika: "+error.message);return;}
    const refunded=Array.isArray(data)?Number(data[0]?.refund_total):Number(data?.refund_total);
-   setSales(v=>v.map(item=>item.id===sale.id?{...item,status:"refunded"}:item));
+   const record:RefundRecord={saleId:sale.id,amount:refunded,createdAt:new Date().toISOString(),returnedCost:selected.reduce((sum,item)=>sum+item.line.unitCost*item.quantity,0),items:selected.map(item=>({saleItemId:item.line.id!,quantity:item.quantity,returnedCost:item.line.unitCost*item.quantity}))};
+   setRefunds(v=>[...v,record]);setRefundTotal(v=>v+refunded);
+   const fullyReturned=sale.lines.every(line=>returnedQuantity(sale,line)+selected.filter(item=>item.line.id===line.id).reduce((sum,item)=>sum+item.quantity,0)>=line.quantity);
+   setSales(v=>v.map(item=>item.id===sale.id?{...item,status:fullyReturned?"refunded":"completed"}:item));
    setRefundKeys(v=>{const next={...v};delete next[sale.id];return next;});
-   setRefundReason("");
-   setNotice("Refund imehifadhiwa. Kiasi cha kurejesha: "+formatTZS(refunded||0)+". Stock imerudishwa kwenye hesabu.");
+   setRefundQuantities(v=>{const next={...v};sale.lines.forEach((line,index)=>delete next[sale.id+":"+(line.id??line.productId+":"+index)]);return next;});
+   setRefundReason("");void refreshProductsFromCloud();
+   setNotice("Refund ya "+selected.length+" aina ya bidhaa imehifadhiwa. Kiasi: "+formatTZS(refunded||0)+". Stock imesasishwa.");
    return;
   }
-  setProducts(v=>v.map(p=>{const returned=sale.lines.filter(line=>line.productId===p.id).reduce((sum,line)=>sum+line.quantity,0);return returned?{...p,stockQuantity:p.stockQuantity+returned}:p;}));
-  setSales(v=>v.map(item=>item.id===sale.id?{...item,status:"refunded"}:item));
-  setRefundReason("");setNotice("Demo refund imeandikwa na stock imerudishwa.");
+  const amount=selected.reduce((sum,item)=>sum+item.line.unitPrice*item.quantity,0);
+  const returnedCost=selected.reduce((sum,item)=>sum+item.line.unitCost*item.quantity,0);
+  setProducts(v=>v.map(product=>{const quantity=selected.filter(item=>item.line.productId===product.id).reduce((sum,item)=>sum+item.quantity,0);return quantity?{...product,stockQuantity:product.stockQuantity+quantity}:product;}));
+  setRefunds(v=>[...v,{saleId:sale.id,amount,returnedCost,createdAt:new Date().toISOString(),items:selected.map(item=>({saleItemId:item.line.id??item.line.productId,quantity:item.quantity,returnedCost:item.line.unitCost*item.quantity}))}]);
+  setRefundTotal(v=>v+amount);
+  const fullyReturned=sale.lines.every(line=>returnedQuantity(sale,line)+selected.filter(item=>item.line.id===line.id&&item.line.productId===line.productId).reduce((sum,item)=>sum+item.quantity,0)>=line.quantity);
+  setSales(v=>v.map(item=>item.id===sale.id?{...item,status:fullyReturned?"refunded":"completed"}:item));
+  setRefundQuantities(v=>{const next={...v};sale.lines.forEach((line,index)=>delete next[sale.id+":"+(line.id??line.productId+":"+index)]);return next;});
+  setRefundReason("");setNotice("Demo refund imehifadhiwa. Kiasi: "+formatTZS(amount)+". Stock imesasishwa.");
  }
  async function retryPendingSale(key:string) {
   if(!shopId){setNotice("Hakuna duka lililochaguliwa.");return;}
