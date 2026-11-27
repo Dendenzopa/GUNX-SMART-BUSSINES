@@ -18,6 +18,7 @@ This migration is prepared for review only. It has **not** been applied to the c
 
 ## Super Admin privacy correction
 
+- `get_platform_admin_users` no longer returns or searches by email; the dashboard shows no user email or raw user ID.
 - `get_platform_businesses` no longer returns `owner_id` or `owner_email`, and its search is limited to business name.
 - `get_platform_payment_requests` no longer returns owner email, submitter ID, payer phone, full transaction reference, or free-text admin note.
 - The dashboard no longer renders these fields. Platform-level aggregate metrics and verified GUNX subscription revenue remain available.
