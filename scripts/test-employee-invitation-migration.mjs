@@ -14,7 +14,7 @@ requirePattern(/ADD COLUMN IF NOT EXISTS revoked_at timestamptz/i, "revocation t
 requirePattern(/DROP INDEX IF EXISTS public\.shop_invitations_one_pending_phone/i, "remove stale pending-only index");
 requirePattern(/WHERE accepted_at IS NULL AND revoked_at IS NULL/i, "unique index only covers active invitations");
 requirePattern(/has_shop_role\(p_shop_id, ARRAY\['owner'\]::text\[\]\)/i, "owner-only invitation creation and revocation");
-requirePattern(/p_phone_e164 !~ '\\\\?\+\[1-9\]\[0-9\]\{7,14\}\$'/, "E.164 phone validation");
+assert.ok(migration.includes(String.raw`p_phone_e164 !~ '^\+[1-9][0-9]{7,14}$'`), "Missing invitation migration safeguard: E.164 phone validation");
 requirePattern(/p_role NOT IN \('manager', 'cashier', 'stockkeeper'\)/i, "employee role allowlist");
 requirePattern(/phone_confirmed_at IS NULL/i, "SMS-verified phone required");
 requirePattern(/FOR UPDATE;/i, "row locking for invitation acceptance");
