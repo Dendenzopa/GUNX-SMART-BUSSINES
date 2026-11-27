@@ -26,6 +26,8 @@ jobs:
         run: npm install --no-audit --no-fund
       - name: TypeScript check
         run: npm run typecheck
+      - name: Refund allocation regression tests
+        run: npm run test:refund-allocation
       - name: Prepare splash logo as PNG
         run: |
           sudo apt-get update
