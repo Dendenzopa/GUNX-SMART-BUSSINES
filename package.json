@@ -13,7 +13,8 @@
     "build": "expo export --platform web --output-dir build",
     "test:refund-allocation": "node scripts/test-refund-allocation.mjs",
     "test:employee-invitation-migration": "node scripts/test-employee-invitation-migration.mjs",
-    "test:platform-privacy-migration": "node scripts/test-platform-privacy-migration.mjs"
+    "test:platform-privacy-migration": "node scripts/test-platform-privacy-migration.mjs",
+    "test:product-media-migration": "node scripts/test-product-media-migration.mjs"
   },
   "dependencies": {
     "expo": "~54.0.0",
