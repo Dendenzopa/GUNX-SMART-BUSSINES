@@ -24,7 +24,7 @@ export const totalExpenses = (expenses: Expense[]): number => expenses.reduce((s
 export const netProfit = (sales: Sale[], expenses: Expense[], refunds: RefundRecord[] = []): number | null => {
   const profits = sales.filter(isCountableSale).map(saleGrossProfit);
   if (profits.some(profit => profit === null)) return null;
-  const grossProfit = profits.reduce((sum, profit) => sum + (profit ?? 0), 0);
+  const grossProfit = profits.reduce<number>((sum, profit) => sum + (profit ?? 0), 0);
   const refundImpact = refunds.reduce((sum, refund) => sum + refund.amount - refund.returnedCost, 0);
   return grossProfit - refundImpact - totalExpenses(expenses);
 };
