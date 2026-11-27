@@ -51,7 +51,7 @@ function Dashboard() {
  if(managerPermissions.includes("stock.manage"))managerScreens.push("Stock");
  if(managerPermissions.includes("debts.manage"))managerScreens.push("Debts");
  if(managerPermissions.includes("expenses.manage"))managerScreens.push("Expenses");
- if(managerPermissions.includes("refunds.manage"))managerScreens.push("Returns");
+ if(managerPermissions.includes("refunds.manage")&&(managerPermissions.includes("sales.view")||managerPermissions.includes("reports.view")))managerScreens.push("Returns");
  if(managerPermissions.includes("sync.manage")||managerPermissions.includes("pos.use"))managerScreens.push("Sync");
  if(managerPermissions.includes("reports.view"))managerScreens.push("Reports");
  const visibleScreens: Screen[] = isPlatformAdmin ? ["Owner"] : effectiveRole==="manager" ? (managerPermissionsLoaded?managerScreens:["Home"]) : allowedScreens[effectiveRole];
@@ -204,7 +204,7 @@ function Dashboard() {
    supabase.from("sale_refunds").select("sale_id,refund_total,created_at,sale_refund_items(sale_item_id,quantity)").eq("shop_id",shopId)
   ]).then(async([salesResult,expensesResult,debtsResult,refundsResult]) => {
    if(!active) return;
-   const mappedSales:Sale[]|null=!salesResult.error&&salesResult.data?salesResult.data.map((r:any):Sale=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({id:x.id,productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:Number(x.unit_cost_snapshot),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":r.status==="voided"?"voided":"completed"})):null;
+   const mappedSales:Sale[]|null=!salesResult.error&&salesResult.data?salesResult.data.map((r:any):Sale=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({id:x.id,productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:x.unit_cost_snapshot==null?Number.NaN:Number(x.unit_cost_snapshot),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":r.status==="voided"?"voided":"completed"})):null;
    const mappedExpenses=!expensesResult.error&&expensesResult.data?expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),expenseDate:e.expense_date,createdAt:e.created_at})):null;
    const mappedDebts=!debtsResult.error&&debtsResult.data?debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.[0]?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})):null;
    const mappedRefunds=!refundsResult.error&&refundsResult.data?refundsResult.data.reduce((sum:number,row:any)=>sum+Number(row.refund_total),0):null;
