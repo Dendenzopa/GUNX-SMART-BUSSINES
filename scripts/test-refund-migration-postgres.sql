@@ -106,10 +106,21 @@ CREATE TABLE public.stock_movements (
 
 CREATE OR REPLACE FUNCTION public.has_shop_role(p_shop_id uuid, p_roles text[])
 RETURNS boolean LANGUAGE sql STABLE
-AS $role$ SELECT coalesce(current_setting('gunx.test.role', true) = ANY(p_roles), false) $role$;
+AS $role$
+  SELECT EXISTS (
+    SELECT 1 FROM public.shop_members sm
+    WHERE sm.shop_id = p_shop_id AND sm.user_id = auth.uid() AND sm.role = ANY(p_roles)
+  )
+$role$;
 CREATE OR REPLACE FUNCTION public.has_shop_permission(p_shop_id uuid, p_permission text)
 RETURNS boolean LANGUAGE sql STABLE
-AS $permission$ SELECT coalesce(current_setting('gunx.test.permission', true) = p_permission, false) $permission$;
+AS $permission$
+  SELECT EXISTS (
+    SELECT 1 FROM public.shop_members sm
+    WHERE sm.shop_id = p_shop_id AND sm.user_id = auth.uid()
+      AND sm.role IN ('owner','manager')
+  ) AND coalesce(current_setting('gunx.test.permission', true) = p_permission, false)
+$permission$;
 CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS boolean LANGUAGE sql STABLE
 AS $platform_admin$ SELECT current_setting('gunx.test.platform_admin', true) = 'true' $platform_admin$;
@@ -302,7 +313,7 @@ BEGIN
   VALUES ('30000000-0000-0000-0000-000000000002','00000000-0000-0000-0000-000000000001','TEST-002','completed',10,0,10,10);
   INSERT INTO public.sale_items(id,sale_id,product_name_snapshot,quantity,unit_price,unit_cost_snapshot,line_total)
   VALUES ('40000000-0000-0000-0000-000000000004','30000000-0000-0000-0000-000000000002','Denied',1,10,4,10);
-  PERFORM set_config('gunx.test.role','cashier',false);
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',false);
   BEGIN
     PERFORM * FROM public.refund_sale(
       '00000000-0000-0000-0000-000000000001',
@@ -315,7 +326,20 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'Only owner or manager can refund sales' THEN RAISE; END IF;
   END;
-  PERFORM set_config('gunx.test.role','owner',false);
+  -- A cashier cannot refund another tenant's sale, even when the caller supplies that tenant ID.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+  BEGIN
+    PERFORM * FROM public.refund_sale(
+      '00000000-0000-0000-0000-000000000099',
+      '30000000-0000-0000-0000-000000000002',
+      '50000000-0000-0000-0000-000000000009',
+      '[{"sale_item_id":"40000000-0000-0000-0000-000000000004","quantity":1}]'::jsonb,
+      'Cross tenant attempt','cash'
+    );
+    RAISE EXCEPTION 'Cross-tenant refund unexpectedly succeeded';
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM <> 'Only owner or manager can refund sales' THEN RAISE; END IF;
+  END;
 
   -- A previous gross-price refund above the corrected discounted allocation fails closed.
   INSERT INTO public.sales(id,shop_id,receipt_number,status,subtotal,discount,total,amount_paid)
