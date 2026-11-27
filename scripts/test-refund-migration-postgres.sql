@@ -61,8 +61,33 @@ CREATE TABLE public.sales (
 CREATE TABLE public.products (
   id uuid PRIMARY KEY,
   shop_id uuid NOT NULL,
-  stock_quantity numeric NOT NULL
+  name text NOT NULL DEFAULT '',
+  sku text,
+  unit text NOT NULL DEFAULT 'piece',
+  cost_price numeric NOT NULL DEFAULT 0,
+  selling_price numeric NOT NULL DEFAULT 0,
+  stock_quantity numeric NOT NULL,
+  reorder_level numeric NOT NULL DEFAULT 0,
+  active boolean NOT NULL DEFAULT true
 );
+
+-- Minimal Storage schema for testing the exact Storage RLS migration locally.
+CREATE SCHEMA storage;
+CREATE TABLE storage.objects (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  bucket_id text NOT NULL,
+  name text NOT NULL
+);
+ALTER TABLE storage.objects ENABLE ROW LEVEL SECURITY;
+CREATE OR REPLACE FUNCTION storage.foldername(p_name text)
+RETURNS text[] LANGUAGE sql IMMUTABLE
+AS $foldername$
+  SELECT CASE
+    WHEN cardinality(parts) > 1 THEN parts[1:cardinality(parts)-1]
+    ELSE ARRAY[]::text[]
+  END
+  FROM (SELECT string_to_array(p_name, '/') AS parts) AS source
+$foldername$;
 CREATE TABLE public.sale_items (
   id uuid PRIMARY KEY,
   sale_id uuid NOT NULL,
@@ -136,6 +161,7 @@ AS $platform_admin$ SELECT current_setting('gunx.test.platform_admin', true) = '
 -- Apply the exact migration from the PR, not a copied approximation.
 \ir ../supabase/migrations/20261127153000_secure_refunds_and_platform_admin_privacy.sql
 \ir ../supabase/migrations/20261128110000_scope_cashier_sales_and_manager_refunds.sql
+\ir ../supabase/migrations/20261128143000_product_images_and_storage_access.sql
 
 INSERT INTO auth.users(id, email) VALUES
 ('10000000-0000-0000-0000-000000000001', 'owner@example.test'),
@@ -158,10 +184,60 @@ INSERT INTO public.pro_payment_requests(
   'pending', 'Private internal note'
 );
 
-INSERT INTO public.products(id, shop_id, stock_quantity) VALUES
-('20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 10),
-('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 10),
-('20000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 10);
+INSERT INTO public.products(
+  id, shop_id, name, sku, unit, cost_price, selling_price, stock_quantity, reorder_level, active, image_url
+) VALUES
+('20000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000001', 'Item A', 'SKU-A', 'piece', 5, 12.34, 10, 2, true, 'https://example.test/item-a.jpg'),
+('20000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000001', 'Item B', 'SKU-B', 'piece', 10, 28.39, 10, 2, true, null),
+('20000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000001', 'Item C', 'SKU-C', 'piece', 12, 30.88, 10, 2, true, null);
+
+DO $
+DECLARE
+  v_product record;
+  v_policy_count integer;
+  v_result_type text;
+BEGIN
+  SELECT * INTO v_product
+  FROM public.get_shop_products('00000000-0000-0000-0000-000000000001')
+  WHERE id = '20000000-0000-0000-0000-000000000001';
+  IF v_product.image_url <> 'https://example.test/item-a.jpg' THEN
+    RAISE EXCEPTION 'Owner product RPC did not return product image URL';
+  END IF;
+  IF v_product.cost_price <> 5 THEN
+    RAISE EXCEPTION 'Owner product RPC should retain authorized cost visibility';
+  END IF;
+
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',false);
+  SELECT * INTO v_product
+  FROM public.get_shop_products('00000000-0000-0000-0000-000000000001')
+  WHERE id = '20000000-0000-0000-0000-000000000001';
+  IF v_product.image_url <> 'https://example.test/item-a.jpg' THEN
+    RAISE EXCEPTION 'Cashier product RPC did not return product image URL';
+  END IF;
+  IF v_product.cost_price IS NOT NULL THEN
+    RAISE EXCEPTION 'Product image RPC exposed protected cost to cashier';
+  END IF;
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+
+  SELECT count(*) INTO v_policy_count
+  FROM pg_policies
+  WHERE schemaname = 'storage' AND tablename = 'objects'
+    AND policyname IN (
+      'business_assets_product_images_select',
+      'business_assets_product_images_insert',
+      'business_assets_product_images_update'
+    );
+  IF v_policy_count <> 3 THEN
+    RAISE EXCEPTION 'Expected 3 scoped product image Storage policies, got %', v_policy_count;
+  END IF;
+
+  SELECT pg_get_function_result('public.get_shop_products(uuid)'::regprocedure)
+  INTO v_result_type;
+  IF position('image_url' in lower(v_result_type)) = 0 THEN
+    RAISE EXCEPTION 'get_shop_products return type does not include image_url: %', v_result_type;
+  END IF;
+END;
+$;
 
 -- Three lines sum to TZS 100.00; discount TZS 12.35; net total TZS 87.65.
 INSERT INTO public.sales(
