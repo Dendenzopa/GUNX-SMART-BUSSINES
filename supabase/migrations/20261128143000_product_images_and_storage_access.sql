@@ -7,6 +7,11 @@ BEGIN;
 ALTER TABLE public.products
   ADD COLUMN IF NOT EXISTS image_url text;
 
+-- Keep the existing column-level update boundary while explicitly allowing
+-- product managers to persist the uploaded image URL. Stock and price columns
+-- remain governed by the existing grants and trigger.
+GRANT UPDATE (image_url) ON TABLE public.products TO authenticated;
+
 DROP FUNCTION IF EXISTS public.get_shop_products(uuid);
 
 CREATE FUNCTION public.get_shop_products(p_shop_id uuid)
@@ -90,7 +95,7 @@ WITH CHECK (
   AND (storage.foldername(name))[3] = 'products'
   AND (
     public.has_shop_role(((storage.foldername(name))[1])::uuid, ARRAY['owner']::text[])
-    OR public.has_shop_permission(((storage.foldername(name))[1])::uuid, 'products.manage')
+    OR public.has_shop_permission(((storage.foldername(name))[1]::uuid, 'products.manage')
   )
 );
 
