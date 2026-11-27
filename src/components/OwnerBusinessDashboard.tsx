@@ -237,10 +237,12 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
         const response = await fetch(asset.uri);
         const blob = await response.blob();
         const extension = (asset.mimeType?.split("/")[1] ?? "jpg").replace("jpeg", "jpg");
-        const path = shopId + "/" + type + "-" + Date.now() + "." + extension;
-        const { error: uploadError } = await supabase.storage.from("shop-branding").upload(path, blob, { contentType: asset.mimeType ?? "image/jpeg", upsert: true });
+        const { data: userResult, error: userError } = await supabase.auth.getUser();
+        if (userError || !userResult.user) throw new Error("Akaunti haijathibitishwa. Ingia tena kisha ujaribu.");
+        const path = shopId + "/" + userResult.user.id + "/branding/" + type + "-" + Date.now() + "." + extension;
+        const { error: uploadError } = await supabase.storage.from("business-assets").upload(path, blob, { contentType: asset.mimeType ?? "image/jpeg", cacheControl: "3600", upsert: true });
         if (uploadError) throw uploadError;
-        publicUrl = supabase.storage.from("shop-branding").getPublicUrl(path).data.publicUrl;
+        publicUrl = supabase.storage.from("business-assets").getPublicUrl(path).data.publicUrl;
         const { error: updateError } = await supabase.from("shops").update({ hero_media_type: type, hero_media_url: publicUrl }).eq("id", shopId);
         if (updateError) throw updateError;
       } else {
