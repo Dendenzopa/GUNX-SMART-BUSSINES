@@ -16,7 +16,7 @@ A read-only inspection on 2026-11-27 confirmed:
 - Supabase project status: ACTIVE_HEALTHY; PostgreSQL 17.12.
 - No Supabase development branches currently exist.
 - Live migration history contains 24 timestamp-versioned migrations, from 20261124224157 through 20261125214713.
-- Repository branch contains 32 migration SQL files: 28 legacy numeric-prefix files (including duplicate 0010 and 0011 prefixes) plus four timestamp-versioned files.
+- Repository branch contains 29 migration SQL files: 25 legacy numeric-prefix files (including duplicate 0010 and 0011 prefixes) plus four timestamp-versioned files.
 - Several live migration names/versions are not represented as matching timestamp-versioned files in this branch. The numeric-prefix files cannot safely be assumed to be an exact replay of the live migration history.
 - Live schema currently has shop-level tenants and inventory (shops, shop_members, products.stock_quantity, sales, refunds, stock movements, invitations and manager permissions). No business_groups, branches, branch_members, or branch inventory tables were found in the inspected schema.
 - Current live checkout RPC signature includes p_expected_total; the repository's older base migration 0005_atomic_checkout.sql does not. This is another sign that the live database evolved beyond the checked-in migration snapshot.
