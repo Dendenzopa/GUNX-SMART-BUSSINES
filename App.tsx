@@ -80,6 +80,7 @@ function Dashboard() {
  const [stockInAmount,setStockInAmount]=useState("1");
  const [refundReason,setRefundReason]=useState("");
  const [refundKeys,setRefundKeys]=useState<Record<string,string>>({});
+ const [refundQuantities,setRefundQuantities]=useState<Record<string,string>>({});
  const [cart,setCart]=useState<CartLine[]>([]);
  const [notice,setNotice]=useState(supabaseConfigured ? "Imeunganishwa na huduma za duka; data hupakiwa kutoka Supabase." : "DEMO MODE — changes are temporary and reset when the app restarts.");
  const [cloudLoading,setCloudLoading]=useState(false);
@@ -199,14 +200,14 @@ function Dashboard() {
    supabase.rpc("get_shop_sales",{p_shop_id:shopId}),
    supabase.from("expenses").select("id,description,category,amount,expense_date,created_at").eq("shop_id",shopId).order("created_at",{ascending:false}),
    supabase.from("debts").select("id,customer_id,description,original_amount,balance,created_at,customers(name)").eq("shop_id",shopId).order("created_at",{ascending:false}),
-   supabase.from("sale_refunds").select("refund_total,created_at,sale_refund_items(quantity,sale_items(unit_cost_snapshot))").eq("shop_id",shopId)
+   supabase.from("sale_refunds").select("sale_id,refund_total,created_at,sale_refund_items(sale_item_id,quantity,sale_items(unit_cost_snapshot))").eq("shop_id",shopId)
   ]).then(async([salesResult,expensesResult,debtsResult,refundsResult]) => {
    if(!active) return;
    const mappedSales:Sale[]|null=!salesResult.error&&salesResult.data?salesResult.data.map((r:any):Sale=>({id:r.id,receiptNumber:r.receipt_number,createdAt:r.created_at,lines:(r.sale_items??[]).map((x:any)=>({id:x.id,productId:x.product_id??"",productName:x.product_name_snapshot,quantity:Number(x.quantity),unitPrice:Number(x.unit_price),unitCost:Number(x.unit_cost_snapshot),lineTotal:Number(x.line_total)})),subtotal:Number(r.subtotal),discount:Number(r.discount),total:Number(r.total),amountPaid:Number(r.amount_paid),balance:Math.max(0,Number(r.total)-Number(r.amount_paid)),paymentMethod:r.payments?.[0]?.method??"cash",status:r.status==="refunded"?"refunded":r.status==="partially_paid"?"partially_paid":r.status==="voided"?"voided":"completed"})):null;
    const mappedExpenses=!expensesResult.error&&expensesResult.data?expensesResult.data.map((e:any)=>({id:e.id,description:e.description,category:e.category,amount:Number(e.amount),expenseDate:e.expense_date,createdAt:e.created_at})):null;
    const mappedDebts=!debtsResult.error&&debtsResult.data?debtsResult.data.map((d:any)=>({id:d.id,customerId:d.customer_id,customerName:d.customers?.[0]?.name??"Mteja",saleId:"manual",originalAmount:Number(d.original_amount),amountPaid:Number(d.original_amount)-Number(d.balance),balance:Number(d.balance),createdAt:d.created_at})):null;
    const mappedRefunds=!refundsResult.error&&refundsResult.data?refundsResult.data.reduce((sum:number,row:any)=>sum+Number(row.refund_total),0):null;
-   const mappedRefundRecords:RefundRecord[]|null=!refundsResult.error&&refundsResult.data?refundsResult.data.map((row:any)=>({amount:Number(row.refund_total),createdAt:row.created_at,returnedCost:(row.sale_refund_items??[]).reduce((sum:number,item:any)=>sum+Number(item.quantity)*Number(item.sale_items?.unit_cost_snapshot??0),0)})):null;
+   const mappedRefundRecords:RefundRecord[]|null=!refundsResult.error&&refundsResult.data?refundsResult.data.map((row:any)=>({saleId:row.sale_id,amount:Number(row.refund_total),createdAt:row.created_at,returnedCost:(row.sale_refund_items??[]).reduce((sum:number,item:any)=>sum+Number(item.quantity)*Number(item.sale_items?.unit_cost_snapshot??0),0),items:(row.sale_refund_items??[]).map((item:any)=>({saleItemId:item.sale_item_id,quantity:Number(item.quantity),returnedCost:Number(item.quantity)*Number(item.sale_items?.unit_cost_snapshot??0)}))})):null;
    const [pending]=await Promise.all([readPendingSales(shopId,userId,effectiveRole)]);
    if(!active)return;
    if(mappedSales)setSales([...pending.map(item=>({...item.sale})),...mappedSales.filter(sale=>!pending.some(item=>item.sale.id===sale.id))]);
