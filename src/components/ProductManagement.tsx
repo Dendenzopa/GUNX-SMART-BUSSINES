@@ -12,6 +12,7 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
   const [items, setItems] = useState<Product[]>([]);
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
+  const [category, setCategory] = useState("");
   const [unit, setUnit] = useState("piece");
   const [cost, setCost] = useState("");
   const [price, setPrice] = useState("");
@@ -40,7 +41,7 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
     setBusy(false);
     if (error) { setMessage("Bidhaa hazijapakiwa: " + error.message); return; }
     setItems((data ?? []).map((p: any) => ({
-      id: p.id, name: p.name, sku: p.sku ?? "", unit: p.unit,
+      id: p.id, name: p.name, sku: p.sku ?? "", category: p.category ?? null, unit: p.unit,
       imageUrl: p.image_url ?? null,
       costPrice: Number(p.cost_price ?? 0), sellingPrice: Number(p.selling_price),
       stockQuantity: Number(p.stock_quantity), reorderLevel: Number(p.reorder_level), active: p.active
@@ -50,12 +51,12 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
   useEffect(() => { void load(); }, [shopId]);
 
   function reset() {
-    setName(""); setSku(""); setUnit("piece"); setCost(""); setPrice(""); setReorder("0");
+    setName(""); setSku(""); setCategory(""); setUnit("piece"); setCost(""); setPrice(""); setReorder("0");
     setEditing(null); setImageUrl(null); setSelectedImage(null);
   }
 
   function startEdit(p: Product) {
-    setEditing(p.id); setName(p.name); setSku(p.sku); setUnit(p.unit);
+    setEditing(p.id); setName(p.name); setSku(p.sku); setCategory(p.category ?? ""); setUnit(p.unit);
     setCost(String(p.costPrice)); setPrice(String(p.sellingPrice)); setReorder(String(p.reorderLevel));
     setImageUrl(p.imageUrl ?? null); setSelectedImage(null);
     setMessage("Unahariri " + p.name + ". Stock hubadilishwa kupitia Pokea stock.");
@@ -124,7 +125,7 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
       setMessage("Jaza jina, unit, gharama, bei ya kuuza na kiwango cha tahadhari kwa usahihi."); return;
     }
     setBusy(true); setMessage("");
-    const payload: Record<string, unknown> = { name: name.trim(), sku: sku.trim() || null, unit: unit.trim(),
+    const payload: Record<string, unknown> = { name: name.trim(), sku: sku.trim() || null, category: category.trim() || null, unit: unit.trim(),
       selling_price: priceValue, reorder_level: reorderValue };
     if (canViewCost) payload.cost_price = costValue;
     const result = editing
@@ -205,6 +206,7 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
       <Text style={[s.label, !darkMode && { color: "#526477" }]}>TAARIFA ZA BIDHAA</Text>
       <TextInput value={name} onChangeText={setName} placeholder="Jina la bidhaa" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
       <TextInput value={sku} onChangeText={setSku} placeholder="SKU / Barcode (hiari)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
+      <TextInput value={category} onChangeText={setCategory} placeholder="Kategoria (mf. Vinywaji, Chakula)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
       <TextInput value={unit} onChangeText={setUnit} placeholder="Unit (mf. piece, kg, lita)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
       {canViewCost && <TextInput value={cost} onChangeText={setCost} placeholder="Bei ya kununua (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>}
       <TextInput value={price} onChangeText={setPrice} placeholder="Bei ya kuuza (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
@@ -222,7 +224,7 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
       </View>
       <View style={s.itemDetails}>
         <Text style={[s.name, !darkMode && { color: "#142D42" }]}>{p.name} {!p.active ? "(Imefichwa)" : ""}</Text>
-        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{p.sku || "Hakuna SKU"} · {p.unit} · Stock {p.stockQuantity}</Text>
+        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{p.sku || "Hakuna SKU"} · {p.category || "Bila kategoria"} · {p.unit} · Stock {p.stockQuantity}</Text>
         <Text style={[s.price, !darkMode && { color: "#8A6512" }]}>{canViewCost ? `Gharama ${formatTZS(p.costPrice)} · ` : ""}Bei {formatTZS(p.sellingPrice)}</Text>
       </View>
       {canManage && <View style={s.actions}>
