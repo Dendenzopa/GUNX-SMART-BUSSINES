@@ -148,9 +148,28 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       void handleAuthUrl(window.location.href);
     }
 
+    // Never leave the app on an endless splash spinner if browser storage or
+    // session restoration stalls. The auth-state listener below remains active
+    // and will still apply a session if Supabase restores it later.
+    let sessionResolved = false;
+    const sessionTimeout = setTimeout(() => {
+      if (!active || sessionResolved) return;
+      setMessage("Uthibitishaji unachukua muda mrefu. Angalia intaneti kisha jaribu tena.");
+      setLoading(false);
+    }, 12000);
     void supabase.auth.getSession().then(({ data, error }) => {
-      if (error) setMessage(error.message);
+      if (!active) return;
+      sessionResolved = true;
+      clearTimeout(sessionTimeout);
+      if (error) setMessage("Imeshindikana kurejesha session: " + error.message);
       setSession(data.session);
+      setLoading(false);
+    }).catch((error: unknown) => {
+      if (!active) return;
+      sessionResolved = true;
+      clearTimeout(sessionTimeout);
+      setSession(null);
+      setMessage("Imeshindikana kuanzisha uthibitishaji. Angalia intaneti kisha jaribu tena.");
       setLoading(false);
     });
 
