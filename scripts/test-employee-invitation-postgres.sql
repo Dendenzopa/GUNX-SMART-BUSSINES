@@ -1,4 +1,4 @@
-\\set ON_ERROR_STOP on
+\set ON_ERROR_STOP on
 
 -- Disposable PostgreSQL 17 integration test for the exact invitation lifecycle migration.
 -- No Supabase Production credentials or endpoints are used by this fixture.
@@ -38,7 +38,7 @@ CREATE TABLE public.shop_invitations (
   expires_at timestamptz NOT NULL DEFAULT (now()+interval '7 days'),
   accepted_at timestamptz,
   accepted_user_id uuid REFERENCES auth.users(id),
-  CHECK (phone_e164 ~ '^\\+[1-9][0-9]{7,14}$')
+  CHECK (phone_e164 ~ '^\+[1-9][0-9]{7,14}$')
 );
 CREATE UNIQUE INDEX shop_invitations_one_pending_phone
 ON public.shop_invitations(shop_id,phone_e164) WHERE accepted_at IS NULL;
@@ -53,7 +53,7 @@ AS $role$
 $role$;
 
 -- Apply the exact migration as committed in the repository.
-\\ir ../supabase/migrations/20261127120000_fix_employee_invitation_reissue.sql
+\ir ../supabase/migrations/20261127120000_fix_employee_invitation_reissue.sql
 
 INSERT INTO auth.users(id,phone,phone_confirmed_at) VALUES
 ('10000000-0000-0000-0000-000000000001','+255700000001',now()),
