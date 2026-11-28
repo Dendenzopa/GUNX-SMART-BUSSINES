@@ -95,9 +95,9 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     });
     setBusy(false);
     if (error || !token) { setNotice("Mwaliko haukutengenezwa: " + (error?.message ?? "Jaribu tena.")); return; }
-    const link = Platform.OS === "web" && typeof window !== "undefined"
-      ? window.location.origin + "/?invite=" + encodeURIComponent(String(token))
-      : "gunxsmartbusiness://auth/callback?invite=" + encodeURIComponent(String(token));
+    // Always share a public HTTPS invitation URL. The browser can complete phone/SMS onboarding
+    // even when the employee has not installed the Android app yet.
+    const link = "https://gunx-smart-bussines-dendenzopa.vercel.app/?invite=" + encodeURIComponent(String(token));
     setPhone("");
     setInviteLink(link);
     setNotice("Mwaliko wa " + target + " umetengenezwa. Mfanyakazi lazima athibitishe namba hii kwa SMS.");
