@@ -151,7 +151,7 @@ BEGIN
   -- Unverified phone cannot accept even a valid invitation.
   PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
   v_unverified_token:=public.create_shop_invitation(
-    '00000000-0000-0000-0000-000000000001','+255700000004','cashier'
+    '00000000-0000-0000-0000-000000000001','+255700000003','cashier'
   );
   PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',false);
   v_rejected:=false;
@@ -179,9 +179,13 @@ BEGIN
   -- Existing membership in a different business is denied.
   PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
   v_other_business_token:=public.create_shop_invitation(
-    '00000000-0000-0000-0000-000000000001','+255700000004','cashier'
+    '00000000-0000-0000-0000-000000000001','+255700000005','cashier'
   );
-  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000004',false);
+  INSERT INTO auth.users(id,phone,phone_confirmed_at)
+  VALUES ('10000000-0000-0000-0000-000000000005','+255700000005',now());
+  INSERT INTO public.shop_members(shop_id,user_id,role)
+  VALUES ('00000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000005','cashier');
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000005',false);
   v_rejected:=false;
   BEGIN
     PERFORM public.accept_shop_invitation(v_other_business_token);
