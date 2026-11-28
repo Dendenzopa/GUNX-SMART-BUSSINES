@@ -54,7 +54,7 @@ function Dashboard() {
  if(managerPermissions.includes("refunds.manage")&&(managerPermissions.includes("sales.view")||managerPermissions.includes("reports.view")))managerScreens.push("Returns");
  if(managerPermissions.includes("sync.manage")||managerPermissions.includes("pos.use"))managerScreens.push("Sync");
  if(managerPermissions.includes("reports.view"))managerScreens.push("Reports");
- const visibleScreens: Screen[] = isPlatformAdmin ? ["Owner"] : effectiveRole==="manager" ? (managerPermissionsLoaded?managerScreens:["Home"]) : allowedScreens[effectiveRole];
+ const visibleScreens: Screen[] = isPlatformAdmin ? ["Owner","Account"] : [...(effectiveRole==="manager" ? (managerPermissionsLoaded?managerScreens:["Home"]) : allowedScreens[effectiveRole]),"Account"];
  const [screen,setScreen]=useState<Screen>("Home");
  const [showMore,setShowMore]=useState(false);
  const [accountEmail,setAccountEmail]=useState("");
