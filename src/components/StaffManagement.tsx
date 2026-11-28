@@ -31,12 +31,13 @@ const roles: { id: Role; label: string; detail: string }[] = [
 ];
 
 export default function StaffManagement({ darkMode = true }: { darkMode?: boolean }) {
-  const { shopId } = useShopContext();
+  const { shopId, shopRole } = useShopContext();
   const [members, setMembers] = useState<Member[]>([]);
   const [phone, setPhone] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [role, setRole] = useState<Role>("cashier");
   const [owner, setOwner] = useState(false);
+  const [managerCanViewDocuments,setManagerCanViewDocuments]=useState(false);
   const [permissionTarget, setPermissionTarget] = useState<Member | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,9 +59,13 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     const rows = (data ?? []) as Member[];
     setMembers(rows);
     setOwner(Boolean(rows.find(row => row.user_id === currentId && row.role === "owner")));
+    if(shopRole==="manager"){
+      const {data:grants,error:grantError}=await supabase.rpc("get_my_shop_permissions",{p_shop_id:shopId});
+      setManagerCanViewDocuments(!grantError&&Array.isArray(grants)&&grants.includes("staff.documents.view"));
+    } else setManagerCanViewDocuments(false);
     setNotice(rows.length + " wanachama kwenye duka hili.");
     setLoading(false);
-  }, [shopId]);
+  }, [shopId,shopRole]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -115,7 +120,7 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
   }
 
   async function openEmployeeDocument(doc:EmployeeDocumentRow,action:"view"|"download"="view") {
-    if(!supabase||!owner||openingDocument)return;
+    if(!supabase||(!owner&&!managerCanViewDocuments)||openingDocument)return;
     setOpeningDocument(doc.id);
     const {error:logError}=await supabase.rpc("log_employee_document_access",{p_document_id:doc.id,p_action:action});
     if(logError){setNotice("Ufikiaji umekataliwa au haukuandikwa: "+logError.message);setOpeningDocument(null);return;}
@@ -201,14 +206,14 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     {members.map(member => <View key={member.user_id} style={[s.member, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
       <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{member.role === "owner" ? "Mmiliki" : roles.find(r => r.id === member.role)?.label ?? member.role}</Text>
       <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Utambulisho: ••••{member.user_id.slice(-6)}</Text>
-      {owner && member.role !== "owner" && <View style={s.actions}>        <Pressable disabled={busy} onPress={()=>void viewEmployeeProfile(member)} style={s.small}><Text style={[s.smallText,!darkMode&&{color:"#FFFFFF"}]}>Wasifu / Nyaraka</Text></Pressable>
+      {((owner && member.role !== "owner")||managerCanViewDocuments) && <View style={s.actions}>{(owner||managerCanViewDocuments) && member.role !== "owner" && <Pressable disabled={busy} onPress={()=>void viewEmployeeProfile(member)} style={s.small}><Text style={[s.smallText,!darkMode&&{color:"#FFFFFF"}]}>Wasifu / Nyaraka</Text></Pressable>}{owner && <>
 
         {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>{r.label}</Text></Pressable>)}
         {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ruhusa</Text></Pressable>}
         <Pressable disabled={busy} onPress={() => remove(member)} style={[s.small, s.remove]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ondoa</Text></Pressable>
       </View>}
     </View>)}
-    {owner && selectedEmployee && <View style={[s.panel,!darkMode&&{backgroundColor:"#FFFFFF",borderColor:"#DCE5EC"}]}>
+    {(owner||managerCanViewDocuments) && selectedEmployee && <View style={[s.panel,!darkMode&&{backgroundColor:"#FFFFFF",borderColor:"#DCE5EC"}]}>
       <Text style={[s.heading,!darkMode&&{color:"#142D42"}]}>Wasifu wa mfanyakazi</Text>
       <Text style={[s.copy,!darkMode&&{color:"#526477"}]}>Akaunti ••••{selectedEmployee.user_id.slice(-6)} · {selectedEmployee.role}</Text>
       {profileLoading&&<ActivityIndicator color="#43C99A"/>}
@@ -245,7 +250,7 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     </View>}
     <Pressable onPress={() => void load()} style={[s.refresh, !darkMode && { backgroundColor: "#E7EEF4" }]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>↻ Sasisha orodha</Text></Pressable>
     <Text style={[s.notice, !darkMode && { color: "#075E46", backgroundColor: "#E8F7F0" }]}>{notice}</Text>
-    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Usalama: kuongeza, kubadilisha nafasi na kuondoa wanachama hufanywa na RPC za database zinazokagua jukumu la mmiliki. Wafanyakazi hujiunga kwa namba ya simu iliyothibitishwa kwa SMS.</Text>
+    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Usalama: kuongeza, kubadilisha nafasi na kuondoa wanachama ni kazi za Boss pekee. Manager anaweza kuona nyaraka tu ikiwa Boss amempa ruhusa hiyo; kila ufunguzi hukaguliwa na database.</Text>
   </ScrollView>;
 }
 
