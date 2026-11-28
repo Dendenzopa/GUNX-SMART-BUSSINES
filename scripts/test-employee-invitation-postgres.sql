@@ -69,7 +69,8 @@ INSERT INTO auth.users(id,phone,phone_confirmed_at) VALUES
 ('10000000-0000-0000-0000-000000000001','+255700000001',now()),
 ('10000000-0000-0000-0000-000000000002','+255700000002',now()),
 ('10000000-0000-0000-0000-000000000003','+255700000003',NULL),
-('10000000-0000-0000-0000-000000000004','+255700000004',now());
+('10000000-0000-0000-0000-000000000004','+255700000004',now()),
+('10000000-0000-0000-0000-000000000006','+255700000006',now());
 INSERT INTO public.shops(id,owner_id,name) VALUES
 ('00000000-0000-0000-0000-000000000001','10000000-0000-0000-0000-000000000001','Invitation Test Shop'),
 ('00000000-0000-0000-0000-000000000002','10000000-0000-0000-0000-000000000004','Second Test Shop');
@@ -136,10 +137,10 @@ BEGIN
   -- Expired token is rejected.
   PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
   v_expired_token:=public.create_shop_invitation(
-    '00000000-0000-0000-0000-000000000001','+255700000003','cashier'
+    '00000000-0000-0000-0000-000000000001','+255700000006','cashier'
   );
   UPDATE public.shop_invitations SET expires_at=now()-interval '1 minute' WHERE token=v_expired_token;
-  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',false);
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000006',false);
   v_rejected:=false;
   BEGIN
     PERFORM public.accept_shop_invitation(v_expired_token);
