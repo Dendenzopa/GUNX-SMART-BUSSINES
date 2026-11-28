@@ -135,7 +135,7 @@ export default function StaffDashboard({ shopId, userId, role, products, pending
     <Text style={s.sectionTitle}>Vitendo vya haraka</Text>
     <View style={s.tiles}>
       {role === "cashier"
-        ? <>{tile("＋", "Mauzo mapya", "Fungua POS na uza bidhaa", "POS", "#D7B56D")}{tile("▤", "Mauzo yangu", "Risiti zako 50 za mwisho", "Sync", "#43C99A")}</>
+        ? <>{tile("＋", "Mauzo mapya", "Fungua POS na uza bidhaa", "POS", "#D7B56D")}{tile("⇄", "Offline Sync", "Mauzo yanayosubiri kusawazishwa", "Sync", "#43C99A")}</>
         : <>{tile("▦", "Angalia stock", "Bidhaa na kiasi kilichopo", "Stock", "#43C99A")}</>}
     </View>
 
