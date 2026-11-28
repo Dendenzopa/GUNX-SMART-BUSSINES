@@ -46,6 +46,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
   const [phone, setPhone] = useState("");
   const [phoneOtp, setPhoneOtp] = useState("");
   const [phoneOtpPending, setPhoneOtpPending] = useState(false);
+  const [phoneOtpLogin, setPhoneOtpLogin] = useState(false);
   const [phoneLogin, setPhoneLogin] = useState(false);
   const [inviteToken, setInviteToken] = useState<string | null>(null);
   const [password, setPassword] = useState("");
@@ -303,6 +304,25 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     else if (mode === "signup" && !result.data.session) setMessage("Akaunti imetengenezwa. Angalia Gmail kuthibitisha email. Usipopata ujumbe, bonyeza Tuma tena email.");
   }
 
+  async function requestPhoneLoginOtp() {
+    if (!supabase) return;
+    const normalizedPhone = normalizeEmployeePhone(phone);
+    if (!normalizedPhone) { setMessage("Weka namba sahihi ya simu iliyosajiliwa."); return; }
+    setBusy(true); setMessage("");
+    const { error } = await supabase.auth.signInWithOtp({
+      phone: normalizedPhone,
+      options: { shouldCreateUser: false }
+    });
+    setBusy(false);
+    if (error) setMessage("Imeshindikana kutuma OTP. Hakikisha namba hii tayari imesajiliwa na kuthibitishwa: " + error.message);
+    else {
+      setPhoneOtpLogin(true);
+      setPhoneOtpPending(true);
+      setPhoneOtp("");
+      setMessage("Tumetuma OTP kwa SMS. Ingiza code ili kuingia kwenye akaunti yako iliyopo. Hatutafungua akaunti mpya.");
+    }
+  }
+
   async function verifyPhoneOtp() {
     if (!supabase) return;
     const normalizedPhone = normalizeEmployeePhone(phone);
@@ -311,7 +331,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     const { error } = await supabase.auth.verifyOtp({ phone: normalizedPhone, token: phoneOtp.trim(), type: "sms" });
     setBusy(false);
     if (error) setMessage("Code haijathibitishwa: " + error.message);
-    else { setPhoneOtpPending(false); setMessage("Namba imethibitishwa. Inakubali mwaliko wa biashara..."); }
+    else {
+      setPhoneOtpPending(false);
+      setPhoneOtpLogin(false);
+      setMessage(inviteToken ? "Namba imethibitishwa. Inakubali mwaliko wa biashara..." : "Umeingia kwa uthibitisho wa SMS. Inathibitisha biashara na ruhusa zako...");
+    }
   }
 
   async function resendConfirmation() {
@@ -440,7 +464,7 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         <EmailIcon/>
         <TextInput value={email} onChangeText={setEmail} autoCapitalize="none" keyboardType="email-address" autoComplete="email" placeholder="Email Address" placeholderTextColor="#65758B" style={a.input}/>
       </View>)}
-      {mode === "login" || mode === "signup" ? <View style={a.inputWrap}>
+      {(mode === "login" || mode === "signup") && !(phoneOtpPending && phoneOtpLogin) ? <View style={a.inputWrap}>
         <LockIcon/>
         <TextInput value={password} onChangeText={setPassword} secureTextEntry={!showPassword} autoComplete={mode === "login" ? "current-password" : "new-password"} placeholder="Password (angalau herufi 8)" placeholderTextColor="#65758B" style={a.input}/>
         <Pressable onPress={()=>setShowPassword(v=>!v)} accessibilityLabel={showPassword ? "Ficha password" : "Onyesha password"} style={a.eyeButton}><Text style={a.eyeIcon}>{showPassword ? "◉" : "◎"}</Text></Pressable>
@@ -457,7 +481,9 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       {mode === "login" && !phoneLogin && <Pressable onPress={()=>{setMode("forgot");setMessage("");}} style={a.forgotWrap}><Text style={a.forgotLink}>Umesahau password?</Text></Pressable>}
       <Pressable disabled={busy} onPress={phoneOtpPending ? verifyPhoneOtp : mode === "signup" || mode === "login" ? authenticate : mode === "forgot" ? sendPasswordReset : saveNewPassword} style={a.button}><Text style={a.buttonText}>{busy ? "Subiri..." : phoneOtpPending ? "THIBITISHA SMS" : phoneLogin && mode === "signup" ? "JISAJILI KWA SIMU" : phoneLogin ? "INGIA KWA SIMU" : mode === "signup" ? "JISAJILI" : mode === "forgot" ? "TUMA LINK YA PASSWORD" : mode === "reset" ? "HIFADHI PASSWORD MPYA" : "INGIA"}</Text></Pressable>
       {mode === "signup" && !phoneLogin && <Pressable disabled={busy} onPress={resendConfirmation}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Tuma tena email ya uthibitisho</Text></Pressable>}
-      {mode === "login" && !inviteToken && <Pressable onPress={()=>{setPhoneLogin(value=>!value);setMessage("");}}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>{phoneLogin ? "Ingia kwa Email" : "Ingia kwa namba ya simu"}</Text></Pressable>}
+      {mode === "login" && !inviteToken && <Pressable onPress={()=>{setPhoneLogin(value=>!value);setPhoneOtpPending(false);setPhoneOtpLogin(false);setMessage("");}}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>{phoneLogin ? "Ingia kwa Email" : "Ingia kwa namba ya simu"}</Text></Pressable>}
+      {mode === "login" && phoneLogin && !phoneOtpPending && <Pressable disabled={busy} onPress={()=>void requestPhoneLoginOtp()}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>{busy ? "Inatuma OTP..." : "Ingia kwa OTP ya SMS (simu mpya)"}</Text></Pressable>}
+      {phoneOtpPending && phoneOtpLogin && <Pressable onPress={()=>{setPhoneOtpPending(false);setPhoneOtpLogin(false);setPhoneOtp("");setMessage("");}}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Rudi kutumia password</Text></Pressable>}
       {mode !== "login" && mode !== "reset" && <Pressable onPress={()=>{setMode("login");setMessage("");}}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Rudi kwenye Login</Text></Pressable>}
       {mode === "login" && <Pressable onPress={()=>{setMode("signup");if(!inviteToken)setPhoneLogin(false);setMessage("");}} style={a.signupWrap}><Text style={[a.signupText, darkMode && { color: "#C1CED8" }]}>Huna akaunti? <Text style={[a.signupLink, darkMode && { color: "#75E0B8" }]}>Jisajili hapa</Text></Text></Pressable>}
       {mode === "reset" && <Pressable onPress={()=>{setMode("login");setMessage("Omba link mpya kama link hii imeisha muda wake.");}}><Text style={[a.link, darkMode && { color: "#75E0B8" }]}>Rudi kwenye Login</Text></Pressable>}
