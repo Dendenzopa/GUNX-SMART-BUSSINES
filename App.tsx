@@ -66,7 +66,7 @@ function Dashboard() {
  const resetToHome=()=>{screenHistory.current=[];screenRef.current="Home";setScreen("Home");setShowMore(false);};
  const goBack=()=>{if(showMore){setShowMore(false);return true;}const current=screenRef.current;let previous:Screen|undefined;while(screenHistory.current.length){const candidate=screenHistory.current.pop()!;if(visibleScreens.includes(candidate)){previous=candidate;break;}}if(previous){screenRef.current=previous;setScreen(previous);return true;}if(current!=="Home"){screenRef.current="Home";setScreen("Home");return true;}return false;};
  useEffect(()=>{const subscription=BackHandler.addEventListener("hardwareBackPress",()=>goBack());return ()=>subscription.remove();},[showMore,isPlatformAdmin,visibleScreens.join("|")]);
- useEffect(()=>{if(!visibleScreens.includes(screen)){screenHistory.current=[];screenRef.current="Home";resetToHome();}},[screen,shopRole,isPlatformAdmin,visibleScreens.join("|")]);
+ useEffect(()=>{if(screen!=="OwnerDailySales"&&!visibleScreens.includes(screen)){screenHistory.current=[];screenRef.current="Home";resetToHome();}},[screen,shopRole,isPlatformAdmin,visibleScreens.join("|")]);
  useEffect(()=>{if(isPlatformAdmin){screenHistory.current=[];screenRef.current="Owner";setScreen("Owner");}},[isPlatformAdmin]);
  const [products,setProducts]=useState<Product[]>(supabaseConfigured ? [] : demoProducts);
  const [sales,setSales]=useState<Sale[]>(supabaseConfigured ? [] : demoSales);
