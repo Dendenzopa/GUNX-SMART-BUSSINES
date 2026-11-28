@@ -506,6 +506,7 @@ $$;
 -- The public bucket's public-URL delivery is configured at bucket level; these checks
 -- cover authenticated object operations and tenant/uploader isolation.
 GRANT SELECT ON public.shop_members TO authenticated;
+GRANT USAGE ON SCHEMA storage TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON storage.objects TO authenticated;
 
 SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
