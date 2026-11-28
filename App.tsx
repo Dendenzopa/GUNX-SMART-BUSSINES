@@ -248,7 +248,7 @@ function Dashboard() {
  }
  function add(p:Product) { if(pendingCheckoutKey){setNotice("Malizia au thibitisha mauzo yaliyosubiri kabla ya kubadilisha cart.");return;} setCart(current=>{const q=(current.find(x=>x.productId===p.id)?.quantity||0)+1;if(q>p.stockQuantity){setNotice("Stock limit reached.");return current;}return current.some(x=>x.productId===p.id)?current.map(x=>x.productId===p.id?{...x,quantity:q}:x):[...current,{productId:p.id,quantity:1}];});setNotice(p.name+" added to cart."); }
  function applyCustomReportDates(from:string,to:string) {
-  const valid=(value:string)=>/^\\d{4}-\\d{2}-\\d{2}$/.test(value)&&!Number.isNaN(new Date(value+"T00:00:00").getTime());
+  const valid=(value:string)=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(value))return false;const d=new Date(value+"T00:00:00");return !Number.isNaN(d.getTime())&&localDateKey(d)===value;};
   if(!valid(from)||!valid(to)||from>to){setNotice("Tarehe si sahihi. Tumia YYYY-MM-DD na hakikisha tarehe ya mwanzo haizidi tarehe ya mwisho.");return;}
   setReportFromDate(from);setReportToDate(to);setReportRange("custom");setNotice("Kipindi maalum kimewekwa: "+from+" hadi "+to+".");
  }
