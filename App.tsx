@@ -177,7 +177,7 @@ function Dashboard() {
     }
    }
    const {data:latestProducts,error:productsError}=await client.rpc("get_shop_products",{p_shop_id:shopId});
-   if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",category:typeof p.category==="string"?p.category:null,assignedStaffId:typeof p.assigned_staff_id==="string"?p.assigned_staff_id:null,imageUrl:p.image_url??null,unit:p.unit,costPrice:Number(p.cost_price),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,userId,effectiveRole,mapped,effectiveRole==="manager"?managerPermissions.slice().sort().join(","):"");}
+   if(!productsError&&latestProducts){const mapped=latestProducts.map((p:any)=>({id:p.id,name:p.name,sku:p.sku??"",category:typeof p.category==="string"?p.category:null,assignedStaffId:typeof p.assigned_staff_id==="string"?p.assigned_staff_id:null,category:typeof p.category==="string"?p.category:null,assignedStaffId:typeof p.assigned_staff_id==="string"?p.assigned_staff_id:null,imageUrl:p.image_url??null,unit:p.unit,costPrice:Number(p.cost_price??0),sellingPrice:Number(p.selling_price),stockQuantity:Number(p.stock_quantity),reorderLevel:Number(p.reorder_level),active:p.active}));setProducts(mapped);setHasShopProductCache(true);void writeCachedProducts(shopId,userId,effectiveRole,mapped,effectiveRole==="manager"?managerPermissions.slice().sort().join(","):"");}
    syncingOutboxRef.current=false;
   };
   void sync();
