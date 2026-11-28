@@ -5,11 +5,11 @@ import { supabase } from "../lib/supabase";
 import { formatTZS } from "../domain/money";
 import type { Product } from "../domain/types";
 
-type Props = { shopId: string | null; onProductsChanged: () => void; darkMode?: boolean };
+type Props = { shopId: string | null; onProductsChanged: () => void; darkMode?: boolean; canReceiveStock?: boolean; onReceiveStock?: (productId: string, quantity: number) => Promise<void> | void; onExit?: () => void };
 type SelectedImage = { uri: string; mimeType?: string | null };
 type ShopStaff = { user_id: string; role: string };
 
-export default function ProductManagement({ shopId, onProductsChanged, darkMode = true }: Props) {
+export default function ProductManagement({ shopId, onProductsChanged, darkMode = true, canReceiveStock = false, onReceiveStock, onExit }: Props) {
   const [items, setItems] = useState<Product[]>([]);
   const [members, setMembers] = useState<ShopStaff[]>([]);
   const [name, setName] = useState("");
@@ -26,6 +26,11 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
   const [message, setMessage] = useState("");
   const [canManage, setCanManage] = useState(false);
   const [canViewCost, setCanViewCost] = useState(false);
+  const [search, setSearch] = useState("");
+  const [filter, setFilter] = useState<"Zote" | "Active" | "Zinakaribia Kuisha" | "Zimeisha">("Zote");
+  const [showEditor, setShowEditor] = useState(false);
+  const [receivingProduct, setReceivingProduct] = useState<string | null>(null);
+  const [receiveAmount, setReceiveAmount] = useState("1");
 
   async function load() {
     if (!supabase || !shopId) return;
@@ -60,11 +65,11 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
 
   function reset() {
     setName(""); setSku(""); setCategory(""); setUnit("piece"); setCost(""); setPrice(""); setReorder("0");
-    setEditing(null); setImageUrl(null); setSelectedImage(null);
+    setEditing(null); setImageUrl(null); setSelectedImage(null); setShowEditor(false);
   }
 
   function startEdit(p: Product) {
-    setEditing(p.id); setName(p.name); setSku(p.sku); setCategory(p.category ?? ""); setUnit(p.unit);
+    setShowEditor(true); setEditing(p.id); setName(p.name); setSku(p.sku); setCategory(p.category ?? ""); setUnit(p.unit);
     setCost(String(p.costPrice)); setPrice(String(p.sellingPrice)); setReorder(String(p.reorderLevel));
     setImageUrl(p.imageUrl ?? null); setSelectedImage(null);
     setMessage("Unahariri " + p.name + ". Stock hubadilishwa kupitia Pokea stock.");
@@ -202,83 +207,78 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
     await load(); onProductsChanged();
   }
 
-  return <ScrollView keyboardShouldPersistTaps="handled" style={{ backgroundColor: darkMode ? "#081522" : "#F8FAFC" }} contentContainerStyle={s.content}>
-    <View style={s.intro}>
-      <View style={s.introCopy}>
-        <Text style={[s.eyebrow, !darkMode && { color: "#087A5A" }]}>GUNX CATALOGUE</Text>
-        <Text style={[s.title, !darkMode && { color: "#142D42" }]}>Usimamizi wa bidhaa</Text>
-        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Jenga katalogi safi yenye picha, bei na taarifa sahihi za kila bidhaa.</Text>
-      </View>
-      <View style={s.countBadge}><Text style={s.countValue}>{items.filter(p => p.active).length}</Text><Text style={s.countLabel}>ACTIVE</Text></View>
+  const active = items.filter(p => p.active);
+  const low = active.filter(p => p.stockQuantity > 0 && p.stockQuantity <= p.reorderLevel);
+  const out = active.filter(p => p.stockQuantity <= 0);
+  const value = active.reduce((n,p)=>n+p.stockQuantity*p.costPrice,0);
+  const visible = items.filter(p => {
+    const q=search.trim().toLowerCase();
+    const found=!q||p.name.toLowerCase().includes(q)||p.sku.toLowerCase().includes(q);
+    const matched=filter==="Zote"|| (filter==="Active"&&p.active) || (filter==="Zinakaribia Kuisha"&&p.active&&p.stockQuantity>0&&p.stockQuantity<=p.reorderLevel) || (filter==="Zimeisha"&&p.active&&p.stockQuantity<=0);
+    return found&&matched;
+  });
+  const bg=darkMode?"#0B1917":"#F1F5F9", card=darkMode?"#122623":"#FFFFFF", raised=darkMode?"#0E201D":"#F8FAFC", border=darkMode?"#1E3A34":"#DCE5EC", ink=darkMode?"#F0FDF4":"#142D42", muted=darkMode?"#99B8B0":"#64748B";
+  const confirmReceive=async()=>{const quantity=Number(receiveAmount);if(!receivingProduct||!Number.isFinite(quantity)||quantity<=0){setMessage("Weka kiasi sahihi cha stock.");return;}if(!onReceiveStock){setMessage("Huduma ya kupokea stock haijaunganishwa.");return;}await onReceiveStock(receivingProduct,quantity);setReceivingProduct(null);await load();};
+  return <ScrollView keyboardShouldPersistTaps="handled" style={{backgroundColor:bg}} contentContainerStyle={{padding:14,paddingBottom:44}}>
+    <View style={{backgroundColor:"#0B1917",borderColor:"#1E3A34",borderWidth:1,borderRadius:17,padding:13,flexDirection:"row",alignItems:"center",gap:9,marginBottom:12}}>
+      <Pressable onPress={onExit} style={{width:38,height:38,borderRadius:11,backgroundColor:"#122623",alignItems:"center",justifyContent:"center",borderWidth:1,borderColor:"#1E3A34"}}><Text style={{color:"#F0FDF4",fontSize:25}}>‹</Text></Pressable>
+      <View style={{flex:1}}><Text style={{color:"#F0FDF4",fontSize:18,fontWeight:"900"}}>Stock Kuu</Text><Text style={{color:"#99B8B0",fontSize:10}}>GUNX SMART BUSINESS • Katalogi & Stoo</Text></View>
+      <Pressable onPress={()=>void load()} style={{width:38,height:38,borderRadius:11,backgroundColor:"#122623",borderWidth:1,borderColor:"#1E3A34",alignItems:"center",justifyContent:"center"}}><Text style={{color:"#34D399",fontSize:20,fontWeight:"900"}}>↻</Text></Pressable>
+      <Pressable onPress={onExit} style={{height:38,paddingHorizontal:11,borderRadius:11,backgroundColor:"#122623",borderWidth:1,borderColor:"#1E3A34",justifyContent:"center"}}><Text style={{color:"#F0FDF4",fontSize:11,fontWeight:"800"}}>Toka</Text></Pressable>
     </View>
-    {canManage ? <View style={[s.panel, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
-      <View style={s.sectionTop}>
-        <View style={s.sectionMarker} />
-        <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>{editing ? "Hariri bidhaa" : "Ongeza bidhaa mpya"}</Text>
-      </View>
-      <Text style={[s.label, !darkMode && { color: "#526477" }]}>PICHA YA BIDHAA</Text>
-      <View style={s.photoEditor}>
-        <View style={s.photoPreview}>
-          {selectedImage?.uri || imageUrl
-            ? <Image source={{ uri: selectedImage?.uri ?? imageUrl! }} style={s.photoImage} resizeMode="cover" />
-            : <View style={s.photoEmpty}><Text style={s.photoGlyph}>▣</Text><Text style={s.photoEmptyText}>NO PHOTO</Text></View>}
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:9,paddingBottom:5}}>
+      {[
+        ["Jumla ya Bidhaa",String(active.length),"#34D399"],
+        ["Thamani ya Stoo",canViewCost?formatTZS(value):"Haijaoneshwa","#34D399"],
+        ["Zinakaribia Kuisha",String(low.length),"#FBBF24"],
+        ["Zimeisha Stoo",String(out.length),"#FB7185"]
+      ].map(([label,val,color])=><View key={label} style={{width:150,minHeight:82,backgroundColor:card,borderColor:border,borderWidth:1,borderRadius:15,padding:12,justifyContent:"space-between"}}><Text style={{color:muted,fontSize:10,fontWeight:"700"}}>{label}</Text><Text numberOfLines={1} style={{color,fontSize:17,fontWeight:"900"}}>{val}</Text></View>)}
+    </ScrollView>
+    <View style={{flexDirection:"row",gap:9,marginTop:10}}>
+      {canManage&&<Pressable onPress={()=>{reset();setShowEditor(v=>!v);}} style={{flex:1,backgroundColor:"#10B981",borderRadius:13,padding:14,alignItems:"center"}}><Text style={{color:"#042F2E",fontWeight:"900",fontSize:12}}>＋ Bidhaa Mpya</Text></Pressable>}
+      {canReceiveStock&&<Pressable onPress={()=>{if(active[0])setReceivingProduct(active[0].id);else setMessage("Ongeza bidhaa kwanza.");}} style={{flex:1,backgroundColor:card,borderColor:border,borderWidth:1,borderRadius:13,padding:14,alignItems:"center"}}><Text style={{color:"#34D399",fontWeight:"900",fontSize:12}}>⇅ Pokea Stock</Text></Pressable>}
+    </View>
+    {showEditor&&canManage&&<View style={{backgroundColor:card,borderColor:border,borderWidth:1,borderRadius:17,padding:14,marginTop:12}}>
+      <View style={{flexDirection:"row",justifyContent:"space-between",alignItems:"center"}}><Text style={{color:ink,fontSize:15,fontWeight:"900"}}>{editing?"Hariri bidhaa":"Ongeza bidhaa mpya"}</Text><Pressable onPress={reset}><Text style={{color:"#34D399",fontWeight:"800"}}>Funga ✕</Text></Pressable></View>
+      <View style={{flexDirection:"row",gap:8,marginTop:10}}><View style={{width:76,height:76,backgroundColor:raised,borderColor:border,borderWidth:1,borderRadius:12,overflow:"hidden",alignItems:"center",justifyContent:"center"}}>{selectedImage?.uri||imageUrl?<Image source={{uri:selectedImage?.uri??imageUrl!}} style={{width:"100%",height:"100%"}}/>:<Text style={{color:muted,fontSize:9}}>NO PHOTO</Text>}</View><View style={{flex:1,gap:6}}><Pressable onPress={()=>void chooseImage("camera")} style={{backgroundColor:"#16785C",padding:9,borderRadius:9}}><Text style={{color:"#F0FDF4",textAlign:"center",fontWeight:"800",fontSize:10}}>Piga picha</Text></Pressable><Pressable onPress={()=>void chooseImage("gallery")} style={{backgroundColor:raised,padding:9,borderRadius:9,borderWidth:1,borderColor:border}}><Text style={{color:ink,textAlign:"center",fontWeight:"800",fontSize:10}}>Chagua Gallery</Text></Pressable></View></View>
+      {[
+        {v:name,f:setName,p:"Jina la bidhaa"},{v:sku,f:setSku,p:"SKU / Barcode (hiari)"},{v:category,f:setCategory,p:"Kategoria"},{v:unit,f:setUnit,p:"Unit (piece, kg, lita)"},
+        ...(canViewCost?[{v:cost,f:setCost,p:"Bei ya kununua (TZS)",n:true}]:[]),
+        {v:price,f:setPrice,p:"Bei ya kuuza (TZS)",n:true},{v:reorder,f:setReorder,p:"Tahadhari ya stock",n:true}
+      ].map(x=><TextInput key={x.p} value={x.v} onChangeText={x.f} placeholder={x.p} placeholderTextColor={muted} keyboardType={x.n?"decimal-pad":"default"} style={{backgroundColor:raised,borderColor:border,borderWidth:1,borderRadius:11,padding:12,color:ink,marginTop:8,fontSize:12}}/>)}
+      <Pressable disabled={busy} onPress={()=>void save()} style={{backgroundColor:"#10B981",borderRadius:11,padding:13,alignItems:"center",marginTop:10}}><Text style={{color:"#042F2E",fontWeight:"900"}}>{busy?"Inahifadhi...":editing?"Hifadhi mabadiliko":"＋ Ongeza bidhaa"}</Text></Pressable>
+      {!!message&&<Text style={{color:"#34D399",fontSize:11,marginTop:8}}>{message}</Text>}
+    </View>}
+    <View style={{flexDirection:"row",alignItems:"center",marginTop:15,gap:8}}>
+      <View style={{flex:1,backgroundColor:raised,borderColor:border,borderWidth:1,borderRadius:12,paddingHorizontal:11}}><TextInput value={search} onChangeText={setSearch} placeholder="Tafuta jina la bidhaa au SKU..." placeholderTextColor={muted} style={{paddingVertical:12,color:ink,fontSize:12}}/></View>
+      <View style={{width:42,height:42,borderRadius:12,backgroundColor:card,borderColor:border,borderWidth:1,alignItems:"center",justifyContent:"center"}}><Text style={{color:"#34D399",fontSize:17}}>▦</Text></View>
+    </View>
+    <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{gap:7,marginTop:10}}>
+      {(["Zote","Active","Zinakaribia Kuisha","Zimeisha"] as const).map(label=><Pressable key={label} onPress={()=>setFilter(label)} style={{paddingHorizontal:13,paddingVertical:9,borderRadius:10,backgroundColor:filter===label?"#10B981":raised,borderWidth:1,borderColor:filter===label?"#10B981":border}}><Text style={{color:filter===label?"#042F2E":muted,fontWeight:"900",fontSize:10}}>{label}</Text></Pressable>)}
+    </ScrollView>
+    <View style={{flexDirection:"row",justifyContent:"space-between",alignItems:"center",marginTop:15,marginBottom:9}}><Text style={{color:ink,fontSize:12,fontWeight:"900",letterSpacing:1}}>KATALOGI YA BIDHAA</Text><Text style={{color:muted,fontSize:10}}>Kichujio: {filter} • {visible.length}</Text></View>
+    {busy&&<ActivityIndicator color="#34D399" style={{marginVertical:10}}/>}
+    <View style={{flexDirection:"row",flexWrap:"wrap",justifyContent:"space-between",rowGap:10}}>
+      {visible.map(p=><View key={p.id} style={{width:"48.5%",backgroundColor:card,borderColor:border,borderWidth:1,borderRadius:15,overflow:"hidden"}}>
+        <View style={{height:108,backgroundColor:raised,borderBottomColor:border,borderBottomWidth:1,alignItems:"center",justifyContent:"center"}}>{p.imageUrl?<Image source={{uri:p.imageUrl}} style={{width:"100%",height:"100%"}} resizeMode="cover"/>:<Text style={{color:muted,fontSize:26}}>▧</Text>}
+          <View style={{position:"absolute",top:7,right:7,backgroundColor:"#122623",borderRadius:7,paddingHorizontal:7,paddingVertical:4}}><Text style={{color:p.stockQuantity<=0?"#FB7185":p.stockQuantity<=p.reorderLevel?"#FBBF24":"#34D399",fontSize:9,fontWeight:"900"}}>{p.stockQuantity} {p.unit}</Text></View>
         </View>
-        <View style={s.photoActions}>
-          <Pressable disabled={busy} onPress={() => void chooseImage("camera")} style={s.photoButton}>
-            <Text style={s.photoButtonIcon}>◎</Text><Text style={s.photoButtonText}>Piga picha</Text>
-          </Pressable>
-          <Pressable disabled={busy} onPress={() => void chooseImage("gallery")} style={s.photoButtonSecondary}>
-            <Text style={s.photoButtonIcon}>▧</Text><Text style={s.photoButtonText}>Chagua Gallery</Text>
-          </Pressable>
-          <Text style={[s.photoHint, !darkMode && { color: "#64748B" }]}>JPG, PNG au WEBP · hadi 5 MB</Text>
+        <View style={{padding:9,gap:4}}><Text numberOfLines={1} style={{color:ink,fontSize:12,fontWeight:"900"}}>{p.name}</Text><Text numberOfLines={1} style={{color:muted,fontSize:9}}>SKU: {p.sku||"—"} • {p.category||p.unit}</Text><Text style={{color:"#34D399",fontSize:13,fontWeight:"900"}}>{formatTZS(p.sellingPrice)}</Text>{canViewCost&&<Text style={{color:muted,fontSize:9}}>Gharama: {formatTZS(p.costPrice)}</Text>}{!p.active&&<Text style={{color:"#FB7185",fontSize:9}}>IMEFICHWA</Text>}</View>
+        <View style={{paddingHorizontal:8,paddingBottom:8,flexDirection:"row",gap:5}}>
+          {canReceiveStock&&<Pressable onPress={()=>setReceivingProduct(p.id)} style={{flex:1,backgroundColor:"#10B98122",borderColor:"#10B98166",borderWidth:1,borderRadius:8,paddingVertical:8,alignItems:"center"}}><Text style={{color:"#34D399",fontSize:9,fontWeight:"900"}}>＋ Stock</Text></Pressable>}
+          {canManage&&<Pressable onPress={()=>startEdit(p)} style={{flex:1,backgroundColor:raised,borderColor:border,borderWidth:1,borderRadius:8,paddingVertical:8,alignItems:"center"}}><Text style={{color:ink,fontSize:9,fontWeight:"800"}}>Hariri</Text></Pressable>}
+          {canManage&&!p.active&&<Pressable onPress={()=>void restore(p)} style={{flex:1,backgroundColor:raised,borderColor:border,borderWidth:1,borderRadius:8,paddingVertical:8,alignItems:"center"}}><Text style={{color:ink,fontSize:9,fontWeight:"800"}}>Rejesha</Text></Pressable>}
         </View>
-      </View>
-      <Text style={[s.label, !darkMode && { color: "#526477" }]}>TAARIFA ZA BIDHAA</Text>
-      <TextInput value={name} onChangeText={setName} placeholder="Jina la bidhaa" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
-      <TextInput value={sku} onChangeText={setSku} placeholder="SKU / Barcode (hiari)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
-      <TextInput value={category} onChangeText={setCategory} placeholder="Kategoria (mf. Vinywaji, Chakula)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
-      <TextInput value={unit} onChangeText={setUnit} placeholder="Unit (mf. piece, kg, lita)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
-      {canViewCost && <TextInput value={cost} onChangeText={setCost} placeholder="Bei ya kununua (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>}
-      <TextInput value={price} onChangeText={setPrice} placeholder="Bei ya kuuza (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
-      <TextInput value={reorder} onChangeText={setReorder} placeholder="Tahadhari ya stock" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
-      <Pressable disabled={busy} onPress={save} style={[s.button, busy && { opacity: 0.6 }]}><Text style={s.buttonText}>{busy ? "Inahifadhi..." : editing ? "Hifadhi mabadiliko" : "＋  Ongeza bidhaa"}</Text></Pressable>
-      {editing && <Pressable disabled={busy} onPress={reset} style={s.secondary}><Text style={s.secondaryText}>Ghairi uhariri</Text></Pressable>}
-      {!!message && <Text style={s.message}>{message}</Text>}
-    </View> : <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Kubadilisha katalogi, picha, kuficha au kurejesha bidhaa kunaruhusiwa kwa Owner na Manager mwenye ruhusa ya products.manage.</Text>}
-    {!!message && !canManage && <Text style={s.message}>{message}</Text>}
-    <View style={s.row}><Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Katalogi ya bidhaa ({items.filter(p => p.active).length})</Text><Pressable onPress={load}><Text style={[s.refresh, !darkMode && { color: "#087A5A" }]}>Refresh</Text></Pressable></View>
-    {busy && <ActivityIndicator color="#43C99A"/>}
-    {items.map(p => <View key={p.id} style={[s.item, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
-      <View style={s.itemPhoto}>
-        {p.imageUrl ? <Image source={{ uri: p.imageUrl }} style={s.itemPhotoImage} resizeMode="cover"/> : <Text style={s.itemPhotoPlaceholder}>▣</Text>}
-      </View>
-      <View style={s.itemDetails}>
-        <Text style={[s.name, !darkMode && { color: "#142D42" }]}>{p.name} {!p.active ? "(Imefichwa)" : ""}</Text>
-        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{p.sku || "Hakuna SKU"} · {p.category || "Bila kategoria"} · {p.unit} · Stock {p.stockQuantity}</Text>
-        <Text style={[s.price, !darkMode && { color: "#8A6512" }]}>{canViewCost ? `Gharama ${formatTZS(p.costPrice)} · ` : ""}Bei {formatTZS(p.sellingPrice)}</Text>
-        {canManage && members.length > 0 && <View style={{ marginTop: 9 }}>
-          <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Wapangiwe bidhaa hii:</Text>
-          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 5 }}>
-            {members.map(member => {
-              const selected = (p.assignedStaffIds ?? []).includes(member.user_id);
-              return <Pressable key={member.user_id} disabled={busy} onPress={() => void toggleStaffAssignment(p, member.user_id)}
-                style={{ paddingHorizontal: 9, paddingVertical: 7, borderRadius: 9, borderWidth: 1, borderColor: selected ? "#43C99A" : "#31516A", backgroundColor: selected ? "#173D36" : (darkMode ? "#0B1B2A" : "#F1F5F9") }}>
-                <Text style={{ color: selected ? "#75E0B8" : (darkMode ? "#D9E4EC" : "#334155"), fontSize: 10, fontWeight: "800" }}>
-                  {selected ? "✓ " : "+ "}{member.role === "manager" ? "Meneja" : member.role === "stockkeeper" ? "Storekeeper" : "Staff"} ••••{member.user_id.slice(-4)}
-                </Text>
-              </Pressable>;
-            })}
-          </View>
-        </View>}
-      </View>
-      {canManage && <View style={s.actions}>
-        {p.active ? <>
-          <Pressable onPress={() => startEdit(p)} style={s.small}><Text style={s.buttonText}>Hariri</Text></Pressable>
-          <Pressable onPress={() => archive(p)} style={s.small}><Text style={s.buttonText}>Ficha</Text></Pressable>
-        </> : <Pressable onPress={() => restore(p)} style={s.small}><Text style={s.buttonText}>Rejesha</Text></Pressable>}
-      </View>}
-    </View>)}
-    {!busy && items.length === 0 && <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Bado hakuna bidhaa. Ongeza bidhaa ya kwanza hapo juu.</Text>}
+      </View>)}
+    </View>
+    {!busy&&visible.length===0&&<View style={{backgroundColor:card,borderColor:border,borderWidth:1,borderRadius:14,padding:20,alignItems:"center"}}><Text style={{color:ink,fontWeight:"800"}}>Hakuna bidhaa zilizopatikana</Text><Text style={{color:muted,fontSize:11,marginTop:5}}>Badili utafutaji au kichujio.</Text></View>}
+    {receivingProduct&&<View style={{backgroundColor:card,borderColor:"#10B981",borderWidth:1,borderRadius:16,padding:13,marginTop:14}}>
+      <Text style={{color:ink,fontWeight:"900"}}>Pokea stock: {items.find(p=>p.id===receivingProduct)?.name}</Text>
+      <TextInput value={receiveAmount} onChangeText={setReceiveAmount} placeholder="Kiasi cha stock kinachoingia" placeholderTextColor={muted} keyboardType="decimal-pad" style={{backgroundColor:raised,borderColor:border,borderWidth:1,borderRadius:10,padding:12,color:ink,marginTop:9}}/>
+      <View style={{flexDirection:"row",gap:8,marginTop:9}}><Pressable onPress={()=>void confirmReceive()} style={{flex:1,backgroundColor:"#10B981",padding:12,borderRadius:10,alignItems:"center"}}><Text style={{color:"#042F2E",fontWeight:"900"}}>Thibitisha kupokea</Text></Pressable><Pressable onPress={()=>setReceivingProduct(null)} style={{backgroundColor:raised,padding:12,borderRadius:10,borderWidth:1,borderColor:border}}><Text style={{color:ink,fontWeight:"800"}}>Ghairi</Text></Pressable></View>
+    </View>}
+    {!!message&&!showEditor&&<Text style={{color:"#34D399",fontSize:11,marginTop:10}}>{message}</Text>}
+    <Text style={{color:muted,fontSize:9,textAlign:"center",marginTop:15}}>Stock in huhifadhiwa kupitia RPC salama ya biashara hii. Thamani ya ununuzi huonekana kwa wenye ruhusa pekee.</Text>
   </ScrollView>;
 }
 
