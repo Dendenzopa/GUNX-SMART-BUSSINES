@@ -30,6 +30,7 @@ Cloud data is authoritative. Local-only, unsynchronized offline sales are not gu
 
 - Initial recovery control: an authenticated user can request **global session revocation** from a trusted replacement device. A narrowly scoped Edge Function validates the caller's JWT, writes a security audit event, and uses the Supabase Auth Admin API to revoke all sessions for that same user. The user must then sign in again on the trusted device.
 - This first version deliberately revokes all sessions for that account, not just one selected phone. It must not be labelled as per-device revocation.
+- Supabase invalidates refresh tokens, but already-issued access-token JWTs can remain valid until their expiry. Therefore this is not instantaneous termination of every in-flight request; keep JWT lifetime appropriately short and assess server-side `getUser()` checks for highly sensitive actions.
 - The Edge Function derives the user from the verified JWT; it never accepts a user ID from the client as proof of authority. The service-role key stays server-side.
 - A future per-device registry can be added only with a reliable server-side session-to-installation mapping and enforcement on sensitive operations. Do not claim that simply marking a device row revoked invalidates its Supabase refresh token.
 - The Boss may initiate an employee access-revocation action only through the existing owner/manager authorization model and an explicit confirmation. This must not grant the Boss access to the employee's password, OTP, or personal account.
