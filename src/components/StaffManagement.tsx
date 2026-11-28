@@ -211,7 +211,7 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
         {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>{r.label}</Text></Pressable>)}
         {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ruhusa</Text></Pressable>}
         <Pressable disabled={busy} onPress={() => remove(member)} style={[s.small, s.remove]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ondoa</Text></Pressable>
-      </View>}
+      </>}</View>}
     </View>)}
     {(owner||managerCanViewDocuments) && selectedEmployee && <View style={[s.panel,!darkMode&&{backgroundColor:"#FFFFFF",borderColor:"#DCE5EC"}]}>
       <Text style={[s.heading,!darkMode&&{color:"#142D42"}]}>Wasifu wa mfanyakazi</Text>
