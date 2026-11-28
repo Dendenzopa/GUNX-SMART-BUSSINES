@@ -539,6 +539,8 @@ $$;
 -- The public bucket's public-URL delivery is configured at bucket level; these checks
 -- cover authenticated object operations and tenant/uploader isolation.
 GRANT SELECT ON public.shop_members TO authenticated;
+GRANT USAGE ON SCHEMA auth TO authenticated;
+GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
 GRANT USAGE ON SCHEMA storage TO authenticated;
 GRANT SELECT, INSERT, UPDATE ON storage.objects TO authenticated;
 
