@@ -49,7 +49,12 @@ CREATE TABLE public.shop_invitations (
   expires_at timestamptz NOT NULL DEFAULT (now()+interval '7 days'),
   accepted_at timestamptz,
   accepted_user_id uuid REFERENCES auth.users(id),
-  CHECK (phone_e164 ~ '^\+[1-9][0-9]{7,14}
+  CHECK (phone_e164 ~ '^\\+[1-9][0-9]{7,14}$')
+);
+CREATE UNIQUE INDEX shop_invitations_one_pending_phone
+ON public.shop_invitations(shop_id,phone_e164) WHERE accepted_at IS NULL;
+
+CREATE TABLE public.shop_subscriptions (
   shop_id uuid NOT NULL,
   plan_code text,
   status text,
