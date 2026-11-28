@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Platform, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import { useShopContext } from "./AuthGate";
 import { supabase } from "../lib/supabase";
@@ -57,6 +57,27 @@ export default function EmployeeProfile({darkMode=true}:{darkMode?:boolean}) {
    setNotice("Imeshindikana kupakia nyaraka: "+(error instanceof Error?error.message:"Jaribu tena."));
   } finally {setUploading(null);}
  }
+ async function uploadContractFile(file:File) {
+  if(!supabase||!shopId||!userId||uploading)return;
+  if(file.type!=="application/pdf"||!file.name.toLowerCase().endsWith(".pdf")){setNotice("Chagua mkataba wa PDF pekee.");return;}
+  if(file.size>10*1024*1024){setNotice("Mkataba umezidi kiwango cha 10MB.");return;}
+  try {
+   setUploading("employment_contract");
+   const {data:existingProfile,error:profileLookupError}=await supabase.from("employee_profiles").select("user_id").eq("shop_id",shopId).eq("user_id",userId).maybeSingle();
+   if(profileLookupError){setNotice("Imeshindikana kuthibitisha wasifu: "+profileLookupError.message);return;}
+   if(!existingProfile){setNotice("Hifadhi kwanza wasifu wako kabla ya kupakia mkataba.");return;}
+   const safeName=file.name.replace(/[^a-zA-Z0-9._-]/g,"_").slice(-90);
+   const path=shopId+"/"+userId+"/employment_contract-"+Date.now()+"-"+safeName;
+   const {error:uploadError}=await supabase.storage.from("employee-private-documents").upload(path,file,{contentType:"application/pdf",upsert:false});
+   if(uploadError){setNotice("Mkataba haukupakiwa: "+uploadError.message);return;}
+   const {data:doc,error:insertError}=await supabase.from("employee_private_documents").insert({shop_id:shopId,user_id:userId,document_type:"employment_contract",storage_path:path}).select("id").single();
+   if(insertError||!doc){await supabase.storage.from("employee-private-documents").remove([path]);setNotice("Taarifa ya mkataba haijahifadhiwa: "+(insertError?.message??"Jaribu tena."));return;}
+   const {error:logError}=await supabase.rpc("log_employee_document_access",{p_document_id:doc.id,p_action:"upload"});
+   setNotice(logError?"Mkataba umepakiwa lakini audit log haikuhifadhiwa: "+logError.message:"Mkataba wa ajira wa PDF umehifadhiwa kwenye hifadhi binafsi.");
+  } catch(error) {
+   setNotice("Imeshindikana kupakia mkataba: "+(error instanceof Error?error.message:"Jaribu tena."));
+  } finally {setUploading(null);}
+ }
  async function save(){
   if(!supabase||!shopId||!userId)return;
   if(!form.legal_name.trim()||!form.phone_e164.trim()||!form.identity_number.trim()||!consent){setNotice("Jaza jina, simu, kitambulisho na ukubali tamko kabla ya kuhifadhi.");return;}
@@ -87,7 +108,9 @@ export default function EmployeeProfile({darkMode=true}:{darkMode?:boolean}) {
     <View style={{flex:1}}><Text style={s.label}>{label}</Text><Text style={s.copy}>JPG, PNG au WEBP • hadi 10MB</Text></View>
     <Pressable disabled={!!uploading||loading} onPress={()=>void uploadDocument(kind)} style={s.smallButton}><Text style={s.buttonText}>{uploading===kind?"Inapakia...":"Chagua picha"}</Text></Pressable>
    </View>)}
-   <Text style={s.copy}>Mkataba wa ajira wa PDF na utazamaji wa nyaraka na Boss vitaongezwa baada ya sehemu hii.</Text>
+   <Text style={s.label}>Mkataba wa ajira (PDF)</Text>
+   {Platform.OS==="web" ? React.createElement("input",{type:"file",accept:"application/pdf,.pdf",disabled:!!uploading||loading,onChange:(event:React.ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];if(file)void uploadContractFile(file);event.target.value="";},style:{color:darkMode?"#E5F2F6":"#142D42",maxWidth:"100%"}}) : <Text style={s.copy}>Kwa sasa chagua mkataba wa PDF kupitia GUNX Web Preview. Kichagua faili cha Android/iOS kitaongezwa baada ya kuthibitisha dependency ya Expo.</Text>}
+   <Text style={s.copy}>PDF pekee • hadi 10MB. Mkataba utaonekana kwa Boss na Manager aliyepewa ruhusa ya nyaraka.</Text>
   </View>
   <Pressable onPress={()=>setConsent(v=>!v)} style={s.consent}><Text style={s.choiceText}>{consent?"☑":"□"}  Nakubali taarifa hizi zitumike kwa madhumuni ya ajira na usimamizi wa biashara, kwa kufuata ruhusa na sera za faragha.</Text></Pressable>
   <Pressable disabled={busy||loading} onPress={()=>void save()} style={s.button}><Text style={s.buttonText}>{busy?"Inahifadhi...":"Hifadhi wasifu"}</Text></Pressable>
