@@ -34,6 +34,7 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
   const { shopId, shopRole } = useShopContext();
   const [members, setMembers] = useState<Member[]>([]);
   const [phone, setPhone] = useState("");
+  const [memberSearch, setMemberSearch] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [role, setRole] = useState<Role>("cashier");
   const [owner, setOwner] = useState(false);
@@ -182,75 +183,164 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     await load();
   }
 
-  return <ScrollView style={{ backgroundColor: darkMode ? "#081522" : "#F8FAFC" }} contentContainerStyle={s.wrap}>
-    <Text style={[s.title, !darkMode && { color: "#142D42" }]}>Wafanyakazi wa Duka</Text>
-    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Alika wafanyakazi kwa namba ya simu. Kila mfanyakazi atakuwa na akaunti yake binafsi na ataingia kwa simu na password.</Text>
-    {loading && <ActivityIndicator color="#43C99A" />}
-    {!owner && !loading && <Text style={[s.notice, !darkMode && { color: "#075E46", backgroundColor: "#E8F7F0" }]}>Akaunti hii haina ruhusa ya mmiliki. Unaweza kuona orodha tu; maamuzi ya ruhusa yanathibitishwa na database.</Text>}
-    {owner && <View style={[s.panel, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
-      <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Ongeza mfanyakazi</Text>
-      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Ingiza namba ya simu ya mfanyakazi. Link ya mwaliko itatengenezwa ili umshirikishe.</Text>
-      <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="07XXXXXXXX au +2557XXXXXXXX" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
-      <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Chagua nafasi</Text>
-      {roles.map(item => <Pressable key={item.id} onPress={() => setRole(item.id)} style={[s.role, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1" }, role === item.id && (darkMode ? s.selected : { backgroundColor: "#E8F7F0", borderColor: "#159A70" })]}>
-        <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{item.label} {role === item.id ? "✓" : ""}</Text><Text style={[s.copy, !darkMode && { color: "#526477" }]}>{item.detail}</Text>
-      </Pressable>)}
-      <Pressable disabled={busy} onPress={addMember} style={s.button}><Text style={s.buttonText}>{busy ? "Inachakata..." : "＋ Ongeza mfanyakazi"}</Text></Pressable>
-      {!!inviteLink && <View style={[s.inviteBox, !darkMode && { backgroundColor: "#F0FDF7", borderColor: "#A7DCC7" }]}>
-        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Link ya mwaliko (inaisha baada ya siku 7):</Text>
-        <Text selectable style={[s.inviteLink, !darkMode && { color: "#087A5A" }]}>{inviteLink}</Text>
-        <Pressable disabled={busy} onPress={() => void shareInvitation(inviteLink)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Shiriki tena link</Text></Pressable>
-      </View>}
-    </View>}
-    <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Orodha ya wanachama ({members.length})</Text>
-    {members.map(member => <View key={member.user_id} style={[s.member, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
-      <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{member.role === "owner" ? "Mmiliki" : roles.find(r => r.id === member.role)?.label ?? member.role}</Text>
-      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Utambulisho: ••••{member.user_id.slice(-6)}</Text>
-      {((owner && member.role !== "owner")||managerCanViewDocuments) && <View style={s.actions}>{(owner||managerCanViewDocuments) && member.role !== "owner" && <Pressable disabled={busy} onPress={()=>void viewEmployeeProfile(member)} style={s.small}><Text style={[s.smallText,!darkMode&&{color:"#FFFFFF"}]}>Wasifu / Nyaraka</Text></Pressable>}{owner && <>
+  const staffMembers = members.filter(member => member.role !== "owner");
+  const filteredMembers = staffMembers.filter(member => {
+    const roleLabel = roles.find(item => item.id === member.role)?.label ?? member.role;
+    return (roleLabel + " " + member.user_id).toLowerCase().includes(memberSearch.toLowerCase());
+  });
+  const panel = { backgroundColor: "#0B192C", borderColor: "#1E3A5F", borderWidth: 1, borderRadius: 20, padding: 16 } as const;
+  const field = { backgroundColor: "#10223A", borderColor: "#1E3A5F", borderWidth: 1, borderRadius: 13, color: "#FFFFFF", paddingHorizontal: 14, paddingVertical: 13, fontSize: 13 } as const;
+  const mutedText = { color: "#AFC0D0", fontSize: 11, lineHeight: 17 } as const;
+  const actionButton = { backgroundColor: "#10223A", borderColor: "#1E3A5F", borderWidth: 1, borderRadius: 11, paddingHorizontal: 11, paddingVertical: 9 } as const;
+  return <ScrollView style={{ backgroundColor: "#071120" }} contentContainerStyle={{ paddingHorizontal: 16, paddingTop: 16, paddingBottom: 42, width: "100%", maxWidth: 1120, alignSelf: "center", gap: 15 }} keyboardShouldPersistTaps="handled">
+    <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 10, padding: 13, backgroundColor: "#0B192C", borderColor: "#1E3A5F", borderWidth: 1, borderRadius: 17 }}>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={{ color: "#FBBF24", fontSize: 9, fontWeight: "900", letterSpacing: 1.4 }}>GUNX SMART BUSINESS</Text>
+        <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900", marginTop: 3 }}>Biashara Yangu</Text>
+        <Text style={{ color: "#AFC0D0", fontSize: 10, marginTop: 2 }}>Usimamizi wa akaunti na nafasi za wafanyakazi</Text>
+      </View>
+      <Pressable disabled={loading || busy} onPress={() => void load()} style={{ width: 42, height: 42, borderRadius: 12, backgroundColor: "#10223A", borderColor: "#1E3A5F", borderWidth: 1, alignItems: "center", justifyContent: "center" }}>
+        {loading ? <ActivityIndicator color="#10B981" /> : <Text style={{ color: "#10B981", fontSize: 20, fontWeight: "900" }}>↻</Text>}
+      </Pressable>
+    </View>
 
-        {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>{r.label}</Text></Pressable>)}
-        {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ruhusa</Text></Pressable>}
-        <Pressable disabled={busy} onPress={() => remove(member)} style={[s.small, s.remove]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ondoa</Text></Pressable>
-      </>}</View>}
-    </View>)}
-    {(owner||managerCanViewDocuments) && selectedEmployee && <View style={[s.panel,!darkMode&&{backgroundColor:"#FFFFFF",borderColor:"#DCE5EC"}]}>
-      <Text style={[s.heading,!darkMode&&{color:"#142D42"}]}>Wasifu wa mfanyakazi</Text>
-      <Text style={[s.copy,!darkMode&&{color:"#526477"}]}>Akaunti ••••{selectedEmployee.user_id.slice(-6)} · {selectedEmployee.role}</Text>
-      {profileLoading&&<ActivityIndicator color="#43C99A"/>}
-      {!profileLoading&&!employeeProfile&&<Text style={[s.copy,!darkMode&&{color:"#526477"}]}>Hakuna wasifu uliohifadhiwa bado.</Text>}
-      {!profileLoading&&employeeProfile&&<>
-       {([
-        ["Majina kamili",employeeProfile.legal_name],["Simu",employeeProfile.phone_e164],
-        ["Kitambulisho",employeeProfile.identity_type==="nida"?"NIDA":"Kadi ya mpiga kura"],
-        ["Namba ya kitambulisho",employeeProfile.identity_number],["Cheo",employeeProfile.job_title||"—"],
-        ["Tarehe ya kuanza",employeeProfile.employment_start_date||"—"],
-        ["Mdhamini",employeeProfile.guarantor_name||"—"],["Simu ya mdhamini",employeeProfile.guarantor_phone||"—"],
-        ["Anwani ya mdhamini",employeeProfile.guarantor_address||"—"],["Mahali anapotoka",employeeProfile.origin_location||"—"],
-        ["Anwani ya sasa",employeeProfile.current_address||"—"],["Mtu wa dharura",employeeProfile.emergency_contact_name||"—"],
-        ["Simu ya dharura",employeeProfile.emergency_contact_phone||"—"]
-       ] as [string,string][]).map(([label,value])=><View key={label} style={s.profileField}><Text style={[s.copy,!darkMode&&{color:"#526477"}]}>{label}</Text><Text selectable style={[s.roleTitle,!darkMode&&{color:"#142D42"}]}>{value}</Text></View>)}
-       <Text style={[s.copy,!darkMode&&{color:"#526477"}]}>Tamko limekubaliwa: {employeeProfile.declaration_accepted_at?"Ndiyo":"Hapana"}</Text>
-      </>}
-      <Text style={[s.heading,!darkMode&&{color:"#142D42"}]}>Nyaraka binafsi ({employeeDocuments.length})</Text>
-      {employeeDocuments.map(doc=><View key={doc.id} style={s.documentRow}>
-       <View style={{flex:1}}><Text style={[s.roleTitle,!darkMode&&{color:"#142D42"}]}>{({identity:"Kitambulisho",employee_photo:"Picha ya mfanyakazi",local_government_letter:"Barua ya serikali ya mtaa",guarantor_support:"Nyaraka za mdhamini",employment_contract:"Mkataba wa ajira"} as Record<string,string>)[doc.document_type]||doc.document_type}</Text><Text style={[s.copy,!darkMode&&{color:"#526477"}]}>{new Date(doc.created_at).toLocaleDateString()}</Text></View>
-       <Pressable disabled={!!openingDocument} onPress={()=>void openEmployeeDocument(doc)} style={s.small}><Text style={s.smallText}>{openingDocument===doc.id?"Inafungua...":"Fungua"}</Text></Pressable>
+    <View style={{ gap: 5 }}>
+      <Text style={{ color: "#FFFFFF", fontSize: 25, fontWeight: "900", letterSpacing: -0.5 }}>Wafanyakazi wa Duka</Text>
+      <View style={{ alignSelf: "flex-start", flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#10223A", borderColor: "#FBBF24", borderWidth: 1, borderRadius: 30, paddingHorizontal: 11, paddingVertical: 6 }}>
+        <View style={{ width: 7, height: 7, borderRadius: 4, backgroundColor: "#10B981" }} />
+        <Text style={{ color: "#FBBF24", fontSize: 9, fontWeight: "800" }}>USIMAMIZI WA AKAUNTI & NAFASI</Text>
+      </View>
+      <Text style={{ color: "#AFC0D0", fontSize: 12, lineHeight: 19 }}>Alika wafanyakazi kwa namba ya simu. Kila mfanyakazi ana akaunti yake na huingia kwa simu na nenosiri lake binafsi.</Text>
+    </View>
+
+    {loading && <ActivityIndicator color="#10B981" />}
+    {!owner && !loading && <View style={{ backgroundColor: "#102D2C", borderColor: "#1D6B55", borderWidth: 1, borderRadius: 13, padding: 12 }}><Text style={{ color: "#75E0B8", fontSize: 11, lineHeight: 18 }}>Akaunti hii haina ruhusa ya mmiliki. Unaweza kuona taarifa zinazoruhusiwa tu; maamuzi ya nafasi na ruhusa yanathibitishwa na database.</Text></View>}
+
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 9 }}>
+      {[
+        { label: "Wanachama waliothibitishwa", value: String(staffMembers.length), color: "#FFFFFF", icon: "♙" },
+        { label: "Mialiko inasubiri", value: "—", color: "#FBBF24", icon: "◷" },
+        { label: "Nafasi zilizopo", value: "—", color: "#FFFFFF", icon: "✓" },
+      ].map(item => <View key={item.label} style={{ flexGrow: 1, flexBasis: "30%", minWidth: 105, backgroundColor: "#0B192C", borderColor: "#1E3A5F", borderWidth: 1, borderRadius: 16, padding: 12, minHeight: 86, justifyContent: "space-between" }}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 5 }}>
+          <Text style={{ color: "#AFC0D0", fontSize: 9, fontWeight: "700", flex: 1 }}>{item.label}</Text>
+          <Text style={{ color: item.color === "#FBBF24" ? "#FBBF24" : "#10B981", fontSize: 17, fontWeight: "900" }}>{item.icon}</Text>
+        </View>
+        <Text style={{ color: item.color, fontSize: 22, fontWeight: "900", marginTop: 8 }}>{item.value}</Text>
       </View>)}
-      <Pressable onPress={()=>{setSelectedEmployee(null);setEmployeeProfile(null);setEmployeeDocuments([]);}} style={s.refresh}><Text style={s.smallText}>Funga wasifu</Text></Pressable>
+    </View>
+
+    <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 14, alignItems: "flex-start" }}>
+      {owner && <View style={[panel, { flexGrow: 1, flexBasis: Platform.OS === "web" ? 390 : "100%" }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", borderBottomColor: "#1E3A5F", borderBottomWidth: 1, paddingBottom: 11, marginBottom: 12 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", gap: 9 }}>
+            <View style={{ width: 5, height: 23, borderRadius: 4, backgroundColor: "#FBBF24" }} />
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900" }}>Ongeza mfanyakazi</Text>
+          </View>
+          <Text style={{ color: "#10B981", fontSize: 10, fontWeight: "800" }}>MWALIKO WA SIMU</Text>
+        </View>
+        <Text style={{ color: "#DCE7F1", fontSize: 11, fontWeight: "800", marginBottom: 6 }}>Namba ya simu ya mfanyakazi</Text>
+        <TextInput value={phone} onChangeText={setPhone} keyboardType="phone-pad" placeholder="07XXXXXXXX au +2557XXXXXXXX" placeholderTextColor="#8194A5" style={field} />
+        <Text style={{ color: "#DCE7F1", fontSize: 11, fontWeight: "800", marginTop: 16, marginBottom: 8 }}>Chagua nafasi</Text>
+        <View style={{ gap: 8 }}>
+          {roles.map(item => <Pressable key={item.id} disabled={busy} onPress={() => setRole(item.id)} style={{ padding: 12, borderWidth: role === item.id ? 2 : 1, borderColor: role === item.id ? "#10B981" : "#1E3A5F", borderRadius: 13, backgroundColor: role === item.id ? "#12372F" : "#10223A", flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>{item.label} {role === item.id ? "✓" : ""}</Text>
+              <Text style={{ color: "#AFC0D0", fontSize: 10, marginTop: 4, lineHeight: 15 }}>{item.detail}</Text>
+            </View>
+            <View style={{ paddingHorizontal: 8, paddingVertical: 5, borderRadius: 8, backgroundColor: role === item.id ? "#10B981" : "#0B192C" }}>
+              <Text style={{ color: role === item.id ? "#071120" : "#AFC0D0", fontSize: 9, fontWeight: "900" }}>{role === item.id ? "IMECHAGULIWA" : "CHAGUA"}</Text>
+            </View>
+          </Pressable>)}
+        </View>
+        <View style={{ backgroundColor: "#10223A", borderColor: "#1E3A5F", borderWidth: 1, borderRadius: 11, padding: 11, marginTop: 10 }}>
+          <Text style={{ color: "#FBBF24", fontSize: 10, fontWeight: "900" }}>MAELEZO YA NAFASI</Text>
+          <Text style={[mutedText, { marginTop: 4 }]}>{roles.find(item => item.id === role)?.detail}</Text>
+        </View>
+        <Pressable disabled={busy || !phone.trim()} onPress={() => void addMember()} style={{ backgroundColor: busy ? "#285E50" : "#059669", borderColor: "#10B981", borderWidth: 1, borderRadius: 13, padding: 14, marginTop: 13, alignItems: "center" }}>
+          <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "900" }}>{busy ? "Inatengeneza mwaliko..." : "＋ Ongeza mfanyakazi"}</Text>
+        </Pressable>
+        {!!inviteLink && <View style={{ backgroundColor: "#102D2C", borderColor: "#1D6B55", borderWidth: 1, borderRadius: 13, padding: 12, marginTop: 12 }}>
+          <Text style={{ color: "#75E0B8", fontSize: 10, fontWeight: "800" }}>LINK YA MWALIKO • INAISHA BAADA YA SIKU 7</Text>
+          <Text selectable style={{ color: "#FFFFFF", fontSize: 11, lineHeight: 18, marginTop: 7 }}>{inviteLink}</Text>
+          <Pressable disabled={busy} onPress={() => void shareInvitation(inviteLink)} style={[actionButton, { alignSelf: "flex-start", marginTop: 9, borderColor: "#10B981" }]}><Text style={{ color: "#75E0B8", fontSize: 10, fontWeight: "900" }}>Shiriki tena link</Text></Pressable>
+        </View>}
+      </View>}
+
+      <View style={[panel, { flexGrow: 1, flexBasis: Platform.OS === "web" ? 390 : "100%" }]}>
+        <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8, borderBottomColor: "#1E3A5F", borderBottomWidth: 1, paddingBottom: 11 }}>
+          <View style={{ flex: 1 }}>
+            <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900" }}>Orodha ya wanachama ({staffMembers.length})</Text>
+            <Text style={{ color: "#AFC0D0", fontSize: 10, marginTop: 3 }}>Wanachama wa biashara hii</Text>
+          </View>
+          <Pressable disabled={loading || busy} onPress={() => void load()} style={[actionButton, { flexDirection: "row", alignItems: "center", gap: 5 }]}>
+            <Text style={{ color: "#10B981", fontSize: 15, fontWeight: "900" }}>↻</Text><Text style={{ color: "#10B981", fontSize: 9, fontWeight: "900" }}>Sasisha</Text>
+          </Pressable>
+        </View>
+        <TextInput value={memberSearch} onChangeText={setMemberSearch} placeholder="Tafuta kwa nafasi au utambulisho..." placeholderTextColor="#8194A5" style={[field, { marginTop: 12 }]} />
+        {filteredMembers.length === 0 && <View style={{ alignItems: "center", paddingVertical: 25 }}>
+          <Text style={{ color: "#FBBF24", fontSize: 22 }}>♙</Text>
+          <Text style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800", marginTop: 6 }}>{loading ? "Inapakia wanachama..." : staffMembers.length ? "Hakuna matokeo ya utafutaji" : "Bado hakuna mfanyakazi aliyejiunga"}</Text>
+          <Text style={[mutedText, { textAlign: "center", marginTop: 4 }]}>Wanachama waliojiunga na biashara hii wataonekana hapa.</Text>
+        </View>}
+        {filteredMembers.map(member => <View key={member.user_id} style={{ backgroundColor: "#10223A", borderColor: "#1E3A5F", borderWidth: 1, borderRadius: 14, padding: 12, marginTop: 10 }}>
+          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 8 }}>
+            <View style={{ flex: 1 }}>
+              <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900" }}>{roles.find(item => item.id === member.role)?.label ?? member.role}</Text>
+              <Text style={{ color: "#AFC0D0", fontSize: 10, marginTop: 4 }}>Akaunti ••••{member.user_id.slice(-6)}</Text>
+            </View>
+            <View style={{ backgroundColor: "#12372F", borderColor: "#1D6B55", borderWidth: 1, borderRadius: 20, paddingHorizontal: 8, paddingVertical: 5 }}>
+              <Text style={{ color: "#75E0B8", fontSize: 9, fontWeight: "900" }}>AMEJIUNGA</Text>
+            </View>
+          </View>
+          {(owner || managerCanViewDocuments) && <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 7, marginTop: 10 }}>
+            {(owner || managerCanViewDocuments) && <Pressable disabled={busy} onPress={() => void viewEmployeeProfile(member)} style={actionButton}><Text style={{ color: "#75E0B8", fontSize: 10, fontWeight: "800" }}>Wasifu / Nyaraka</Text></Pressable>}
+            {owner && <>
+              {roles.filter(item => item.id !== member.role).map(item => <Pressable key={item.id} disabled={busy} onPress={() => void changeRole(member, item.id)} style={actionButton}><Text style={{ color: "#FFFFFF", fontSize: 10, fontWeight: "800" }}>{item.label}</Text></Pressable>)}
+              {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={[actionButton, { borderColor: "#FBBF24" }]}><Text style={{ color: "#FBBF24", fontSize: 10, fontWeight: "800" }}>Ruhusa</Text></Pressable>}
+              <Pressable disabled={busy} onPress={() => void remove(member)} style={[actionButton, { backgroundColor: "#3B2029", borderColor: "#7F3044" }]}><Text style={{ color: "#FDA4AF", fontSize: 10, fontWeight: "800" }}>Ondoa</Text></Pressable>
+            </>}
+          </View>}
+        </View>)}
+      </View>
+    </View>
+
+    {(owner || managerCanViewDocuments) && selectedEmployee && <View style={panel}>
+      <View style={{ flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 }}>
+        <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900" }}>Wasifu wa mfanyakazi</Text>
+        <Pressable onPress={() => { setSelectedEmployee(null); setEmployeeProfile(null); setEmployeeDocuments([]); }} style={actionButton}><Text style={{ color: "#FDA4AF", fontSize: 10, fontWeight: "800" }}>Funga</Text></Pressable>
+      </View>
+      <Text style={[mutedText, { marginTop: 5 }]}>Akaunti ••••{selectedEmployee.user_id.slice(-6)} · {selectedEmployee.role}</Text>
+      {profileLoading && <ActivityIndicator color="#10B981" style={{ marginTop: 10 }} />}
+      {!profileLoading && !employeeProfile && <Text style={[mutedText, { marginTop: 10 }]}>Hakuna wasifu uliohifadhiwa bado.</Text>}
+      {!profileLoading && employeeProfile && <>
+        {([
+          ["Majina kamili",employeeProfile.legal_name],["Simu",employeeProfile.phone_e164],["Kitambulisho",employeeProfile.identity_type==="nida"?"NIDA":"Kadi ya mpiga kura"],["Namba ya kitambulisho",employeeProfile.identity_number],["Cheo",employeeProfile.job_title||"—"],["Tarehe ya kuanza",employeeProfile.employment_start_date||"—"],["Mdhamini",employeeProfile.guarantor_name||"—"],["Simu ya mdhamini",employeeProfile.guarantor_phone||"—"],["Anwani ya mdhamini",employeeProfile.guarantor_address||"—"],["Mahali anapotoka",employeeProfile.origin_location||"—"],["Anwani ya sasa",employeeProfile.current_address||"—"],["Mtu wa dharura",employeeProfile.emergency_contact_name||"—"],["Simu ya dharura",employeeProfile.emergency_contact_phone||"—"]
+        ] as [string,string][]).map(([label,value]) => <View key={label} style={{ paddingVertical: 8, borderBottomWidth: 1, borderBottomColor: "#1E3A5F" }}><Text style={mutedText}>{label}</Text><Text selectable style={{ color: "#FFFFFF", fontSize: 12, fontWeight: "800", marginTop: 3 }}>{value}</Text></View>)}
+        <Text style={[mutedText, { marginTop: 9 }]}>Tamko limekubaliwa: {employeeProfile.declaration_accepted_at ? "Ndiyo" : "Hapana"}</Text>
+      </>}
+      <Text style={{ color: "#FFFFFF", fontSize: 13, fontWeight: "900", marginTop: 15, marginBottom: 5 }}>Nyaraka binafsi ({employeeDocuments.length})</Text>
+      {employeeDocuments.map(doc => <View key={doc.id} style={{ flexDirection: "row", alignItems: "center", gap: 8, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#1E3A5F" }}>
+        <View style={{ flex: 1 }}><Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "800" }}>{({identity:"Kitambulisho",employee_photo:"Picha ya mfanyakazi",local_government_letter:"Barua ya serikali ya mtaa",guarantor_support:"Nyaraka za mdhamini",employment_contract:"Mkataba wa ajira"} as Record<string,string>)[doc.document_type] || doc.document_type}</Text><Text style={mutedText}>{new Date(doc.created_at).toLocaleDateString()}</Text></View>
+        <Pressable disabled={!!openingDocument} onPress={() => void openEmployeeDocument(doc)} style={actionButton}><Text style={{ color: "#75E0B8", fontSize: 10, fontWeight: "800" }}>{openingDocument === doc.id ? "Inafungua..." : "Fungua"}</Text></Pressable>
+      </View>)}
     </View>}
-    {owner && permissionTarget && <View style={[s.panel, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
-      <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Ruhusa za Meneja</Text>
-      <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Meneja ••••{permissionTarget.user_id.slice(-6)}. Chagua kazi anazoweza kufanya. Bila ruhusa, taarifa na vitendo vinabaki vimefungwa.</Text>
-      {permissionOptions.map(item => <Pressable key={item.id} disabled={busy} onPress={() => togglePermission(item.id)} style={[s.role, permissions.includes(item.id) && s.selected]}>
-        <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{permissions.includes(item.id) ? "✓ " : "○ "}{item.label}</Text>
-        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{item.detail}</Text>
+
+    {owner && permissionTarget && <View style={panel}>
+      <Text style={{ color: "#FFFFFF", fontSize: 16, fontWeight: "900" }}>Ruhusa za Meneja</Text>
+      <Text style={[mutedText, { marginTop: 5 }]}>Meneja ••••{permissionTarget.user_id.slice(-6)}. Chagua kazi anazoweza kufanya. Ruhusa ambazo hazijachaguliwa zitabaki zimefungwa.</Text>
+      {permissionOptions.map(item => <Pressable key={item.id} disabled={busy} onPress={() => togglePermission(item.id)} style={{ padding: 11, borderWidth: 1, borderColor: permissions.includes(item.id) ? "#10B981" : "#1E3A5F", backgroundColor: permissions.includes(item.id) ? "#12372F" : "#10223A", borderRadius: 12, marginTop: 8 }}>
+        <Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>{permissions.includes(item.id) ? "✓ " : "○ "}{item.label}</Text><Text style={[mutedText, { marginTop: 3 }]}>{item.detail}</Text>
       </Pressable>)}
-      <Pressable disabled={busy} onPress={() => void savePermissions()} style={s.button}><Text style={s.buttonText}>{busy ? "Inahifadhi..." : "Hifadhi ruhusa"}</Text></Pressable>
-      <Pressable disabled={busy} onPress={() => setPermissionTarget(null)} style={[s.refresh, !darkMode && { backgroundColor: "#E7EEF4" }]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ghairi</Text></Pressable>
+      <Pressable disabled={busy} onPress={() => void savePermissions()} style={{ backgroundColor: "#059669", borderRadius: 12, padding: 13, alignItems: "center", marginTop: 12 }}><Text style={{ color: "#FFFFFF", fontSize: 11, fontWeight: "900" }}>{busy ? "Inahifadhi..." : "Hifadhi ruhusa"}</Text></Pressable>
+      <Pressable disabled={busy} onPress={() => setPermissionTarget(null)} style={[actionButton, { alignSelf: "flex-start", marginTop: 8 }]}><Text style={{ color: "#AFC0D0", fontSize: 10, fontWeight: "800" }}>Ghairi</Text></Pressable>
     </View>}
-    <Pressable onPress={() => void load()} style={[s.refresh, !darkMode && { backgroundColor: "#E7EEF4" }]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>↻ Sasisha orodha</Text></Pressable>
-    <Text style={[s.notice, !darkMode && { color: "#075E46", backgroundColor: "#E8F7F0" }]}>{notice}</Text>
-    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Usalama: kuongeza, kubadilisha nafasi na kuondoa wanachama ni kazi za Boss pekee. Manager anaweza kuona nyaraka tu ikiwa Boss amempa ruhusa hiyo; kila ufunguzi hukaguliwa na database.</Text>
+
+    <View style={{ backgroundColor: "#102D2C", borderColor: "#1D6B55", borderWidth: 1, borderRadius: 12, padding: 12 }}>
+      <Text style={{ color: "#75E0B8", fontSize: 11, fontWeight: "900" }}>USALAMA WA BIASHARA</Text>
+      <Text style={[mutedText, { marginTop: 5 }]}>Kuongeza, kubadilisha nafasi na kuondoa wanachama ni kazi za Boss pekee. Meneja anaweza kuona nyaraka ikiwa Boss amempa ruhusa; kila ufunguzi wa nyaraka huandikwa kwenye audit log.</Text>
+    </View>
+    <Text style={[mutedText, { textAlign: "center" }]}>{notice}</Text>
   </ScrollView>;
 }
 
