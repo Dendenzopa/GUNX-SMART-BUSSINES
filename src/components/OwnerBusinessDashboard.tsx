@@ -21,7 +21,7 @@ type Props = {
   pendingSales: PendingSale[];
   notice: string;
   online: boolean | null;
-  onNavigate: (screen: "POS" | "Stock" | "Staff" | "Reports" | "Debts" | "Expenses" | "Subscription") => void;
+  onNavigate: (screen: "POS" | "Stock" | "Staff" | "Reports" | "Debts" | "Expenses" | "Subscription" | "OwnerDailySales") => void;
 };
 type HeroMediaType = "owner_photo" | "business_logo";
 type ChartSale = { id: string; createdAt: string; total: number; status: string };
@@ -303,7 +303,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
 
     <View style={[s.lowerContent,darkMode&&{backgroundColor:"#081522"}]}>
       <View style={s.serviceGrid}>
-        <Pressable onPress={() => onNavigate("POS")} style={[s.serviceTile, { backgroundColor: "#155EEF" }]}>
+        <Pressable onPress={() => onNavigate("OwnerDailySales")} style={[s.serviceTile, { backgroundColor: "#155EEF" }]}>
           <Text style={s.serviceIcon}>🛒</Text><Text style={s.serviceLabel}>Mauzo ya Leo</Text>
         </Pressable>
         <Pressable onPress={() => onNavigate("Stock")} style={[s.serviceTile, { backgroundColor: "#15803D" }]}>
