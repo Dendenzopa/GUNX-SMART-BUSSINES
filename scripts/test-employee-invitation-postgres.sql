@@ -2,8 +2,18 @@
 
 -- Disposable PostgreSQL 17 integration test for the exact invitation lifecycle migration.
 -- No Supabase Production credentials or endpoints are used by this fixture.
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
+DO $roles$
+BEGIN
+  CREATE ROLE anon NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$roles$;
+DO $roles$
+BEGIN
+  CREATE ROLE authenticated NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$roles$;
 CREATE SCHEMA auth;
 CREATE TABLE auth.users (
   id uuid PRIMARY KEY,
