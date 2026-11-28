@@ -1,11 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
 import { GUNX_OFFICIAL_LOGO } from "../branding";
 import { BackHandler } from "react-native";
-import { ActivityIndicator, Image, Pressable, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Image, Pressable, ScrollView, StyleSheet, Text, TextInput, View } from "react-native";
 import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import { useShopContext } from "./AuthGate";
+import DashboardGallery from "./DashboardGallery";
 
 type SubscriptionMetrics = {
   total_subscriptions:number;
@@ -566,12 +567,14 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
         <Text style={s.logoutBarText}>⇥  TOKA KWENYE AKAUNTI</Text>
       </Pressable>
 
-      {selectedModule === "All Businesses" ? (
+      {selectedModule === "Dashboards" ? (
+        <DashboardGallery darkMode={darkMode} onBack={() => setSelectedModule(null)} />
+      ) : selectedModule === "All Businesses" ? (
         <BusinessDirectory darkMode={darkMode} onBack={() => setSelectedModule(null)} />
       ) : selectedModule ? (
         <ModulePage moduleKey={selectedModule} metrics={metrics} darkMode={darkMode} onBack={() => setSelectedModule(null)} />
       ) : (
-        <>
+        <ScrollView style={s.contentScroll} contentContainerStyle={s.contentScrollInner}>
           <View style={[s.welcomeBanner,darkMode&&{backgroundColor:"#102438",borderColor:"#D7B56D"}]}>
             <Pressable accessibilityRole="button" accessibilityLabel="Badilisha picha ya wasifu" onPress={() => void changeProfilePhoto()} style={s.avatarPicker}>
               <View style={s.welcomeAvatar}>
@@ -606,6 +609,7 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
             <Text style={s.sectionTitle}>Zana za Usimamizi</Text>
           </View>
           <View style={s.managementGrid}>
+            <ManagementCard icon="🖥️" title="Dashboards Zote" description="Kagua muonekano wa Boss, Manager, Cashier, Stockkeeper na Super Admin pamoja na ruhusa zao." darkMode={darkMode} onPress={() => openModule("Dashboards")}/>
             <ManagementCard icon="🏪" title="Biashara Zote" description="Orodha na usimamizi wa biashara." darkMode={darkMode} onPress={showBusinesses}/>
             <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." darkMode={darkMode} onPress={() => openModule("Users")}/>
             <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." darkMode={darkMode} onPress={() => openModule("Subscriptions")}/>
@@ -625,7 +629,7 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
           <Pressable onPress={() => void load()} style={s.refresh}><Text style={s.refreshText}>↻  Sasisha takwimu za mfumo</Text></Pressable>
           <Text style={s.footer}>WEWE – SUPER ADMIN (MMILIKI WA APP)</Text>
           <Text style={s.footerNote}>Mapato na ufanisi wa mfumo vitaonyeshwa baada ya huduma husika kuunganishwa. Hakuna takwimu za kubuni.</Text>
-        </>
+        </ScrollView>
       )}
 
     </View>
@@ -633,6 +637,8 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
 }
 
 const s = StyleSheet.create({
+  contentScroll: { flex: 1 },
+  contentScrollInner: { paddingBottom: 28 },
    languageCard:{backgroundColor:"#F0F7F5",borderColor:"#8BCDB5",borderWidth:1.5,borderRadius:16,padding:15,marginBottom:18},
    languageTitle:{color:"#102A43",fontSize:19,fontWeight:"900"},
    languageHint:{color:"#40566B",fontSize:15,lineHeight:22,marginTop:5,marginBottom:12},

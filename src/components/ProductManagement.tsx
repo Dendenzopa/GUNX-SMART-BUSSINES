@@ -7,11 +7,14 @@ import type { Product } from "../domain/types";
 
 type Props = { shopId: string | null; onProductsChanged: () => void; darkMode?: boolean };
 type SelectedImage = { uri: string; mimeType?: string | null };
+type ShopStaff = { user_id: string; role: string };
 
 export default function ProductManagement({ shopId, onProductsChanged, darkMode = true }: Props) {
   const [items, setItems] = useState<Product[]>([]);
+  const [members, setMembers] = useState<ShopStaff[]>([]);
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
+  const [category, setCategory] = useState("");
   const [unit, setUnit] = useState("piece");
   const [cost, setCost] = useState("");
   const [price, setPrice] = useState("");
@@ -37,10 +40,16 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
     const isOwner = !ownerResult.error && ownerResult.data === true;
     setCanManage(isOwner || (!permissionResult.error && permissionResult.data === true));
     setCanViewCost(isOwner || (!costPermissionResult.error && costPermissionResult.data === true) || (!profitPermissionResult.error && profitPermissionResult.data === true));
+    if (isOwner || (!permissionResult.error && permissionResult.data === true)) {
+      const { data: staffRows } = await supabase.from("shop_members").select("user_id,role").eq("shop_id", shopId).in("role", ["manager", "cashier", "stockkeeper"]).order("role");
+      setMembers((staffRows ?? []) as ShopStaff[]);
+    } else {
+      setMembers([]);
+    }
     setBusy(false);
     if (error) { setMessage("Bidhaa hazijapakiwa: " + error.message); return; }
     setItems((data ?? []).map((p: any) => ({
-      id: p.id, name: p.name, sku: p.sku ?? "", unit: p.unit,
+      id: p.id, name: p.name, sku: p.sku ?? "", category: p.category ?? null, assignedStaffIds: Array.isArray(p.assigned_staff_ids) ? p.assigned_staff_ids : [], unit: p.unit,
       imageUrl: p.image_url ?? null,
       costPrice: Number(p.cost_price ?? 0), sellingPrice: Number(p.selling_price),
       stockQuantity: Number(p.stock_quantity), reorderLevel: Number(p.reorder_level), active: p.active
@@ -50,12 +59,12 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
   useEffect(() => { void load(); }, [shopId]);
 
   function reset() {
-    setName(""); setSku(""); setUnit("piece"); setCost(""); setPrice(""); setReorder("0");
+    setName(""); setSku(""); setCategory(""); setUnit("piece"); setCost(""); setPrice(""); setReorder("0");
     setEditing(null); setImageUrl(null); setSelectedImage(null);
   }
 
   function startEdit(p: Product) {
-    setEditing(p.id); setName(p.name); setSku(p.sku); setUnit(p.unit);
+    setEditing(p.id); setName(p.name); setSku(p.sku); setCategory(p.category ?? ""); setUnit(p.unit);
     setCost(String(p.costPrice)); setPrice(String(p.sellingPrice)); setReorder(String(p.reorderLevel));
     setImageUrl(p.imageUrl ?? null); setSelectedImage(null);
     setMessage("Unahariri " + p.name + ". Stock hubadilishwa kupitia Pokea stock.");
@@ -124,7 +133,7 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
       setMessage("Jaza jina, unit, gharama, bei ya kuuza na kiwango cha tahadhari kwa usahihi."); return;
     }
     setBusy(true); setMessage("");
-    const payload: Record<string, unknown> = { name: name.trim(), sku: sku.trim() || null, unit: unit.trim(),
+    const payload: Record<string, unknown> = { name: name.trim(), sku: sku.trim() || null, category: category.trim() || null, unit: unit.trim(),
       selling_price: priceValue, reorder_level: reorderValue };
     if (canViewCost) payload.cost_price = costValue;
     const result = editing
@@ -149,6 +158,28 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
     setBusy(false);
     setMessage(editing ? "Bidhaa na picha yake zimesasishwa." : "Bidhaa mpya imeongezwa. Stock inaanza sifuri.");
     reset(); await load(); onProductsChanged();
+  }
+
+  async function toggleStaffAssignment(product: Product, staffUserId: string) {
+    if (!supabase || !shopId || !canManage) return;
+    const current = product.assignedStaffIds ?? [];
+    const next = current.includes(staffUserId)
+      ? current.filter(id => id !== staffUserId)
+      : [...current, staffUserId];
+    setBusy(true);
+    const { error } = await supabase.rpc("set_product_staff_assignments", {
+      p_shop_id: shopId,
+      p_product_id: product.id,
+      p_staff_user_ids: next,
+    });
+    setBusy(false);
+    if (error) {
+      setMessage("Mgawo wa bidhaa haujahifadhiwa: " + error.message);
+      return;
+    }
+    setMessage("Mgawo wa wafanyakazi wa " + product.name + " umesasishwa.");
+    await load();
+    onProductsChanged();
   }
 
   async function archive(p: Product) {
@@ -205,6 +236,7 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
       <Text style={[s.label, !darkMode && { color: "#526477" }]}>TAARIFA ZA BIDHAA</Text>
       <TextInput value={name} onChangeText={setName} placeholder="Jina la bidhaa" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
       <TextInput value={sku} onChangeText={setSku} placeholder="SKU / Barcode (hiari)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
+      <TextInput value={category} onChangeText={setCategory} placeholder="Kategoria (mf. Vinywaji, Chakula)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
       <TextInput value={unit} onChangeText={setUnit} placeholder="Unit (mf. piece, kg, lita)" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
       {canViewCost && <TextInput value={cost} onChangeText={setCost} placeholder="Bei ya kununua (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>}
       <TextInput value={price} onChangeText={setPrice} placeholder="Bei ya kuuza (TZS)" keyboardType="decimal-pad" placeholderTextColor="#8194A5" style={[s.input, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#CBD5E1", color: "#142D42" }]}/>
@@ -222,8 +254,22 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
       </View>
       <View style={s.itemDetails}>
         <Text style={[s.name, !darkMode && { color: "#142D42" }]}>{p.name} {!p.active ? "(Imefichwa)" : ""}</Text>
-        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{p.sku || "Hakuna SKU"} · {p.unit} · Stock {p.stockQuantity}</Text>
+        <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{p.sku || "Hakuna SKU"} · {p.category || "Bila kategoria"} · {p.unit} · Stock {p.stockQuantity}</Text>
         <Text style={[s.price, !darkMode && { color: "#8A6512" }]}>{canViewCost ? `Gharama ${formatTZS(p.costPrice)} · ` : ""}Bei {formatTZS(p.sellingPrice)}</Text>
+        {canManage && members.length > 0 && <View style={{ marginTop: 9 }}>
+          <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Wapangiwe bidhaa hii:</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 5 }}>
+            {members.map(member => {
+              const selected = (p.assignedStaffIds ?? []).includes(member.user_id);
+              return <Pressable key={member.user_id} disabled={busy} onPress={() => void toggleStaffAssignment(p, member.user_id)}
+                style={{ paddingHorizontal: 9, paddingVertical: 7, borderRadius: 9, borderWidth: 1, borderColor: selected ? "#43C99A" : "#31516A", backgroundColor: selected ? "#173D36" : (darkMode ? "#0B1B2A" : "#F1F5F9") }}>
+                <Text style={{ color: selected ? "#75E0B8" : (darkMode ? "#D9E4EC" : "#334155"), fontSize: 10, fontWeight: "800" }}>
+                  {selected ? "✓ " : "+ "}{member.role === "manager" ? "Meneja" : member.role === "stockkeeper" ? "Storekeeper" : "Staff"} ••••{member.user_id.slice(-4)}
+                </Text>
+              </Pressable>;
+            })}
+          </View>
+        </View>}
       </View>
       {canManage && <View style={s.actions}>
         {p.active ? <>
@@ -237,16 +283,16 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
 }
 
 const s = StyleSheet.create({
-  content: { paddingBottom: 28 },
+  content: { paddingBottom: 44, paddingTop: 4 },
   intro: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 12, marginBottom: 6 },
   introCopy: { flex: 1 },
   eyebrow: { color: "#75E0B8", fontSize: 10, fontWeight: "900", letterSpacing: 1.8, marginBottom: 5 },
-  title: { color: "#F4F7FA", fontSize: 25, fontWeight: "900", letterSpacing: -0.5 },
-  copy: { color: "#91A4B5", fontSize: 12, lineHeight: 18, marginTop: 5 },
+  title: { color: "#F4F7FA", fontSize: 29, fontWeight: "900", letterSpacing: -0.8 },
+  copy: { color: "#AFC0CD", fontSize: 13, lineHeight: 20, marginTop: 6 },
   countBadge: { minWidth: 62, minHeight: 62, borderRadius: 17, backgroundColor: "#173D36", borderWidth: 1, borderColor: "#D7B56D", alignItems: "center", justifyContent: "center", padding: 7 },
   countValue: { color: "#F2D99F", fontSize: 22, fontWeight: "900" },
   countLabel: { color: "#75E0B8", fontSize: 8, fontWeight: "900", letterSpacing: 1 },
-  panel: { backgroundColor: "#102438", borderColor: "#29475D", borderWidth: 1, borderRadius: 19, padding: 16, marginTop: 14 },
+  panel: { backgroundColor: "#102438", borderColor: "#31516A", borderWidth: 1, borderRadius: 21, padding: 18, marginTop: 17 },
   sectionTop: { flexDirection: "row", alignItems: "center", gap: 9, marginBottom: 14 },
   sectionMarker: { width: 4, height: 21, borderRadius: 4, backgroundColor: "#D7B56D" },
   heading: { color: "#FFF", fontSize: 16, fontWeight: "900" },
@@ -263,7 +309,7 @@ const s = StyleSheet.create({
   photoButtonIcon: { color: "#F2D99F", fontSize: 16, fontWeight: "900" },
   photoButtonText: { color: "#F4F7FA", fontSize: 11, fontWeight: "900" },
   photoHint: { color: "#91A4B5", fontSize: 9, lineHeight: 13 },
-  input: { backgroundColor: "#0B1B2A", borderColor: "#29475D", borderWidth: 1, borderRadius: 12, color: "#F4F7FA", paddingHorizontal: 13, paddingVertical: 13, marginTop: 8, fontSize: 13 },
+  input: { backgroundColor: "#0B1B2A", borderColor: "#31516A", borderWidth: 1, borderRadius: 14, color: "#F4F7FA", paddingHorizontal: 15, paddingVertical: 15, marginTop: 10, fontSize: 14 },
   button: { backgroundColor: "#16785C", padding: 15, borderRadius: 13, alignItems: "center", marginTop: 13, borderWidth: 1, borderColor: "#43C99A" },
   secondary: { backgroundColor: "#173247", padding: 12, borderRadius: 11, alignItems: "center", marginTop: 8 },
   buttonText: { color: "#F5FFFA", fontWeight: "900", fontSize: 11 },
@@ -271,7 +317,7 @@ const s = StyleSheet.create({
   message: { color: "#75E0B8", fontSize: 11, marginTop: 10, lineHeight: 17 },
   row: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", marginTop: 19, marginBottom: 3 },
   refresh: { color: "#75E0B8", fontWeight: "900", fontSize: 11 },
-  item: { backgroundColor: "#102438", borderColor: "#29475D", borderWidth: 1, borderRadius: 15, padding: 11, marginTop: 9, flexDirection: "row", alignItems: "center", gap: 10 },
+  item: { backgroundColor: "#102438", borderColor: "#31516A", borderWidth: 1, borderRadius: 18, padding: 13, marginTop: 11, flexDirection: "row", alignItems: "center", gap: 12 },
   itemPhoto: { width: 60, height: 60, borderRadius: 11, overflow: "hidden", backgroundColor: "#173247", borderWidth: 1, borderColor: "#29475D", alignItems: "center", justifyContent: "center" },
   itemPhotoImage: { width: "100%", height: "100%" },
   itemPhotoPlaceholder: { color: "#D7B56D", fontSize: 24 },

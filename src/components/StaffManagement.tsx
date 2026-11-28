@@ -1,10 +1,12 @@
 import React, { useCallback, useEffect, useState } from "react";
-import { ActivityIndicator, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
+import { ActivityIndicator, Linking, Platform, Pressable, ScrollView, Share, StyleSheet, Text, TextInput, View } from "react-native";
 import { useShopContext } from "./AuthGate";
 import { supabase } from "../lib/supabase";
 
 type Role = "manager" | "cashier" | "stockkeeper";
 type Member = { user_id: string; role: string };
+type EmployeeProfileRow = { user_id:string; legal_name:string; phone_e164:string; identity_type:string; identity_number:string; guarantor_name:string|null; guarantor_phone:string|null; guarantor_address:string|null; origin_location:string|null; current_address:string|null; emergency_contact_name:string|null; emergency_contact_phone:string|null; job_title:string|null; employment_start_date:string|null; employee_photo_path:string|null; contract_path:string|null; declaration_accepted_at:string|null };
+type EmployeeDocumentRow = { id:string; user_id:string; document_type:string; storage_path:string; created_at:string };
 const permissionOptions = [
   { id: "products.read", label: "Kuona bidhaa", detail: "Kuona katalogi na bei za kuuza" },
   { id: "products.manage", label: "Kusimamia bidhaa", detail: "Kuongeza, kuhariri na kuficha bidhaa" },
@@ -20,6 +22,7 @@ const permissionOptions = [
   { id: "reports.profit", label: "Faida na gharama za bidhaa", detail: "Kuona gharama ya bidhaa na makadirio ya faida" },
   { id: "costs.view", label: "Bei za kununua", detail: "Kuona cost price ya bidhaa" },
   { id: "sync.manage", label: "Offline sync", detail: "Kusimamia mauzo yanayosubiri kusawazishwa" },
+  { id: "staff.documents.view", label: "Nyaraka za wafanyakazi", detail: "Kuona taarifa na nyaraka binafsi za wafanyakazi wa biashara hii" },
 ];
 const roles: { id: Role; label: string; detail: string }[] = [
   { id: "manager", label: "Meneja", detail: "Usimamizi wa shughuli za duka" },
@@ -28,17 +31,23 @@ const roles: { id: Role; label: string; detail: string }[] = [
 ];
 
 export default function StaffManagement({ darkMode = true }: { darkMode?: boolean }) {
-  const { shopId } = useShopContext();
+  const { shopId, shopRole } = useShopContext();
   const [members, setMembers] = useState<Member[]>([]);
   const [phone, setPhone] = useState("");
   const [inviteLink, setInviteLink] = useState("");
   const [role, setRole] = useState<Role>("cashier");
   const [owner, setOwner] = useState(false);
+  const [managerCanViewDocuments,setManagerCanViewDocuments]=useState(false);
   const [permissionTarget, setPermissionTarget] = useState<Member | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [notice, setNotice] = useState("Inapakia wanachama wa duka...");
+  const [selectedEmployee,setSelectedEmployee]=useState<Member|null>(null);
+  const [employeeProfile,setEmployeeProfile]=useState<EmployeeProfileRow|null>(null);
+  const [employeeDocuments,setEmployeeDocuments]=useState<EmployeeDocumentRow[]>([]);
+  const [profileLoading,setProfileLoading]=useState(false);
+  const [openingDocument,setOpeningDocument]=useState<string|null>(null);
 
   const load = useCallback(async () => {
     if (!supabase || !shopId) { setLoading(false); setNotice("Duka halijaunganishwa."); return; }
@@ -50,9 +59,13 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     const rows = (data ?? []) as Member[];
     setMembers(rows);
     setOwner(Boolean(rows.find(row => row.user_id === currentId && row.role === "owner")));
+    if(shopRole==="manager"){
+      const {data:grants,error:grantError}=await supabase.rpc("get_my_shop_permissions",{p_shop_id:shopId});
+      setManagerCanViewDocuments(!grantError&&Array.isArray(grants)&&grants.includes("staff.documents.view"));
+    } else setManagerCanViewDocuments(false);
     setNotice(rows.length + " wanachama kwenye duka hili.");
     setLoading(false);
-  }, [shopId]);
+  }, [shopId,shopRole]);
 
   useEffect(() => { void load(); }, [load]);
 
@@ -89,6 +102,33 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     setInviteLink(link);
     setNotice("Mwaliko wa " + target + " umetengenezwa. Mfanyakazi lazima athibitishe namba hii kwa SMS.");
     await shareInvitation(link);
+  }
+
+  async function viewEmployeeProfile(member:Member) {
+    if(!supabase||!shopId||!owner)return;
+    setSelectedEmployee(member);setEmployeeProfile(null);setEmployeeDocuments([]);setProfileLoading(true);
+    const [profileResult,documentsResult]=await Promise.all([
+      supabase.from("employee_profiles").select("user_id,legal_name,phone_e164,identity_type,identity_number,guarantor_name,guarantor_phone,guarantor_address,origin_location,current_address,emergency_contact_name,emergency_contact_phone,job_title,employment_start_date,employee_photo_path,contract_path,declaration_accepted_at").eq("shop_id",shopId).eq("user_id",member.user_id).maybeSingle(),
+      supabase.from("employee_private_documents").select("id,user_id,document_type,storage_path,created_at").eq("shop_id",shopId).eq("user_id",member.user_id).order("created_at",{ascending:false})
+    ]);
+    setProfileLoading(false);
+    if(profileResult.error){setNotice("Wasifu haujapakiwa: "+profileResult.error.message);return;}
+    if(documentsResult.error){setNotice("Nyaraka hazijapakiwa: "+documentsResult.error.message);return;}
+    setEmployeeProfile(profileResult.data as EmployeeProfileRow|null);
+    setEmployeeDocuments((documentsResult.data??[]) as EmployeeDocumentRow[]);
+    setNotice(profileResult.data?"Wasifu wa mfanyakazi umepakiwa.":"Mfanyakazi bado hajajaza wasifu wake.");
+  }
+
+  async function openEmployeeDocument(doc:EmployeeDocumentRow,action:"view"|"download"="view") {
+    if(!supabase||(!owner&&!managerCanViewDocuments)||openingDocument)return;
+    setOpeningDocument(doc.id);
+    const {error:logError}=await supabase.rpc("log_employee_document_access",{p_document_id:doc.id,p_action:action});
+    if(logError){setNotice("Ufikiaji umekataliwa au haukuandikwa: "+logError.message);setOpeningDocument(null);return;}
+    const {data,error}=await supabase.storage.from("employee-private-documents").createSignedUrl(doc.storage_path,60);
+    setOpeningDocument(null);
+    if(error||!data?.signedUrl){setNotice("Kiungo salama hakikutengenezwa: "+(error?.message??"Jaribu tena."));return;}
+    try{await Linking.openURL(data.signedUrl);setNotice("Nyaraka imefunguliwa kwa kiungo cha muda mfupi.");}
+    catch{setNotice("Simu haikuweza kufungua nyaraka hii.");}
   }
 
   async function changeRole(member: Member, nextRole: Role) {
@@ -166,12 +206,38 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     {members.map(member => <View key={member.user_id} style={[s.member, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
       <Text style={[s.roleTitle, !darkMode && { color: "#142D42" }]}>{member.role === "owner" ? "Mmiliki" : roles.find(r => r.id === member.role)?.label ?? member.role}</Text>
       <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Utambulisho: ••••{member.user_id.slice(-6)}</Text>
-      {owner && member.role !== "owner" && <View style={s.actions}>
+      {((owner && member.role !== "owner")||managerCanViewDocuments) && <View style={s.actions}>{(owner||managerCanViewDocuments) && member.role !== "owner" && <Pressable disabled={busy} onPress={()=>void viewEmployeeProfile(member)} style={s.small}><Text style={[s.smallText,!darkMode&&{color:"#FFFFFF"}]}>Wasifu / Nyaraka</Text></Pressable>}{owner && <>
+
         {roles.filter(r => r.id !== member.role).map(r => <Pressable key={r.id} disabled={busy} onPress={() => changeRole(member, r.id)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>{r.label}</Text></Pressable>)}
         {member.role === "manager" && <Pressable disabled={busy} onPress={() => void openPermissions(member)} style={s.small}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ruhusa</Text></Pressable>}
         <Pressable disabled={busy} onPress={() => remove(member)} style={[s.small, s.remove]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>Ondoa</Text></Pressable>
-      </View>}
+      </>}</View>}
     </View>)}
+    {(owner||managerCanViewDocuments) && selectedEmployee && <View style={[s.panel,!darkMode&&{backgroundColor:"#FFFFFF",borderColor:"#DCE5EC"}]}>
+      <Text style={[s.heading,!darkMode&&{color:"#142D42"}]}>Wasifu wa mfanyakazi</Text>
+      <Text style={[s.copy,!darkMode&&{color:"#526477"}]}>Akaunti ••••{selectedEmployee.user_id.slice(-6)} · {selectedEmployee.role}</Text>
+      {profileLoading&&<ActivityIndicator color="#43C99A"/>}
+      {!profileLoading&&!employeeProfile&&<Text style={[s.copy,!darkMode&&{color:"#526477"}]}>Hakuna wasifu uliohifadhiwa bado.</Text>}
+      {!profileLoading&&employeeProfile&&<>
+       {([
+        ["Majina kamili",employeeProfile.legal_name],["Simu",employeeProfile.phone_e164],
+        ["Kitambulisho",employeeProfile.identity_type==="nida"?"NIDA":"Kadi ya mpiga kura"],
+        ["Namba ya kitambulisho",employeeProfile.identity_number],["Cheo",employeeProfile.job_title||"—"],
+        ["Tarehe ya kuanza",employeeProfile.employment_start_date||"—"],
+        ["Mdhamini",employeeProfile.guarantor_name||"—"],["Simu ya mdhamini",employeeProfile.guarantor_phone||"—"],
+        ["Anwani ya mdhamini",employeeProfile.guarantor_address||"—"],["Mahali anapotoka",employeeProfile.origin_location||"—"],
+        ["Anwani ya sasa",employeeProfile.current_address||"—"],["Mtu wa dharura",employeeProfile.emergency_contact_name||"—"],
+        ["Simu ya dharura",employeeProfile.emergency_contact_phone||"—"]
+       ] as [string,string][]).map(([label,value])=><View key={label} style={s.profileField}><Text style={[s.copy,!darkMode&&{color:"#526477"}]}>{label}</Text><Text selectable style={[s.roleTitle,!darkMode&&{color:"#142D42"}]}>{value}</Text></View>)}
+       <Text style={[s.copy,!darkMode&&{color:"#526477"}]}>Tamko limekubaliwa: {employeeProfile.declaration_accepted_at?"Ndiyo":"Hapana"}</Text>
+      </>}
+      <Text style={[s.heading,!darkMode&&{color:"#142D42"}]}>Nyaraka binafsi ({employeeDocuments.length})</Text>
+      {employeeDocuments.map(doc=><View key={doc.id} style={s.documentRow}>
+       <View style={{flex:1}}><Text style={[s.roleTitle,!darkMode&&{color:"#142D42"}]}>{({identity:"Kitambulisho",employee_photo:"Picha ya mfanyakazi",local_government_letter:"Barua ya serikali ya mtaa",guarantor_support:"Nyaraka za mdhamini",employment_contract:"Mkataba wa ajira"} as Record<string,string>)[doc.document_type]||doc.document_type}</Text><Text style={[s.copy,!darkMode&&{color:"#526477"}]}>{new Date(doc.created_at).toLocaleDateString()}</Text></View>
+       <Pressable disabled={!!openingDocument} onPress={()=>void openEmployeeDocument(doc)} style={s.small}><Text style={s.smallText}>{openingDocument===doc.id?"Inafungua...":"Fungua"}</Text></Pressable>
+      </View>)}
+      <Pressable onPress={()=>{setSelectedEmployee(null);setEmployeeProfile(null);setEmployeeDocuments([]);}} style={s.refresh}><Text style={s.smallText}>Funga wasifu</Text></Pressable>
+    </View>}
     {owner && permissionTarget && <View style={[s.panel, !darkMode && { backgroundColor: "#FFFFFF", borderColor: "#DCE5EC" }]}>
       <Text style={[s.heading, !darkMode && { color: "#142D42" }]}>Ruhusa za Meneja</Text>
       <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Meneja ••••{permissionTarget.user_id.slice(-6)}. Chagua kazi anazoweza kufanya. Bila ruhusa, taarifa na vitendo vinabaki vimefungwa.</Text>
@@ -184,23 +250,23 @@ export default function StaffManagement({ darkMode = true }: { darkMode?: boolea
     </View>}
     <Pressable onPress={() => void load()} style={[s.refresh, !darkMode && { backgroundColor: "#E7EEF4" }]}><Text style={[s.smallText, !darkMode && { color: "#FFFFFF" }]}>↻ Sasisha orodha</Text></Pressable>
     <Text style={[s.notice, !darkMode && { color: "#075E46", backgroundColor: "#E8F7F0" }]}>{notice}</Text>
-    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Usalama: kuongeza, kubadilisha nafasi na kuondoa wanachama hufanywa na RPC za database zinazokagua jukumu la mmiliki. Wafanyakazi hujiunga kwa namba ya simu iliyothibitishwa kwa SMS.</Text>
+    <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Usalama: kuongeza, kubadilisha nafasi na kuondoa wanachama ni kazi za Boss pekee. Manager anaweza kuona nyaraka tu ikiwa Boss amempa ruhusa hiyo; kila ufunguzi hukaguliwa na database.</Text>
   </ScrollView>;
 }
 
 const s = StyleSheet.create({
-  wrap:{padding:18,paddingBottom:44,maxWidth:980,width:"100%",alignSelf:"center"},
-  title:{color:"#F4F7FA",fontSize:26,fontWeight:"900",letterSpacing:-0.4},
+  wrap:{paddingHorizontal:18,paddingTop:22,paddingBottom:52,maxWidth:980,width:"100%",alignSelf:"center"},
+  title:{color:"#F4F7FA",fontSize:29,fontWeight:"900",letterSpacing:-0.7},
   heading:{color:"#FFF",fontSize:16,fontWeight:"800",marginTop:12,marginBottom:8},
-  copy:{color:"#91A4B5",fontSize:12,lineHeight:18,marginTop:4},
-  panel:{backgroundColor:"#102438",borderColor:"#29475D",borderWidth:1,borderRadius:18,padding:16,marginTop:16},
-  input:{backgroundColor:"#0B1B2A",borderWidth:1,borderColor:"#29475D",borderRadius:12,color:"#F4F7FA",padding:14,marginTop:9,fontSize:13},
+  copy:{color:"#AFC0CD",fontSize:13,lineHeight:20,marginTop:6},
+  panel:{backgroundColor:"#102438",borderColor:"#31516A",borderWidth:1,borderRadius:21,padding:18,marginTop:18},
+  input:{backgroundColor:"#0B1B2A",borderWidth:1,borderColor:"#31516A",borderRadius:14,color:"#F4F7FA",padding:15,marginTop:10,fontSize:14},
   role:{padding:13,borderWidth:1,borderColor:"#29475D",borderRadius:13,marginTop:8,backgroundColor:"#0B1B2A"},
   selected:{borderColor:"#43C99A",backgroundColor:"#12372F"},
   roleTitle:{color:"#F4F7FA",fontWeight:"800",fontSize:13},
   button:{backgroundColor:"#16785C",padding:15,borderRadius:13,alignItems:"center",marginTop:13,borderWidth:1,borderColor:"#43C99A"},
   buttonText:{color:"#F5FFFA",fontWeight:"900"},
-  member:{backgroundColor:"#102438",borderWidth:1,borderColor:"#29475D",padding:15,borderRadius:16,marginTop:9},
+  member:{backgroundColor:"#102438",borderWidth:1,borderColor:"#31516A",padding:17,borderRadius:18,marginTop:11},
   actions:{flexDirection:"row",flexWrap:"wrap",gap:7,marginTop:10},
   small:{backgroundColor:"#173D36",paddingHorizontal:10,paddingVertical:8,borderRadius:8},
   remove:{backgroundColor:"#59332F"},
@@ -208,5 +274,6 @@ const s = StyleSheet.create({
   inviteLink:{color:"#75E0B8",fontSize:11,lineHeight:18,marginTop:6},
   smallText:{color:"#F4F7FA",fontSize:11,fontWeight:"800"},
   refresh:{alignSelf:"flex-start",padding:12,backgroundColor:"#173247",borderRadius:11,marginTop:13},
-  notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,lineHeight:18,marginTop:14}
+  notice:{color:"#75E0B8",backgroundColor:"#102D2C",padding:12,borderRadius:10,fontSize:12,lineHeight:18,marginTop:14},
+  profileField:{paddingVertical:7,borderBottomWidth:1,borderBottomColor:"#29475D"},documentRow:{flexDirection:"row",alignItems:"center",gap:10,paddingVertical:9,borderBottomWidth:1,borderBottomColor:"#29475D"}
 });
