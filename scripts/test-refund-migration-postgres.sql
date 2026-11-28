@@ -570,6 +570,22 @@ BEGIN
   GET DIAGNOSTICS v_count = ROW_COUNT;
   IF v_count <> 1 THEN RAISE EXCEPTION 'Owner cannot replace their own product image'; END IF;
 
+  -- Manager with products.manage can upload and replace only their own folder's object.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',false);
+  PERFORM set_config('gunx.test.permission','products.manage',false);
+  INSERT INTO storage.objects(bucket_id,name)
+  VALUES (
+    'business-assets',
+    '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000003/products/manager-photo.jpg'
+  );
+  UPDATE storage.objects
+  SET name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000003/products/manager-photo-replaced.jpg'
+  WHERE bucket_id='business-assets'
+    AND name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000003/products/manager-photo.jpg';
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'Authorized manager could not replace their product image'; END IF;
+  PERFORM set_config('gunx.test.permission','',false);
+
   -- Cashier cannot read the owner's private object through authenticated Storage RLS.
   PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',false);
   SELECT count(*) INTO v_count
