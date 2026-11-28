@@ -6,6 +6,7 @@ import * as ImagePicker from "expo-image-picker";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { supabase } from "../lib/supabase";
 import { useShopContext } from "./AuthGate";
+import DashboardGallery from "./DashboardGallery";
 
 type SubscriptionMetrics = {
   total_subscriptions:number;
@@ -566,7 +567,9 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
         <Text style={s.logoutBarText}>⇥  TOKA KWENYE AKAUNTI</Text>
       </Pressable>
 
-      {selectedModule === "All Businesses" ? (
+      {selectedModule === "Dashboards" ? (
+        <DashboardGallery darkMode={darkMode} onBack={() => setSelectedModule(null)} />
+      ) : selectedModule === "All Businesses" ? (
         <BusinessDirectory darkMode={darkMode} onBack={() => setSelectedModule(null)} />
       ) : selectedModule ? (
         <ModulePage moduleKey={selectedModule} metrics={metrics} darkMode={darkMode} onBack={() => setSelectedModule(null)} />
@@ -606,6 +609,7 @@ export default function PlatformOwnerDashboard({ darkMode, onToggleTheme }: { da
             <Text style={s.sectionTitle}>Zana za Usimamizi</Text>
           </View>
           <View style={s.managementGrid}>
+            <ManagementCard icon="🖥️" title="Dashboards Zote" description="Kagua muonekano wa Boss, Manager, Cashier, Stockkeeper na Super Admin pamoja na ruhusa zao." darkMode={darkMode} onPress={() => openModule("Dashboards")}/>
             <ManagementCard icon="🏪" title="Biashara Zote" description="Orodha na usimamizi wa biashara." darkMode={darkMode} onPress={showBusinesses}/>
             <ManagementCard icon="👥" title="Usimamizi wa Watumiaji" description="Akaunti, majukumu na ruhusa." darkMode={darkMode} onPress={() => openModule("Users")}/>
             <ManagementCard icon="🛡️" title="Vifurushi/Usajili" description="Vifurushi, muda na malipo." darkMode={darkMode} onPress={() => openModule("Subscriptions")}/>
