@@ -73,6 +73,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
   const [heroMediaType, setHeroMediaType] = useState<HeroMediaType | null>(null);
   const [heroMediaUrl, setHeroMediaUrl] = useState<string | null>(null);
   const [chartLiveSales, setChartLiveSales] = useState<ChartSale[]>([]);
+  const [refreshKey, setRefreshKey] = useState(0);
   const [menuOpen, setMenuOpen] = useState(false);
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [mediaBusy, setMediaBusy] = useState(false);
@@ -142,7 +143,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
       .on("postgres_changes", { event: "*", schema: "public", table: "sales", filter: "shop_id=eq." + shopId }, () => { void loadChartSales(); })
       .subscribe();
     return () => { active = false; void supabase!.removeChannel(channel); };
-  }, [shopId]);
+  }, [shopId, refreshKey]);
 
   const chartSales = useMemo(() => {
     const merged = new Map<string, ChartSale>();
@@ -267,14 +268,22 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
   return <View style={[s.container,darkMode&&{backgroundColor:"#081522"}]}>
     <View style={[s.hero,darkMode&&{backgroundColor:"#081522"}]}>
       <View style={s.topBar}>
-        <Pressable accessibilityLabel="Fungua menyu ya mmiliki" onPress={() => setMenuOpen(true)} style={s.headerIcon}>
-          <Text style={s.headerIconText}>☰</Text>
-        </Pressable>
+        <View style={s.topBarBrand}>
+          <Pressable accessibilityLabel="Fungua menyu ya mmiliki" onPress={() => setMenuOpen(true)} style={s.headerIcon}>
+            <Text style={s.headerIconText}>☰</Text>
+          </Pressable>
+          <View style={{flex:1,minWidth:0}}>
+            <Text style={s.topBrandName}>GUNX SMART BUSINESS</Text>
+            <Text numberOfLines={1} style={[s.topBusinessName,darkMode&&{color:"#FFFFFF"}]}>{businessName}</Text>
+          </View>
+        </View>
         <View style={s.topBarRight}>
           <Pressable accessibilityRole="button" accessibilityLabel={darkMode?"Washa Light Mode":"Washa Dark Mode"} onPress={onToggleTheme} style={[s.headerIcon,darkMode&&{backgroundColor:"#173D36",borderColor:"#43C99A"}]}><Text style={[s.headerIconText,darkMode&&{color:"#75E0B8"}]}>{darkMode?"☀":"☾"}</Text></Pressable>
+          <Pressable accessibilityLabel="Sasisha taarifa za mauzo" onPress={() => setRefreshKey(value => value + 1)} style={s.headerIcon}><Text style={[s.headerIconText,{color:"#059669"}]}>↻</Text></Pressable>
           <Pressable accessibilityLabel="Arifa za biashara" onPress={() => setNotificationsOpen(true)} style={s.headerIcon}>
             <Text style={s.headerIconText}>♧</Text>{(lowStock.length > 0 || pendingSales.length > 0) && <View style={s.notificationDot} />}
           </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Toka kwenye akaunti" onPress={() => { void supabase?.auth.signOut(); }} style={s.logoutButton}><Text style={s.logoutText}>Toka</Text></Pressable>
         </View>
       </View>
       <View style={s.heroIdentity}>
@@ -440,8 +449,11 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
 const s = StyleSheet.create({
   container: { backgroundColor: "#FFFFFF", paddingBottom: 20, gap: 0 },
   hero: { backgroundColor: "#FFFFFF", paddingHorizontal: 13, paddingTop: 4, paddingBottom: 15 },
-  topBar: { flexDirection: "row", flexWrap: "nowrap", alignItems: "center", justifyContent: "space-between", minHeight: 44, gap: 5 },
-  topBarRight: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 9, flex: 1, minWidth: 0 },
+  topBar: { flexDirection: "row", flexWrap: "nowrap", alignItems: "center", justifyContent: "space-between", minHeight: 48, gap: 7 },
+  topBarBrand: { flexDirection: "row", alignItems: "center", gap: 9, flex: 1, minWidth: 0 },
+  topBrandName: { color: "#D97706", fontSize: 9, fontWeight: "900", letterSpacing: 1.1 },
+  topBusinessName: { color: "#0F172A", fontSize: 12, fontWeight: "900", marginTop: 2 },
+  topBarRight: { flexDirection: "row", alignItems: "center", justifyContent: "flex-end", gap: 6, flexShrink: 0 },
   ownerWelcomeBanner: { flexDirection: "row", alignItems: "center", gap: 16, padding: 19, minHeight: 142, borderRadius: 22, borderWidth: 1.5, borderColor: "#C6A64A", backgroundColor: "#102A4C", marginTop: 12, marginBottom: 4, elevation: 4, shadowColor: "#102A4C", shadowOpacity: 0.2, shadowRadius: 9, shadowOffset: { width: 0, height: 4 } },
   ownerAvatarPicker: { position: "relative" },
   ownerAvatarPhoto: { width: 76, height: 76, borderRadius: 38 },
@@ -471,16 +483,18 @@ const s = StyleSheet.create({
   
   
   brandLogo: { width: 190, height: 110 },
-  headerIcon: { width: 34, height: 34, borderRadius: 18, backgroundColor: "#EFF6FF", borderWidth: 1, borderColor: "#DBEAFE", alignItems: "center", justifyContent: "center" },
+  headerIcon: { width: 34, height: 34, borderRadius: 11, backgroundColor: "#F1F5F9", borderWidth: 1, borderColor: "#DBE2EA", alignItems: "center", justifyContent: "center" },
+  logoutButton: { backgroundColor: "#071124", borderRadius: 10, paddingHorizontal: 10, height: 34, alignItems: "center", justifyContent: "center" },
+  logoutText: { color: "#FFFFFF", fontSize: 10, fontWeight: "900" },
   headerIconText: { color: "#0B1F4A", fontSize: 22, fontWeight: "900" },
   notificationDot: { position: "absolute", right: 4, top: 4, width: 7, height: 7, borderRadius: 4, backgroundColor: "#FACC15", borderWidth: 1, borderColor: "#FFFFFF" },
   heroIdentity: { flexDirection: "column", alignItems: "center", marginTop: 0, gap: 5 },
-  singleLogoWrap: { width: "100%", height: 250, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF" },
-  logoEmpty: { width: "100%", height: 250, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC", borderWidth: 2, borderStyle: "dashed", borderColor: "#94A3B8", borderRadius: 16 },
-  logoCamera: { color: "#64748B", fontSize: 52, fontWeight: "800" },
-  logoAdd: { color: "#0B1F4A", fontSize: 18, fontWeight: "900", letterSpacing: 1, marginTop: 10 },
-  logoHint: { color: "#64748B", fontSize: 11, marginTop: 6 },
-  singleLogo: { width: "100%", height: 250 },
+  singleLogoWrap: { width: "100%", height: 78, alignItems: "center", justifyContent: "center", backgroundColor: "#FFFFFF", borderRadius: 16, borderWidth: 1, borderColor: "#E2E8F0", overflow: "hidden" },
+  logoEmpty: { width: "100%", height: 78, alignItems: "center", justifyContent: "center", backgroundColor: "#F8FAFC", borderWidth: 1, borderStyle: "dashed", borderColor: "#94A3B8", borderRadius: 16 },
+  logoCamera: { color: "#D97706", fontSize: 20, fontWeight: "800" },
+  logoAdd: { color: "#0B1F4A", fontSize: 10, fontWeight: "900", letterSpacing: 1, marginTop: 2 },
+  logoHint: { color: "#64748B", fontSize: 8, marginTop: 2 },
+  singleLogo: { width: "100%", height: 78 },
   logoUploadBanner: { width: "100%", minHeight: 82, flexDirection: "row", alignItems: "center", gap: 12, padding: 10, borderRadius: 13, borderWidth: 1, borderStyle: "dashed", borderColor: "#60A5FA", backgroundColor: "#FFFFFF" },
   logoPreview: { width: 58, height: 58, borderRadius: 10, backgroundColor: "#DBEAFE", alignItems: "center", justifyContent: "center", overflow: "hidden" },
   logoUploadCopy: { flex: 1, minWidth: 0 },
@@ -502,17 +516,17 @@ const s = StyleSheet.create({
   lowerContent: { backgroundColor: "#FFFFFF", paddingHorizontal: 11, paddingTop: 13, gap: 12 },
   serviceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
   serviceTile: { width: "48%", aspectRatio: 1.35, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 6, justifyContent: "center", alignItems: "center", elevation: 2 },
-  serviceIcon: { color: "#FFFFFF", fontSize: 68, fontWeight: "900" },
+  serviceIcon: { color: "#FFFFFF", fontSize: 30, fontWeight: "900" },
   serviceLabel: { color: "#FFFFFF", fontSize: 15, fontWeight: "900", marginTop: 5, textAlign: "center" },
   
   summarySection: { gap: 8 },
   summaryHeading: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#FFFFFF", paddingHorizontal: 2, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
-  summaryIcon: { color: "#155EEF", fontSize: 40, fontWeight: "900" },
+  summaryIcon: { color: "#059669", fontSize: 22, fontWeight: "900" },
   summaryTitle: { color: "#0B1F4A", fontSize: 14, fontWeight: "900", flex: 1 },
   summaryPeriod: { color: "#155EEF", backgroundColor: "#FFFFFF", borderRadius: 14, overflow: "hidden", paddingHorizontal: 10, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
   summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
   summaryTile: { width: "48%", minHeight: 112, backgroundColor: "#F0F7FF", borderRadius: 10, borderWidth: 1, borderColor: "#DBEAFE", padding: 7, justifyContent: "center" },
-  summaryTileIcon: { fontSize: 54 },
+  summaryTileIcon: { fontSize: 24 },
   summaryTileLabel: { color: "#64748B", fontSize: 13, fontWeight: "800", marginTop: 3 },
   summaryTileValue: { color: "#0B1F4A", fontSize: 16, fontWeight: "900", marginTop: 3 },
   systemCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 11, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1, gap: 2 },
@@ -553,7 +567,7 @@ const s = StyleSheet.create({
   axisText: { color: "#64748B", fontSize: 7 },
   chartFoot: { color: "#94A3B8", fontSize: 7, marginTop: 6 },
   quickRow: { flexDirection: "row", alignItems: "center", gap: 5, paddingVertical: 10, borderBottomWidth: 1, borderBottomColor: "#F1F5F9" },
-  quickBadge: { width: 68, height: 68, borderRadius: 34, color: "#FFFFFF", fontSize: 44, fontWeight: "900", textAlign: "center", textAlignVertical: "center", overflow: "hidden" },
+  quickBadge: { width: 40, height: 40, borderRadius: 20, color: "#FFFFFF", fontSize: 25, fontWeight: "900", textAlign: "center", textAlignVertical: "center", overflow: "hidden" },
   quickLabel: { flex: 1, color: "#243B53", fontSize: 14, fontWeight: "800" },
   chevron: { color: "#94A3B8", fontSize: 16 },
   stockAlert: { backgroundColor: "#FFF8E8", borderColor: "#F4D58A", borderWidth: 1, borderRadius: 12, padding: 12 },
@@ -561,9 +575,9 @@ const s = StyleSheet.create({
   alertText: { color: "#5B4826", fontSize: 11, paddingVertical: 3 },
   alertLink: { color: "#8A5A00", fontSize: 11, fontWeight: "900", marginTop: 5 },
   bottomNav: { flexDirection: "row", gap: 7, justifyContent: "space-between" },
-  bottomNavItem: { flex: 1, minWidth: 0, minHeight: 94, borderRadius: 11, alignItems: "center", justifyContent: "center", paddingVertical: 7, paddingHorizontal: 3, elevation: 2 },
-  bottomNavIcon: { color: "#FFFFFF", fontSize: 54 },
-  bottomNavLabel: { color: "#FFFFFF", fontSize: 13, fontWeight: "900", textAlign: "center", marginTop: 3 },
+  bottomNavItem: { flex: 1, minWidth: 0, minHeight: 60, borderRadius: 11, alignItems: "center", justifyContent: "center", paddingVertical: 5, paddingHorizontal: 3, elevation: 2 },
+  bottomNavIcon: { color: "#FFFFFF", fontSize: 26 },
+  bottomNavLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", textAlign: "center", marginTop: 3 },
   footer: { backgroundColor: "#FFFFFF", borderRadius: 12, padding: 11, flexDirection: "row", alignItems: "center", gap: 9, borderWidth: 1, borderColor: "#E2E8F0" },
   footerLogo: { color: "#F2D99F", fontSize: 23, fontWeight: "900" },
   footerCopy: { flex: 1 },
