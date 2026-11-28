@@ -7,9 +7,11 @@ import type { Product } from "../domain/types";
 
 type Props = { shopId: string | null; onProductsChanged: () => void; darkMode?: boolean };
 type SelectedImage = { uri: string; mimeType?: string | null };
+type ShopStaff = { user_id: string; role: string };
 
 export default function ProductManagement({ shopId, onProductsChanged, darkMode = true }: Props) {
   const [items, setItems] = useState<Product[]>([]);
+  const [members, setMembers] = useState<ShopStaff[]>([]);
   const [name, setName] = useState("");
   const [sku, setSku] = useState("");
   const [category, setCategory] = useState("");
@@ -38,10 +40,16 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
     const isOwner = !ownerResult.error && ownerResult.data === true;
     setCanManage(isOwner || (!permissionResult.error && permissionResult.data === true));
     setCanViewCost(isOwner || (!costPermissionResult.error && costPermissionResult.data === true) || (!profitPermissionResult.error && profitPermissionResult.data === true));
+    if (isOwner || (!permissionResult.error && permissionResult.data === true)) {
+      const { data: staffRows } = await supabase.from("shop_members").select("user_id,role").eq("shop_id", shopId).in("role", ["manager", "cashier", "stockkeeper"]).order("role");
+      setMembers((staffRows ?? []) as ShopStaff[]);
+    } else {
+      setMembers([]);
+    }
     setBusy(false);
     if (error) { setMessage("Bidhaa hazijapakiwa: " + error.message); return; }
     setItems((data ?? []).map((p: any) => ({
-      id: p.id, name: p.name, sku: p.sku ?? "", category: p.category ?? null, unit: p.unit,
+      id: p.id, name: p.name, sku: p.sku ?? "", category: p.category ?? null, assignedStaffIds: Array.isArray(p.assigned_staff_ids) ? p.assigned_staff_ids : [], unit: p.unit,
       imageUrl: p.image_url ?? null,
       costPrice: Number(p.cost_price ?? 0), sellingPrice: Number(p.selling_price),
       stockQuantity: Number(p.stock_quantity), reorderLevel: Number(p.reorder_level), active: p.active
@@ -152,6 +160,28 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
     reset(); await load(); onProductsChanged();
   }
 
+  async function toggleStaffAssignment(product: Product, staffUserId: string) {
+    if (!supabase || !shopId || !canManage) return;
+    const current = product.assignedStaffIds ?? [];
+    const next = current.includes(staffUserId)
+      ? current.filter(id => id !== staffUserId)
+      : [...current, staffUserId];
+    setBusy(true);
+    const { error } = await supabase.rpc("set_product_staff_assignments", {
+      p_shop_id: shopId,
+      p_product_id: product.id,
+      p_staff_user_ids: next,
+    });
+    setBusy(false);
+    if (error) {
+      setMessage("Mgawo wa bidhaa haujahifadhiwa: " + error.message);
+      return;
+    }
+    setMessage("Mgawo wa wafanyakazi wa " + product.name + " umesasishwa.");
+    await load();
+    onProductsChanged();
+  }
+
   async function archive(p: Product) {
     if (!supabase || !shopId) return;
     setBusy(true);
@@ -226,6 +256,20 @@ export default function ProductManagement({ shopId, onProductsChanged, darkMode 
         <Text style={[s.name, !darkMode && { color: "#142D42" }]}>{p.name} {!p.active ? "(Imefichwa)" : ""}</Text>
         <Text style={[s.copy, !darkMode && { color: "#526477" }]}>{p.sku || "Hakuna SKU"} · {p.category || "Bila kategoria"} · {p.unit} · Stock {p.stockQuantity}</Text>
         <Text style={[s.price, !darkMode && { color: "#8A6512" }]}>{canViewCost ? `Gharama ${formatTZS(p.costPrice)} · ` : ""}Bei {formatTZS(p.sellingPrice)}</Text>
+        {canManage && members.length > 0 && <View style={{ marginTop: 9 }}>
+          <Text style={[s.copy, !darkMode && { color: "#526477" }]}>Wapangiwe bidhaa hii:</Text>
+          <View style={{ flexDirection: "row", flexWrap: "wrap", gap: 6, marginTop: 5 }}>
+            {members.map(member => {
+              const selected = (p.assignedStaffIds ?? []).includes(member.user_id);
+              return <Pressable key={member.user_id} disabled={busy} onPress={() => void toggleStaffAssignment(p, member.user_id)}
+                style={{ paddingHorizontal: 9, paddingVertical: 7, borderRadius: 9, borderWidth: 1, borderColor: selected ? "#43C99A" : "#31516A", backgroundColor: selected ? "#173D36" : (darkMode ? "#0B1B2A" : "#F1F5F9") }}>
+                <Text style={{ color: selected ? "#75E0B8" : (darkMode ? "#D9E4EC" : "#334155"), fontSize: 10, fontWeight: "800" }}>
+                  {selected ? "✓ " : "+ "}{member.role === "manager" ? "Meneja" : member.role === "stockkeeper" ? "Storekeeper" : "Staff"} ••••{member.user_id.slice(-4)}
+                </Text>
+              </Pressable>;
+            })}
+          </View>
+        </View>}
       </View>
       {canManage && <View style={s.actions}>
         {p.active ? <>
