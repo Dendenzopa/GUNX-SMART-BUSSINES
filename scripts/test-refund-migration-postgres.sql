@@ -194,12 +194,14 @@ AS $platform_admin$ SELECT current_setting('gunx.test.platform_admin', true) = '
 
 INSERT INTO auth.users(id, email, phone, phone_confirmed_at) VALUES
 ('10000000-0000-0000-0000-000000000001', 'owner@example.test', '+255700000001', now()),
-('10000000-0000-0000-0000-000000000002', 'employee@example.test', '+255700000002', now());
+('10000000-0000-0000-0000-000000000002', 'employee@example.test', '+255700000002', now()),
+('10000000-0000-0000-0000-000000000003', 'manager@example.test', '+255700000003', now());
 INSERT INTO public.shops(id, name, owner_id) VALUES
 ('00000000-0000-0000-0000-000000000001', 'GUNX Test Shop', '10000000-0000-0000-0000-000000000001');
 INSERT INTO public.shop_members(shop_id, user_id, role) VALUES
 ('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'owner'),
-('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'cashier');
+('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'cashier'),
+('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-000000000003', 'manager');
 INSERT INTO public.shop_subscriptions(shop_id, plan_code, status, expires_at) VALUES
 ('00000000-0000-0000-0000-000000000001', 'pro', 'active', now() + interval '30 days');
 INSERT INTO public.pro_payment_requests(
@@ -459,6 +461,37 @@ BEGIN
   EXCEPTION WHEN OTHERS THEN
     IF SQLERRM <> 'Only owner or manager can refund sales' THEN RAISE; END IF;
   END;
+
+  -- Manager without refunds.manage is denied; the same manager is allowed with the permission.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',false);
+  PERFORM set_config('gunx.test.permission','',false);
+  v_rejected := false;
+  BEGIN
+    PERFORM * FROM public.refund_sale(
+      '00000000-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000002',
+      '50000000-0000-0000-0000-000000000010',
+      '[{"sale_item_id":"40000000-0000-0000-0000-000000000004","quantity":1}]'::jsonb,
+      'Manager permission test','cash'
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='Only owner or manager can refund sales' THEN v_rejected:=true; ELSE RAISE; END IF;
+  END;
+  IF NOT v_rejected THEN RAISE EXCEPTION 'Manager without refunds.manage unexpectedly refunded'; END IF;
+
+  PERFORM set_config('gunx.test.permission','refunds.manage',false);
+  SELECT * INTO v_result FROM public.refund_sale(
+    '00000000-0000-0000-0000-000000000001',
+    '30000000-0000-0000-0000-000000000002',
+    '50000000-0000-0000-0000-000000000011',
+    '[{"sale_item_id":"40000000-0000-0000-0000-000000000004","quantity":1}]'::jsonb,
+    'Manager permission test','cash'
+  );
+  IF v_result.refund_total <> 10 THEN
+    RAISE EXCEPTION 'Manager with refunds.manage did not refund the expected amount';
+  END IF;
+  PERFORM set_config('gunx.test.permission','',false);
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
 
   -- A previous gross-price refund above the corrected discounted allocation fails closed.
   INSERT INTO public.sales(id,shop_id,receipt_number,status,subtotal,discount,total,amount_paid)
