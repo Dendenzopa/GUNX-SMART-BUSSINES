@@ -17,7 +17,7 @@ import SubscriptionManagement from "./src/components/SubscriptionManagement";
 import ProductManagement from "./src/components/ProductManagement";
 import PlatformOwnerDashboard from "./src/components/PlatformOwnerDashboard";
 import OwnerBusinessDashboard from "./src/components/OwnerBusinessDashboard";
-type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Returns" | "Sync" | "Payments" | "Reports" | "Staff" | "Subscription" | "Owner";
+type Screen = "Home" | "POS" | "Stock" | "Debts" | "Expenses" | "Returns" | "Sync" | "Payments" | "Reports" | "Staff" | "Profile" | "Subscription" | "Owner";
 type CartLine = { productId: string; quantity: number };
 function Button({label,onPress,quiet=false}:{label:string;onPress:()=>void;quiet?:boolean}) { return <Pressable onPress={onPress} style={[s.button,quiet&&s.quiet]}><Text style={s.buttonText}>{label}</Text></Pressable>; }
 function Metric({label,value,darkMode=true}:{label:string;value:string;darkMode?:boolean}) { return <View style={[s.metric,!darkMode&&{backgroundColor:"#F1F5F9",borderColor:"#DCE5EC"}]}><Text style={[s.label,!darkMode&&{color:"#334155"}]}>{label}</Text><Text style={[s.value,!darkMode&&{color:"#142D42"}]}>{value}</Text></View>; }
