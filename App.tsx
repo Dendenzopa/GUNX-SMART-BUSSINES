@@ -12,6 +12,7 @@ import { submitCheckout } from "./src/services/checkout";
 import { readPendingSales, writePendingSales, readCachedProducts, writeCachedProducts, readCachedBusinessSnapshot, writeCachedBusinessSnapshot, type PendingSale } from "./src/services/offlineSales";
 import { exportBusinessReportPdf, exportBusinessReportCsv } from "./src/services/reportExports";
 import StaffManagement from "./src/components/StaffManagement";
+import EmployeeProfile from "./src/components/EmployeeProfile";
 import SubscriptionManagement from "./src/components/SubscriptionManagement";
 import ProductManagement from "./src/components/ProductManagement";
 import PlatformOwnerDashboard from "./src/components/PlatformOwnerDashboard";
@@ -27,9 +28,9 @@ function Dashboard() {
  const effectiveRole = shopRole ?? "owner";
  const allowedScreens: Record<"owner"|"manager"|"cashier"|"stockkeeper", Screen[]> = {
   owner: ["Home","POS","Stock","Debts","Expenses","Returns","Sync","Payments","Reports","Staff","Subscription"],
-  manager: ["Home"],
-  cashier: ["Home","POS","Debts","Sync"],
-  stockkeeper: ["Home","Stock"]
+  manager: ["Home","Profile"],
+  cashier: ["Home","POS","Debts","Sync","Profile"],
+  stockkeeper: ["Home","Stock","Profile"]
  };
  const [businessBrand,setBusinessBrand]=useState<{name:string;logo:string|null}>({name:"Biashara Yangu",logo:null});
  useEffect(()=>{if(!shopId||!supabase||isPlatformAdmin)return;let active=true;supabase.from("shops").select("name,hero_media_type,hero_media_url").eq("id",shopId).maybeSingle().then(({data,error})=>{if(!active||error||!data)return;setBusinessBrand({name:data.name||"Biashara Yangu",logo:(data.hero_media_type==="business_logo"||data.hero_media_type==="owner_photo")&&typeof data.hero_media_url==="string"?data.hero_media_url:null});});const channel=supabase.channel("business-brand-"+shopId).on("postgres_changes",{event:"UPDATE",schema:"public",table:"shops",filter:"id=eq."+shopId},payload=>{const row=payload.new as any;setBusinessBrand({name:row.name||"Biashara Yangu",logo:(row.hero_media_type==="business_logo"||row.hero_media_type==="owner_photo")&&typeof row.hero_media_url==="string"?row.hero_media_url:null});}).subscribe();return()=>{active=false;void supabase!.removeChannel(channel);};},[shopId,isPlatformAdmin]);
@@ -46,7 +47,7 @@ function Dashboard() {
   });
   return ()=>{active=false;};
  },[shopId,effectiveRole,isPlatformAdmin]);
- const managerScreens:Screen[]=["Home"];
+ const managerScreens:Screen[]=["Home","Profile"];
  if(managerPermissions.includes("pos.use"))managerScreens.push("POS");
  if(managerPermissions.includes("stock.manage")||managerPermissions.includes("products.manage"))managerScreens.push("Stock");
  if(managerPermissions.includes("debts.manage"))managerScreens.push("Debts");
@@ -482,6 +483,7 @@ function Dashboard() {
    {screen==="Reports"&&<><Text style={[s.pageTitle,!darkMode&&{color:"#142D42"}]}>Ripoti za Biashara</Text><Text style={[s.muted,!darkMode&&{color:"#142D42"}]}>{supabaseConfigured ? "Muhtasari wa miamala iliyopakiwa kutoka database ya duka." : "Muhtasari wa data ya majaribio pekee."}</Text><View style={[s.panel,!darkMode&&{backgroundColor:"#F1F5F9",borderColor:"#DCE5EC"}]}><Text style={[s.heading,!darkMode&&{color:"#142D42"}]}>Chagua kipindi</Text><View style={s.row}>{([{id:"today",label:"Leo"},{id:"7d",label:"Siku 7"},{id:"30d",label:"Siku 30"}] as const).map(option=><Pressable key={option.id} onPress={()=>setReportRange(option.id)} style={[s.navItem,reportRange===option.id&&s.navOn]}><Text style={[s.navText,reportRange===option.id&&s.navTextOn]}>{option.label}</Text></Pressable>)}</View><View style={s.row}>{([{id:"year",label:"Mwaka huu"},{id:"all",label:"Tangu mwanzo"}] as const).map(option=><Pressable key={option.id} onPress={()=>setReportRange(option.id)} style={[s.navItem,reportRange===option.id&&s.navOn]}><Text style={[s.navText,reportRange===option.id&&s.navTextOn]}>{option.label}</Text></Pressable>)}</View></View><View style={[s.panel,!darkMode&&{backgroundColor:"#F1F5F9",borderColor:"#DCE5EC"}]}><Text style={[s.heading,!darkMode&&{color:"#142D42"}]}>Pakua / Shiriki Ripoti</Text><Text style={[s.muted,!darkMode&&{color:"#142D42"}]}>PDF kwa ripoti rasmi, au CSV inayofunguka kwenye Microsoft Excel na programu nyingine za spreadsheet.</Text><View style={s.row}><View style={s.flex}><Button label="Tengeneza PDF" onPress={()=>exportReport("pdf")}/></View><View style={s.flex}><Button label="Export Excel (CSV)" quiet onPress={()=>exportReport("csv")}/></View></View></View><Metric darkMode={darkMode} label="MAUZO BAADA YA REFUNDS" value={reportRefundTotal===null?"Haijapatikana":formatTZS(reportSalesValue)}/><Metric darkMode={darkMode} label="IDADI YA MAUZO" value={String(countSales(reportSales))}/><Metric darkMode={darkMode} label="REFUNDS ZA KIPINDI" value={reportRefundTotal===null?"Haijapatikana":formatTZS(reportRefundTotal)}/><Metric darkMode={darkMode} label="GHARAMA ZA KIPINDI" value={formatTZS(reportExpenseValue)}/><Metric darkMode={darkMode} label="FAIDA HALISI YA MAKADIRIO" value={reportProfit===null?"Haijapatikana":formatTZS(reportProfit)}/><Text style={[s.foot,!darkMode&&{color:"#142D42"}]}>Ripoti inachuja mauzo kwa tarehe ya muamala, gharama kwa tarehe ya gharama, na refunds kwa tarehe ya kurejesha. Mauzo yanayosubiri sync hayahesabiwi. Faida ni makadirio kabla ya kodi na gharama ambazo hazijaingizwa.</Text></>}
      {screen==="Owner"&&isPlatformAdmin&&<PlatformOwnerDashboard darkMode={darkMode} onToggleTheme={toggleTheme}/>}
      {screen==="Staff"&&effectiveRole==="owner"&&<StaffManagement darkMode={darkMode}/>}
+     {screen==="Profile"&&effectiveRole!=="owner"&&<EmployeeProfile darkMode={darkMode}/>}
      {screen==="Subscription"&&effectiveRole==="owner"&&<SubscriptionManagement darkMode={darkMode}/>}
   </ScrollView>
   <View style={[s.bottomNav,!darkMode&&{backgroundColor:"#F1F5F9",borderColor:"#DCE5EC"}]}>{[["⌂","Home"],["▣","POS"],["▤","Stock"],["☰","More"]].filter(([icon,label])=>label==="More"||visibleScreens.includes(label as Screen)).map(([icon,label])=><Pressable key={label} onPress={()=>label==="More"?setShowMore(v=>!v):navigateTo(label as Screen)} style={s.bottomItem}><Text style={[s.bottomIcon,!darkMode&&{color:"#526579"},(label==="More"?showMore:screen===label)&&{color:darkMode?"#75E0B8":"#087F5B"}]}>{icon}</Text><Text style={[s.bottomLabel,!darkMode&&{color:"#526579"},(label==="More"?showMore:screen===label)&&{color:darkMode?"#75E0B8":"#087F5B"}]}>{label}</Text></Pressable>)}</View>
