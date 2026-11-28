@@ -210,11 +210,18 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
     let active = true;
     setShopLoading(true);
     setMembershipCheckError(null);
+    const membershipTimeout = setTimeout(() => {
+      if (!active) return;
+      active = false;
+      setMembershipCheckError("Uthibitishaji wa role umechukua muda mrefu. Hakuna ruhusa iliyobadilishwa. Jaribu tena ukiwa na intaneti.");
+      setShopLoading(false);
+    }, 15000);
     Promise.all([
       supabase.rpc("is_platform_admin"),
       supabase.from("shop_members").select("shop_id,role").eq("user_id", session.user.id).limit(2)
     ]).then(([adminResult, membershipResult]) => {
       if (!active) return;
+      clearTimeout(membershipTimeout);
       if (adminResult.error || membershipResult.error) {
         const reason = adminResult.error?.message ?? membershipResult.error?.message ?? "Taarifa za ruhusa hazijapatikana.";
         setMembershipCheckError("Imeshindikana kuthibitisha role na biashara ya akaunti hii: " + reason);
@@ -249,10 +256,11 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
       setShopLoading(false);
     }).catch((error: unknown) => {
       if (!active) return;
-      setMessage(error instanceof Error ? error.message : "Imeshindikana kuthibitisha ruhusa za akaunti.");
+      clearTimeout(membershipTimeout);
+      setMembershipCheckError(error instanceof Error ? "Imeshindikana kuthibitisha ruhusa za akaunti: " + error.message : "Imeshindikana kuthibitisha ruhusa za akaunti.");
       setShopLoading(false);
     });
-    return () => { active = false; };
+    return () => { active = false; clearTimeout(membershipTimeout); };
   }, [session, membershipCheckAttempt, inviteToken]);
 
   useEffect(() => {
