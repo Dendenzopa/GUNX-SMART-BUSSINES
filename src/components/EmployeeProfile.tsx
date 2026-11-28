@@ -29,6 +29,9 @@ export default function EmployeeProfile({darkMode=true}:{darkMode?:boolean}) {
   const labels={employee_photo:"Picha ya mfanyakazi",identity:form.identity_type==="nida"?"Kitambulisho cha NIDA":"Kadi ya mpiga kura",local_government_letter:"Barua ya serikali ya mtaa",guarantor_support:"Nyaraka za mdhamini"};
   try {
    setUploading(documentType);
+   const {data:existingProfile,error:profileLookupError}=await supabase.from("employee_profiles").select("user_id").eq("shop_id",shopId).eq("user_id",userId).maybeSingle();
+   if(profileLookupError){setNotice("Imeshindikana kuthibitisha wasifu: "+profileLookupError.message);return;}
+   if(!existingProfile){setNotice("Hifadhi kwanza wasifu wako kabla ya kupakia nyaraka.");return;}
    const permission=await ImagePicker.requestMediaLibraryPermissionsAsync();
    if(!permission.granted){setNotice("Ruhusu GUNX kufikia picha kwenye simu ili kuchagua nyaraka.");return;}
    const result=await ImagePicker.launchImageLibraryAsync({mediaTypes:["images"],allowsEditing:documentType==="employee_photo",quality:0.85});
