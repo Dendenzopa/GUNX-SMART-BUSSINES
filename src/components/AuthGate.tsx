@@ -12,7 +12,7 @@ const ShopContext = createContext<{ shopId: string | null; isPlatformAdmin: bool
 export function useShopContext() { return useContext(ShopContext); }
 
 const AUTH_REDIRECT_URL = "gunxsmartbusiness://auth/callback";
-const WEB_AUTH_REDIRECT_URL = "https://gunx-smart-bussines.vercel.app";
+const WEB_AUTH_REDIRECT_URL = "https://gunx-smart-bussines-dendenzopa.vercel.app";
 const getAuthRedirectUrl = () => Platform.OS === "web"
   ? (typeof window !== "undefined" && (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") ? window.location.origin : WEB_AUTH_REDIRECT_URL)
   : AUTH_REDIRECT_URL;
