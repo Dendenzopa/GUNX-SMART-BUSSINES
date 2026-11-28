@@ -201,7 +201,7 @@ INSERT INTO public.shops(id, name, owner_id) VALUES
 INSERT INTO public.shop_members(shop_id, user_id, role) VALUES
 ('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'owner'),
 ('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'cashier'),
-('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-000000000003', 'manager');
+('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', 'manager');
 INSERT INTO public.shop_subscriptions(shop_id, plan_code, status, expires_at) VALUES
 ('00000000-0000-0000-0000-000000000001', 'pro', 'active', now() + interval '30 days');
 INSERT INTO public.pro_payment_requests(
