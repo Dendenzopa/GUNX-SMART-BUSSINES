@@ -20,6 +20,7 @@ const permissionOptions = [
   { id: "reports.profit", label: "Faida na gharama za bidhaa", detail: "Kuona gharama ya bidhaa na makadirio ya faida" },
   { id: "costs.view", label: "Bei za kununua", detail: "Kuona cost price ya bidhaa" },
   { id: "sync.manage", label: "Offline sync", detail: "Kusimamia mauzo yanayosubiri kusawazishwa" },
+  { id: "staff.documents.view", label: "Nyaraka za wafanyakazi", detail: "Kuona taarifa na nyaraka binafsi za wafanyakazi wa biashara hii" },
 ];
 const roles: { id: Role; label: string; detail: string }[] = [
   { id: "manager", label: "Meneja", detail: "Usimamizi wa shughuli za duka" },
