@@ -369,13 +369,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
           <Text style={s.chartFoot}>Hujisasisha mauzo yanapoingia · Ulinganisho wa kipindi kilichopita</Text>
         </View>
 
-        <View style={[s.quickCard, s.splitCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
-          <View style={s.quickTitleRow}><Text style={s.quickBolt}>ϟ</Text><Text style={[s.cardTitle,darkMode&&{color:"#F4F7FA"}]}>Vitendo vya Haraka</Text></View>
-          <Pressable onPress={() => onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#16A34A" }]}>＋</Text><Text style={[s.quickLabel,darkMode&&{color:"#F4F7FA"}]}>Ongeza Bidhaa</Text><Text style={s.chevron}>›</Text></Pressable>
-          <Pressable onPress={() => onNavigate("Staff")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#2563EB" }]}>♟</Text><Text style={[s.quickLabel,darkMode&&{color:"#F4F7FA"}]}>Ongeza Mfanyakazi</Text><Text style={s.chevron}>›</Text></Pressable>
-          <Pressable onPress={() => onNavigate("Reports")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#D69E0B" }]}>▥</Text><Text style={[s.quickLabel,darkMode&&{color:"#F4F7FA"}]}>Angalia Ripoti</Text><Text style={s.chevron}>›</Text></Pressable>
-          <Pressable onPress={() => onNavigate("Stock")} style={s.quickRow}><Text style={[s.quickBadge, { backgroundColor: "#2563EB" }]}>↓</Text><Text style={[s.quickLabel,darkMode&&{color:"#F4F7FA"}]}>Dhibiti Stock</Text><Text style={s.chevron}>›</Text></Pressable>
-        </View>
+
       </View>
 
       <View style={[s.systemCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
@@ -391,12 +385,7 @@ export default function OwnerBusinessDashboard({ darkMode, onToggleTheme, shopId
         {lowStock.slice(0, 3).map(item => <Text key={item.id} style={s.alertText}>{item.name} — {item.stockQuantity} {item.unit}</Text>)}
         <Pressable onPress={() => onNavigate("Stock")}><Text style={s.alertLink}>Fungua Stock →</Text></Pressable>
       </View>}
-      <View style={s.bottomNav}>
-        <Pressable onPress={() => onNavigate("POS")} style={[s.bottomNavItem, { backgroundColor: "#155EEF" }]}><Text style={s.bottomNavIcon}>🛒</Text><Text style={s.bottomNavLabel}>Mauzo (POS)</Text></Pressable>
-        <Pressable onPress={() => onNavigate("Stock")} style={[s.bottomNavItem, { backgroundColor: "#15803D" }]}><Text style={s.bottomNavIcon}>📦</Text><Text style={s.bottomNavLabel}>Stock</Text></Pressable>
-        <Pressable onPress={() => onNavigate("Staff")} style={[s.bottomNavItem, { backgroundColor: "#7C3AED" }]}><Text style={s.bottomNavIcon}>👥</Text><Text style={s.bottomNavLabel}>Wafanyakazi</Text></Pressable>
-        <Pressable onPress={() => onNavigate("Reports")} style={[s.bottomNavItem, { backgroundColor: "#D69E0B" }]}><Text style={s.bottomNavIcon}>📄</Text><Text style={s.bottomNavLabel}>Ripoti</Text></Pressable>
-      </View>
+
       <View style={[s.footer,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}><View style={s.footerCopy}><Text style={[s.footerName,darkMode&&{color:"#F4F7FA"}]}>{businessName}</Text><Text style={s.footerTag}>Smart Business Better Future</Text><Text style={s.footerPrivacy}>Your Business, Your Data, Your Privacy.</Text></View><Text style={s.footerValue}>{formatTZS(stockValue)}</Text></View>
       <View style={[s.goalCard,darkMode&&{backgroundColor:"#102438",borderColor:"#1D3A50"}]}>
         <View style={s.goalHeading}><Text style={s.goalIcon}>◎</Text><Text style={[s.goalTitle,darkMode&&{color:"#F4F7FA"}]}>Malengo ya Biashara</Text></View>
@@ -516,17 +505,17 @@ const s = StyleSheet.create({
   lowerContent: { backgroundColor: "#FFFFFF", paddingHorizontal: 11, paddingTop: 13, gap: 12 },
   serviceGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
   serviceTile: { width: "48%", aspectRatio: 1.35, borderRadius: 11, paddingHorizontal: 8, paddingVertical: 6, justifyContent: "center", alignItems: "center", elevation: 2 },
-  serviceIcon: { color: "#FFFFFF", fontSize: 30, fontWeight: "900" },
-  serviceLabel: { color: "#FFFFFF", fontSize: 15, fontWeight: "900", marginTop: 5, textAlign: "center" },
+  serviceIcon: { color: "#FFFFFF", fontSize: 40, fontWeight: "900" },
+  serviceLabel: { color: "#FFFFFF", fontSize: 15, fontWeight: "900", marginTop: 7, textAlign: "center" },
   
   summarySection: { gap: 8 },
   summaryHeading: { flexDirection: "row", alignItems: "center", gap: 7, backgroundColor: "#FFFFFF", paddingHorizontal: 2, paddingVertical: 9, borderBottomWidth: 1, borderBottomColor: "#E2E8F0" },
-  summaryIcon: { color: "#059669", fontSize: 22, fontWeight: "900" },
+  summaryIcon: { color: "#059669", fontSize: 27, fontWeight: "900" },
   summaryTitle: { color: "#0B1F4A", fontSize: 14, fontWeight: "900", flex: 1 },
   summaryPeriod: { color: "#155EEF", backgroundColor: "#FFFFFF", borderRadius: 14, overflow: "hidden", paddingHorizontal: 10, paddingVertical: 4, fontSize: 9, fontWeight: "900" },
   summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8, justifyContent: "space-between" },
   summaryTile: { width: "48%", minHeight: 112, backgroundColor: "#F0F7FF", borderRadius: 10, borderWidth: 1, borderColor: "#DBEAFE", padding: 7, justifyContent: "center" },
-  summaryTileIcon: { fontSize: 24 },
+  summaryTileIcon: { fontSize: 30 },
   summaryTileLabel: { color: "#64748B", fontSize: 13, fontWeight: "800", marginTop: 3 },
   summaryTileValue: { color: "#0B1F4A", fontSize: 16, fontWeight: "900", marginTop: 3 },
   systemCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 11, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1, gap: 2 },
@@ -542,7 +531,7 @@ const s = StyleSheet.create({
   cardHeader: { flexDirection: "row", alignItems: "center", justifyContent: "space-between", gap: 3 },
   cardTitle: { color: "#0B1F4A", fontSize: 14, fontWeight: "900", flexShrink: 1 },
   chartTitleRow: { flexDirection: "row", alignItems: "center", gap: 4, flex: 1 },
-  chartTitleIcon: { color: "#0B1F4A", fontSize: 34, fontWeight: "900" },
+  chartTitleIcon: { color: "#0B1F4A", fontSize: 30, fontWeight: "900" },
   quickTitleRow: { flexDirection: "row", alignItems: "center", gap: 5, marginBottom: 2 },
   quickBolt: { color: "#D69E0B", fontSize: 38, fontWeight: "900" },
   periodSelect: { backgroundColor: "#EFF6FF", paddingHorizontal: 7, paddingVertical: 5, borderRadius: 7 },
