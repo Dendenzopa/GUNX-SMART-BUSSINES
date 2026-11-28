@@ -487,7 +487,75 @@ BEGIN
 END;
 $$;
 
-SELECT 'PostgreSQL refund and platform privacy integration tests passed.' AS result;
+-- Exercise Storage RLS as the authenticated database role, not just policy metadata.
+-- The public bucket's public-URL delivery is configured at bucket level; these checks
+-- cover authenticated object operations and tenant/uploader isolation.
+GRANT SELECT ON public.shop_members TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON storage.objects TO authenticated;
+
+SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+SET ROLE authenticated;
+DO $storage_permissions_test$
+DECLARE
+  v_count integer;
+  v_denied boolean := false;
+BEGIN
+  INSERT INTO storage.objects(bucket_id,name)
+  VALUES (
+    'business-assets',
+    '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo.jpg'
+  );
+
+  SELECT count(*) INTO v_count
+  FROM storage.objects
+  WHERE bucket_id='business-assets'
+    AND name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo.jpg';
+  IF v_count <> 1 THEN RAISE EXCEPTION 'Owner cannot read their uploaded product image'; END IF;
+
+  UPDATE storage.objects
+  SET name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo-replaced.jpg'
+  WHERE bucket_id='business-assets'
+    AND name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo.jpg';
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'Owner cannot replace their own product image'; END IF;
+
+  -- Cashier cannot read the owner's private object through authenticated Storage RLS.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',false);
+  SELECT count(*) INTO v_count
+  FROM storage.objects
+  WHERE bucket_id='business-assets'
+    AND name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo-replaced.jpg';
+  IF v_count <> 0 THEN RAISE EXCEPTION 'Cashier read another uploader folder'; END IF;
+
+  -- Cashier cannot upload into their own folder without products.manage.
+  BEGIN
+    INSERT INTO storage.objects(bucket_id,name)
+    VALUES (
+      'business-assets',
+      '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000002/products/cashier-photo.jpg'
+    );
+    RAISE EXCEPTION 'Cashier unexpectedly uploaded a product image';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+
+  -- A valid uploader cannot use a different tenant's folder.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+  BEGIN
+    INSERT INTO storage.objects(bucket_id,name)
+    VALUES (
+      'business-assets',
+      '00000000-0000-0000-0000-000000000099/10000000-0000-0000-0000-000000000001/products/cross-tenant.jpg'
+    );
+    RAISE EXCEPTION 'Cross-tenant Storage upload unexpectedly succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+END;
+$storage_permissions_test$;
+RESET ROLE;
+
+SELECT 'PostgreSQL refund, platform privacy, and Storage permission integration tests passed.' AS result;
 )
 );
 CREATE UNIQUE INDEX shop_invitations_one_pending_phone
