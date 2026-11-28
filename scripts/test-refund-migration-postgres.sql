@@ -704,9 +704,6 @@ RETURNS boolean LANGUAGE sql STABLE
 AS $platform_admin$ SELECT current_setting('gunx.test.platform_admin', true) = 'true' $platform_admin$;
 
 -- Apply the exact migration from the PR, not a copied approximation.
-\ir ../supabase/migrations/20261127153000_secure_refunds_and_platform_admin_privacy.sql
-\ir ../supabase/migrations/20261128110000_scope_cashier_sales_and_manager_refunds.sql
-\ir ../supabase/migrations/20261128143000_product_images_and_storage_access.sql
 
 INSERT INTO auth.users(id, email) VALUES
 ('10000000-0000-0000-0000-000000000001', 'owner@example.test'),
