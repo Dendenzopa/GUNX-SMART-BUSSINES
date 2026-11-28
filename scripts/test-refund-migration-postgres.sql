@@ -2,12 +2,24 @@
 
 -- Disposable PostgreSQL 17 integration fixture for PR #45.
 -- This runs only in an isolated GitHub Actions service container.
-CREATE ROLE anon NOLOGIN;
-CREATE ROLE authenticated NOLOGIN;
+DO $roles$
+BEGIN
+  CREATE ROLE anon NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$roles$;
+DO $roles$
+BEGIN
+  CREATE ROLE authenticated NOLOGIN;
+EXCEPTION WHEN duplicate_object THEN NULL;
+END
+$roles$;
 CREATE SCHEMA auth;
 CREATE TABLE auth.users (
   id uuid PRIMARY KEY,
   email text,
+  phone text,
+  phone_confirmed_at timestamptz,
   created_at timestamptz NOT NULL DEFAULT now()
 );
 CREATE OR REPLACE FUNCTION auth.uid()
@@ -24,8 +36,24 @@ CREATE TABLE public.shop_members (
   shop_id uuid NOT NULL,
   user_id uuid NOT NULL,
   role text NOT NULL,
-  PRIMARY KEY (shop_id, user_id, role)
+  PRIMARY KEY (shop_id, user_id)
 );
+CREATE TABLE public.shop_invitations (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  token uuid NOT NULL UNIQUE DEFAULT gen_random_uuid(),
+  shop_id uuid NOT NULL REFERENCES public.shops(id) ON DELETE CASCADE,
+  phone_e164 text NOT NULL,
+  role text NOT NULL CHECK (role IN ('manager','cashier','stockkeeper')),
+  invited_by uuid NOT NULL REFERENCES auth.users(id),
+  created_at timestamptz NOT NULL DEFAULT now(),
+  expires_at timestamptz NOT NULL DEFAULT (now()+interval '7 days'),
+  accepted_at timestamptz,
+  accepted_user_id uuid REFERENCES auth.users(id),
+  CHECK (phone_e164 ~ '^\\+[1-9][0-9]{7,14}$')
+);
+CREATE UNIQUE INDEX shop_invitations_one_pending_phone
+ON public.shop_invitations(shop_id,phone_e164) WHERE accepted_at IS NULL;
+
 CREATE TABLE public.shop_subscriptions (
   shop_id uuid NOT NULL,
   plan_code text,
@@ -158,19 +186,22 @@ CREATE OR REPLACE FUNCTION public.is_platform_admin()
 RETURNS boolean LANGUAGE sql STABLE
 AS $platform_admin$ SELECT current_setting('gunx.test.platform_admin', true) = 'true' $platform_admin$;
 
--- Apply the exact migration from the PR, not a copied approximation.
+-- Apply all four exact migrations in chronological order in this disposable database.
+\ir ../supabase/migrations/20261127120000_fix_employee_invitation_reissue.sql
 \ir ../supabase/migrations/20261127153000_secure_refunds_and_platform_admin_privacy.sql
 \ir ../supabase/migrations/20261128110000_scope_cashier_sales_and_manager_refunds.sql
 \ir ../supabase/migrations/20261128143000_product_images_and_storage_access.sql
 
-INSERT INTO auth.users(id, email) VALUES
-('10000000-0000-0000-0000-000000000001', 'owner@example.test'),
-('10000000-0000-0000-0000-000000000002', 'employee@example.test');
+INSERT INTO auth.users(id, email, phone, phone_confirmed_at) VALUES
+('10000000-0000-0000-0000-000000000001', 'owner@example.test', '+255700000001', now()),
+('10000000-0000-0000-0000-000000000002', 'employee@example.test', '+255700000002', now()),
+('10000000-0000-0000-0000-000000000003', 'manager@example.test', '+255700000003', now());
 INSERT INTO public.shops(id, name, owner_id) VALUES
 ('00000000-0000-0000-0000-000000000001', 'GUNX Test Shop', '10000000-0000-0000-0000-000000000001');
 INSERT INTO public.shop_members(shop_id, user_id, role) VALUES
 ('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000001', 'owner'),
-('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'cashier');
+('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000002', 'cashier'),
+('00000000-0000-0000-0000-000000000001', '10000000-0000-0000-0000-000000000003', 'manager');
 INSERT INTO public.shop_subscriptions(shop_id, plan_code, status, expires_at) VALUES
 ('00000000-0000-0000-0000-000000000001', 'pro', 'active', now() + interval '30 days');
 INSERT INTO public.pro_payment_requests(
@@ -431,6 +462,37 @@ BEGIN
     IF SQLERRM <> 'Only owner or manager can refund sales' THEN RAISE; END IF;
   END;
 
+  -- Manager without refunds.manage is denied; the same manager is allowed with the permission.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',false);
+  PERFORM set_config('gunx.test.permission','',false);
+  v_rejected := false;
+  BEGIN
+    PERFORM * FROM public.refund_sale(
+      '00000000-0000-0000-0000-000000000001',
+      '30000000-0000-0000-0000-000000000002',
+      '50000000-0000-0000-0000-000000000010',
+      '[{"sale_item_id":"40000000-0000-0000-0000-000000000004","quantity":1}]'::jsonb,
+      'Manager permission test','cash'
+    );
+  EXCEPTION WHEN OTHERS THEN
+    IF SQLERRM='Only owner or manager can refund sales' THEN v_rejected:=true; ELSE RAISE; END IF;
+  END;
+  IF NOT v_rejected THEN RAISE EXCEPTION 'Manager without refunds.manage unexpectedly refunded'; END IF;
+
+  PERFORM set_config('gunx.test.permission','refunds.manage',false);
+  SELECT * INTO v_result FROM public.refund_sale(
+    '00000000-0000-0000-0000-000000000001',
+    '30000000-0000-0000-0000-000000000002',
+    '50000000-0000-0000-0000-000000000011',
+    '[{"sale_item_id":"40000000-0000-0000-0000-000000000004","quantity":1}]'::jsonb,
+    'Manager permission test','cash'
+  );
+  IF v_result.refund_total <> 10 THEN
+    RAISE EXCEPTION 'Manager with refunds.manage did not refund the expected amount';
+  END IF;
+  PERFORM set_config('gunx.test.permission','',false);
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+
   -- A previous gross-price refund above the corrected discounted allocation fails closed.
   INSERT INTO public.sales(id,shop_id,receipt_number,status,subtotal,discount,total,amount_paid)
   VALUES ('30000000-0000-0000-0000-000000000003','00000000-0000-0000-0000-000000000001','TEST-003','completed',100,50,50,50);
@@ -473,4 +535,91 @@ BEGIN
 END;
 $$;
 
-SELECT 'PostgreSQL refund and platform privacy integration tests passed.' AS result;
+-- Exercise Storage RLS as the authenticated database role, not just policy metadata.
+-- The public bucket's public-URL delivery is configured at bucket level; these checks
+-- cover authenticated object operations and tenant/uploader isolation.
+GRANT SELECT ON public.shop_members TO authenticated;
+GRANT USAGE ON SCHEMA auth TO authenticated;
+GRANT EXECUTE ON FUNCTION auth.uid() TO authenticated;
+GRANT USAGE ON SCHEMA storage TO authenticated;
+GRANT SELECT, INSERT, UPDATE ON storage.objects TO authenticated;
+
+SELECT set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+SET ROLE authenticated;
+DO $storage_permissions_test$
+DECLARE
+  v_count integer;
+  v_denied boolean := false;
+BEGIN
+  INSERT INTO storage.objects(bucket_id,name)
+  VALUES (
+    'business-assets',
+    '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo.jpg'
+  );
+
+  SELECT count(*) INTO v_count
+  FROM storage.objects
+  WHERE bucket_id='business-assets'
+    AND name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo.jpg';
+  IF v_count <> 1 THEN RAISE EXCEPTION 'Owner cannot read their uploaded product image'; END IF;
+
+  UPDATE storage.objects
+  SET name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo-replaced.jpg'
+  WHERE bucket_id='business-assets'
+    AND name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo.jpg';
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'Owner cannot replace their own product image'; END IF;
+
+  -- Manager with products.manage can upload and replace only their own folder's object.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000003',false);
+  PERFORM set_config('gunx.test.permission','products.manage',false);
+  INSERT INTO storage.objects(bucket_id,name)
+  VALUES (
+    'business-assets',
+    '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000003/products/manager-photo.jpg'
+  );
+  UPDATE storage.objects
+  SET name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000003/products/manager-photo-replaced.jpg'
+  WHERE bucket_id='business-assets'
+    AND name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000003/products/manager-photo.jpg';
+  GET DIAGNOSTICS v_count = ROW_COUNT;
+  IF v_count <> 1 THEN RAISE EXCEPTION 'Authorized manager could not replace their product image'; END IF;
+  PERFORM set_config('gunx.test.permission','',false);
+
+  -- Cashier cannot read the owner's private object through authenticated Storage RLS.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000002',false);
+  SELECT count(*) INTO v_count
+  FROM storage.objects
+  WHERE bucket_id='business-assets'
+    AND name='00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000001/products/owner-photo-replaced.jpg';
+  IF v_count <> 0 THEN RAISE EXCEPTION 'Cashier read another uploader folder'; END IF;
+
+  -- Cashier cannot upload into their own folder without products.manage.
+  BEGIN
+    INSERT INTO storage.objects(bucket_id,name)
+    VALUES (
+      'business-assets',
+      '00000000-0000-0000-0000-000000000001/10000000-0000-0000-0000-000000000002/products/cashier-photo.jpg'
+    );
+    RAISE EXCEPTION 'Cashier unexpectedly uploaded a product image';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+
+  -- A valid uploader cannot use a different tenant's folder.
+  PERFORM set_config('request.jwt.claim.sub','10000000-0000-0000-0000-000000000001',false);
+  BEGIN
+    INSERT INTO storage.objects(bucket_id,name)
+    VALUES (
+      'business-assets',
+      '00000000-0000-0000-0000-000000000099/10000000-0000-0000-0000-000000000001/products/cross-tenant.jpg'
+    );
+    RAISE EXCEPTION 'Cross-tenant Storage upload unexpectedly succeeded';
+  EXCEPTION WHEN insufficient_privilege THEN
+    NULL;
+  END;
+END;
+$storage_permissions_test$;
+RESET ROLE;
+
+SELECT 'PostgreSQL all-four-migration, refund, privacy, and Storage permission integration tests passed.' AS result;

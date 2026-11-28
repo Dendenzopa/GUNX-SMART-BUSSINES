@@ -35,7 +35,16 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y postgresql-client
-      - name: Run refund and platform privacy migration against disposable PostgreSQL
+      - name: Run employee invitation lifecycle migration against disposable PostgreSQL
+        env:
+          PGHOST: 127.0.0.1
+          PGPORT: 5432
+          PGUSER: postgres
+          PGPASSWORD: postgres
+        run: |
+          createdb gunx_invitation_test
+          PGDATABASE=gunx_invitation_test psql -v ON_ERROR_STOP=1 -f scripts/test-employee-invitation-postgres.sql
+      - name: Run all four migrations, refund regressions, platform privacy and Storage RLS against disposable PostgreSQL
         env:
           PGHOST: 127.0.0.1
           PGPORT: 5432
