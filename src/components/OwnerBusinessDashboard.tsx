@@ -133,6 +133,8 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
   const todayStart = new Date();
   todayStart.setHours(0, 0, 0, 0);
   const todaySales = chartSales.filter(item => new Date(item.createdAt) >= todayStart);
+  const todaySalesTotal = todaySales.reduce((sum, item) => sum + item.total, 0);
+  const outstandingDebts = debts.reduce((sum, item) => sum + item.balance, 0);
   const lowStock = products.filter(item => item.active && item.stockQuantity <= item.reorderLevel);
   const activeProducts = products.filter(item => item.active).length;
   const stockValue = products.filter(item => item.active).reduce((sum, item) => sum + item.costPrice * item.stockQuantity, 0);
@@ -242,6 +244,24 @@ export default function OwnerBusinessDashboard({ shopId, sales, products, expens
         <Pressable onPress={() => onNavigate("Reports")} style={[s.serviceTile, { backgroundColor: "#D69E0B" }]}>
           <Text style={s.serviceIcon}>📄</Text><Text style={s.serviceLabel}>Ripoti</Text>
         </Pressable>
+      </View>
+
+
+      <View style={s.summaryCard}>
+        <View style={s.summaryHeading}>
+          <View style={s.summaryTitleWrap}>
+            <Text style={s.summaryAccent} />
+            <View><Text style={s.summaryTitle}>Muhtasari wa Biashara</Text><Text style={s.summarySubtitle}>Takwimu za biashara yako kutoka kwenye mfumo</Text></View>
+          </View>
+          <Pressable onPress={() => onNavigate("Reports")}><Text style={s.summaryLink}>Angalia yote</Text></Pressable>
+        </View>
+        <View style={s.summaryGrid}>
+          <View style={s.summaryMetric}><Text style={s.summaryLabel}>Mauzo ya Leo</Text><Text numberOfLines={1} style={s.summaryValue}>{formatTZS(todaySalesTotal)}</Text><Text style={s.summaryHint}>{todaySales.length} mauzo yaliyothibitishwa</Text></View>
+          <View style={s.summaryMetric}><Text style={s.summaryLabel}>Bidhaa Hai</Text><Text style={[s.summaryValue,{color:"#159A70"}]}>{activeProducts.toLocaleString("en-US")}</Text><Text style={s.summaryHint}>Kwenye katalogi ya duka</Text></View>
+          <View style={s.summaryMetric}><Text style={s.summaryLabel}>Madeni</Text><Text numberOfLines={1} style={[s.summaryValue,{color:"#D97706"}]}>{formatTZS(outstandingDebts)}</Text><Text style={s.summaryHint}>Salio la wateja</Text></View>
+          <View style={s.summaryMetric}><Text style={s.summaryLabel}>Thamani ya Stock</Text><Text numberOfLines={1} style={s.summaryValue}>{formatTZS(stockValue)}</Text><Text style={s.summaryHint}>Kwa gharama ya ununuzi</Text></View>
+        </View>
+        {staffCount === null ? <Text style={s.summaryFoot}>Idadi ya wafanyakazi inasubiri kuthibitishwa.</Text> : <Text style={s.summaryFoot}>Wafanyakazi: {staffCount} · Bidhaa zenye stock ndogo: {lowStock.length}</Text>}
       </View>
 
       <View style={s.midSection}>
@@ -364,6 +384,20 @@ const s = StyleSheet.create({
   serviceIcon: { color: "#FFFFFF", fontSize: 23, fontWeight: "900" },
   serviceLabel: { color: "#FFFFFF", fontSize: 10, fontWeight: "900", marginTop: 5, textAlign: "center" },
   
+
+  summaryCard: { backgroundColor: "#FFFFFF", borderRadius: 16, padding: 14, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1, gap: 11 },
+  summaryHeading: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", gap: 8 },
+  summaryTitleWrap: { flexDirection: "row", alignItems: "center", gap: 9, flex: 1 },
+  summaryAccent: { width: 4, height: 34, borderRadius: 3, backgroundColor: "#159A70" },
+  summaryTitle: { color: "#0B1F4A", fontSize: 15, fontWeight: "900" },
+  summarySubtitle: { color: "#64748B", fontSize: 9, marginTop: 2 },
+  summaryLink: { color: "#0A8F63", fontSize: 10, fontWeight: "900" },
+  summaryGrid: { flexDirection: "row", flexWrap: "wrap", gap: 8 },
+  summaryMetric: { width: "48%", flexGrow: 1, minWidth: "45%", backgroundColor: "#F3F5F4", borderWidth: 1, borderColor: "#E3E9E6", borderRadius: 12, padding: 11, minHeight: 84, justifyContent: "center" },
+  summaryLabel: { color: "#5D6B66", fontSize: 10, fontWeight: "800" },
+  summaryValue: { color: "#0F1F1A", fontSize: 16, fontWeight: "900", marginTop: 6 },
+  summaryHint: { color: "#64748B", fontSize: 8, marginTop: 3 },
+  summaryFoot: { color: "#64748B", fontSize: 9, fontWeight: "700" },
   midSection: { flexDirection: "row", alignItems: "stretch", gap: 8 },
   splitCard: { flex: 1, minWidth: 0 },
   chartCard: { backgroundColor: "#FFFFFF", borderRadius: 13, padding: 9, borderWidth: 1, borderColor: "#E2E8F0", elevation: 1 },
