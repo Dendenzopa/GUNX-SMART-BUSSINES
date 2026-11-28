@@ -28,10 +28,10 @@ Cloud data is authoritative. Local-only, unsynchronized offline sales are not gu
 
 ## Lost-device protection
 
-- Maintain a device registry linked to `auth.uid()` and the Auth `session_id` claim. Store a random installation identifier, a user-friendly device label, platform, first/last seen timestamps, and revocation state. Do not store access tokens or refresh tokens in this table.
-- A user can review their own registered devices and request revocation of a lost device.
-- Revocation must be performed server-side through a narrowly scoped Edge Function using the Supabase Auth Admin API. The function must authenticate the caller, verify ownership of the target session/device, and never accept a user ID supplied by the client as proof of authority.
-- After revocation, the app must clear local credentials on the revoked installation at its next refresh/check. Sensitive database operations should also reject a revoked session by validating the JWT `session_id` against the device registry (or another authoritative active-session check).
+- Initial recovery control: an authenticated user can request **global session revocation** from a trusted replacement device. A narrowly scoped Edge Function validates the caller's JWT, writes a security audit event, and uses the Supabase Auth Admin API to revoke all sessions for that same user. The user must then sign in again on the trusted device.
+- This first version deliberately revokes all sessions for that account, not just one selected phone. It must not be labelled as per-device revocation.
+- The Edge Function derives the user from the verified JWT; it never accepts a user ID from the client as proof of authority. The service-role key stays server-side.
+- A future per-device registry can be added only with a reliable server-side session-to-installation mapping and enforcement on sensitive operations. Do not claim that simply marking a device row revoked invalidates its Supabase refresh token.
 - The Boss may initiate an employee access-revocation action only through the existing owner/manager authorization model and an explicit confirmation. This must not grant the Boss access to the employee's password, OTP, or personal account.
 - Keep a tamper-resistant audit trail for device registration, recovery request, verification decision, phone change, and revocation. Do not log OTPs, recovery codes, access tokens, refresh tokens, invitation tokens, or full identity documents.
 
@@ -55,10 +55,10 @@ Cloud data is authoritative. Local-only, unsynchronized offline sales are not gu
 
 1. Audit the current AuthGate and provider configuration. Boss currently uses email/Google; employee currently uses phone/password with SMS verification.
 2. Add the account recovery UI: existing-account SMS OTP for employees, existing-provider sign-in for Boss, and a support-request path when identity channels are unavailable.
-3. Add a device registry and least-privilege RLS policies; keep migration changes isolated and tested before production.
-4. Add an Edge Function for server-side session revocation and verified recovery actions. Never put a service-role key in the Expo client.
-5. Add audit events and security notifications.
-6. Add tests for Boss, manager, cashier, stockkeeper, wrong phone, unknown phone, cross-tenant IDs, revoked device, missing Recovery Code, offline pending sales, and support approval/rejection.
+3. Add the private account security audit table with owner-only read access; service-role writes are restricted to the Edge Function.
+4. Add the authenticated global session-revocation Edge Function. Never put a service-role key in the Expo client.
+5. Add a user-facing confirmation control in account/security settings and security notifications.
+6. Add tests for Boss, manager, cashier, stockkeeper, wrong phone, unknown phone, cross-tenant IDs, global session revocation, missing Recovery Code, offline pending sales, and support approval/rejection.
 7. Verify on physical Android devices and Preview before any Production release.
 
 ## Acceptance criteria
@@ -66,7 +66,8 @@ Cloud data is authoritative. Local-only, unsynchronized offline sales are not gu
 - Returning Boss signs in on a new phone and sees the exact existing business without seeing business-creation onboarding.
 - Returning employee signs in on a new phone and retains the exact existing shop role and permissions.
 - An unknown phone cannot create an account through the recovery flow.
-- A revoked lost device cannot refresh its session and is denied sensitive operations after revocation enforcement.
+- Global session revocation invalidates all sessions for the account; the trusted device can sign in again.
+- The UI clearly warns that global revocation signs out all devices, not only the lost phone.
 - Recovery does not alter sales, products, stock, debts, customers, subscriptions, or tenant membership.
 - Recovery Code can be skipped.
 - A user without their old number can use the verified support path without support agents accessing private tenant ledgers.
