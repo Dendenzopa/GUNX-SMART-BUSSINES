@@ -46,8 +46,8 @@ export default function EmployeeProfile({darkMode=true}:{darkMode?:boolean}) {
    if(insertError||!doc){await supabase.storage.from("employee-private-documents").remove([path]);setNotice("Taarifa ya nyaraka haijahifadhiwa: "+(insertError?.message??"Jaribu tena."));return;}
    const {error:logError}=await supabase.rpc("log_employee_document_access",{p_document_id:doc.id,p_action:"upload"});
    if(documentType==="employee_photo"){
-    const {error:profileError}=await supabase.from("employee_profiles").upsert({shop_id:shopId,user_id:userId,legal_name:form.legal_name.trim()||"Mfanyakazi",phone_e164:form.phone_e164.trim()||"+255700000000",identity_type:form.identity_type,identity_number:form.identity_number.trim()||"PENDING",employee_photo_path:path,updated_at:new Date().toISOString()},{onConflict:"shop_id,user_id"});
-    if(profileError){setNotice("Picha imepakiwa lakini haikuunganishwa na wasifu: "+profileError.message);return;}
+    const {error:profileError}=await supabase.from("employee_profiles").update({employee_photo_path:path,updated_at:new Date().toISOString()}).eq("shop_id",shopId).eq("user_id",userId);
+    if(profileError){setNotice("Picha imepakiwa, lakini haikuunganishwa na wasifu: "+profileError.message);return;}
    }
    setNotice(logError?labels[documentType]+" limepakiwa, lakini kumbukumbu ya ukaguzi haikuhifadhiwa: "+logError.message:labels[documentType]+" limepakiwa kwenye hifadhi binafsi salama.");
   } catch(error) {
