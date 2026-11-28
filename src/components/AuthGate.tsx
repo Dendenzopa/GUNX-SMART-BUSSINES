@@ -314,20 +314,34 @@ export default function AuthGate({ children }: { children: React.ReactNode }) {
         else if (data.session) setMessage("Akaunti imetengenezwa. Inakubali mwaliko...");
         else { setPhoneOtpPending(true); setMessage("Tumetuma code ya uthibitisho kwa SMS. Ingiza code ili kukamilisha usajili."); }
       } else {
-        const { error } = await supabase.auth.signInWithPassword({ phone: normalizedPhone, password });
-        setBusy(false);
-        if (error) setMessage("Kuingia kwa simu kumeshindikana: " + error.message);
+        try {
+          const signIn = supabase.auth.signInWithPassword({ phone: normalizedPhone, password });
+          const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Kuingia kumechukua muda mrefu. Angalia intaneti kisha ujaribu tena.")), 15000));
+          const { error } = await Promise.race([signIn, timeout]);
+          if (error) setMessage("Kuingia kwa simu kumeshindikana: " + error.message);
+        } catch (error) {
+          setMessage(error instanceof Error ? error.message : "Kuingia kwa simu kumeshindikana. Jaribu tena.");
+        } finally {
+          setBusy(false);
+        }
       }
       return;
     }
     if (!email.trim() || password.length < 8) { setMessage("Weka email na password yenye angalau herufi 8."); return; }
     setBusy(true); setMessage("");
-    const result = mode === "signup"
-      ? await supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: getAuthRedirectUrl() } })
-      : await supabase.auth.signInWithPassword({ email: email.trim(), password });
-    setBusy(false);
-    if (result.error) setMessage(result.error.message);
-    else if (mode === "signup" && !result.data.session) setMessage("Akaunti imetengenezwa. Angalia Gmail kuthibitisha email. Usipopata ujumbe, bonyeza Tuma tena email.");
+    try {
+      const request = mode === "signup"
+        ? supabase.auth.signUp({ email: email.trim(), password, options: { emailRedirectTo: getAuthRedirectUrl() } })
+        : supabase.auth.signInWithPassword({ email: email.trim(), password });
+      const timeout = new Promise<never>((_, reject) => setTimeout(() => reject(new Error("Kuingia kumechukua muda mrefu. Angalia intaneti kisha ujaribu tena.")), 15000));
+      const result = await Promise.race([request, timeout]);
+      if (result.error) setMessage(result.error.message);
+      else if (mode === "signup" && !result.data.session) setMessage("Akaunti imetengenezwa. Angalia Gmail kuthibitisha email. Usipopata ujumbe, bonyeza Tuma tena email.");
+    } catch (error) {
+      setMessage(error instanceof Error ? error.message : "Ombi la kuingia limeshindwa. Jaribu tena.");
+    } finally {
+      setBusy(false);
+    }
   }
 
   async function verifyPhoneOtp() {
